@@ -17,8 +17,11 @@ class CinemaTheme {
         primaryContainer: CinemaColors.amberDark,
         surface: CinemaColors.surface,
         onSurface: CinemaColors.textPrimary,
+        surfaceContainerLow: CinemaColors.surface,
+        surfaceContainer: CinemaColors.surfaceElevated,
         surfaceContainerHighest: CinemaColors.card,
         outline: CinemaColors.border,
+        outlineVariant: CinemaColors.borderSubtle,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: CinemaColors.canvas,
@@ -35,7 +38,7 @@ class CinemaTheme {
         color: CinemaColors.card,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           side: const BorderSide(color: CinemaColors.borderSubtle, width: 1),
         ),
       ),
@@ -45,7 +48,7 @@ class CinemaTheme {
           foregroundColor: CinemaColors.canvas,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           textStyle: const TextStyle(
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
@@ -55,9 +58,9 @@ class CinemaTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: CinemaColors.textPrimary,
-          side: const BorderSide(color: CinemaColors.border, width: 1.2),
+          side: const BorderSide(color: CinemaColors.border, width: 1.0),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           textStyle: const TextStyle(
             fontWeight: FontWeight.w600,
             letterSpacing: 0.3,

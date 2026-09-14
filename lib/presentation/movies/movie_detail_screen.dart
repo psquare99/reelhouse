@@ -1,10 +1,12 @@
-import 'package:drift/drift.dart' as drift;
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/database/database.dart';
+import '../../domain/models/playback_resolution.dart';
 import '../../domain/services/availability_resolver.dart';
+import '../../domain/services/playback_launcher_service.dart';
 import '../../domain/services/playback_source_resolver.dart';
 import '../widgets/availability_action_button.dart';
 import '../widgets/cinema_poster_image.dart';
@@ -27,6 +29,7 @@ class MovieDetailScreen extends StatefulWidget {
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
   final PlaybackSourceResolver _resolver = const PlaybackSourceResolver();
+  late final PlaybackLauncherService _playbackLauncher;
   late Stream<Movie?> _movieStream;
   late Stream<List<Storage>> _storageStream;
   late Stream<List<MediaSource>> _sourcesStream;
@@ -35,6 +38,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _playbackLauncher = PlaybackLauncherService(database: widget.database);
     _initStreams();
   }
 
@@ -148,31 +152,152 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     );
   }
 
-  void _queueDownloadToDevice(MediaSource source) async {
-    final now = DateTime.now();
-    await widget.database.createTransferJob(
-      TransferJobsCompanion.insert(
-        id: 'job-${DateTime.now().millisecondsSinceEpoch}',
-        mediaType: 'movie',
-        mediaId: widget.movieId,
-        sourceMediaSourceId: source.id,
-        destinationStorageId: 'local-device',
-        destinationRelativePath: source.filename,
-        status: 'DOWNLOADING',
-        bytesTransferred: drift.Value(BigInt.zero),
-        totalBytes: source.fileSize,
-        startedAt: now,
+  void _handlePlay(PlaybackResolution resolution, String mediaTitle) async {
+    final sourceId = resolution.selectedSourceId;
+    if (sourceId == null) {
+      _showConnectDiskDialog(resolution.storageName);
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Opening $mediaTitle in player...'),
+        backgroundColor: CinemaColors.surface,
+        duration: const Duration(seconds: 2),
       ),
     );
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Offline transfer queued for ${source.filename}'),
-          backgroundColor: CinemaColors.surface,
-        ),
-      );
+    final result = await _playbackLauncher.launchPlayback(
+      mediaSourceId: sourceId,
+    );
+    if (!mounted) return;
+
+    if (!result.isSuccess) {
+      _showPlaybackDiagnosticDialog(result);
     }
+  }
+
+  void _showPlaybackDiagnosticDialog(PlaybackLaunchResult result) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: CinemaColors.card,
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: CinemaColors.amber, size: 24),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Playback Diagnostic',
+                style: TextStyle(color: CinemaColors.textPrimary, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              result.errorMessage ?? 'Unable to start playback.',
+              style: const TextStyle(
+                color: CinemaColors.textSecondary,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+            if (result.resolvedPath != null) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'RESOLVED PATH',
+                style: TextStyle(
+                  color: CinemaColors.amber,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 4),
+              SelectableText(
+                result.resolvedPath!,
+                style: const TextStyle(
+                  color: CinemaColors.textMuted,
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'OK',
+              style: TextStyle(color: CinemaColors.amber),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showM5DownloadDialog(String title, String filename) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: CinemaColors.card,
+        title: const Row(
+          children: [
+            Icon(
+              Icons.download_for_offline_outlined,
+              color: CinemaColors.amber,
+              size: 24,
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Offline Download',
+                style: TextStyle(color: CinemaColors.textPrimary, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Copying "$filename" to local device storage is scheduled for Milestone 5.',
+              style: const TextStyle(
+                color: CinemaColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'REELHOUSE maintains this item\'s full identity and physical source location in your library.\n\n'
+              'The background file streaming engine with verify-after-write and resume capability will be delivered in Milestone 5.',
+              style: TextStyle(
+                color: CinemaColors.textSecondary,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'Understood',
+              style: TextStyle(color: CinemaColors.amber),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddToCollectionDialog() async {
@@ -248,7 +373,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                     CollectionItemsCompanion.insert(
                       id: 'ci-${DateTime.now().millisecondsSinceEpoch}',
                       collectionId: col.id,
-                      movieId: drift.Value(widget.movieId),
+                      movieId: Value(widget.movieId),
                       addedAt: DateTime.now(),
                     ),
                   );
@@ -498,19 +623,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                         resolution: resolution,
                                         isDownloading: isDownloading,
                                         downloadProgress: downloadProgress,
-                                        onPlay: () {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Playback: ${resolution.buttonLabel}',
-                                              ),
-                                              backgroundColor:
-                                                  CinemaColors.surface,
-                                            ),
-                                          );
-                                        },
+                                        onPlay: () => _handlePlay(
+                                          resolution,
+                                          movie.title,
+                                        ),
                                         onConnectDisk: () =>
                                             _showConnectDiskDialog(
                                               resolution.storageName,
@@ -523,8 +639,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                           !isDownloading)
                                         OutlinedButton.icon(
                                           onPressed: () =>
-                                              _queueDownloadToDevice(
-                                                primaryRemovable,
+                                              _showM5DownloadDialog(
+                                                movie.title,
+                                                primaryRemovable.filename,
                                               ),
                                           icon: const Icon(
                                             Icons.download_rounded,

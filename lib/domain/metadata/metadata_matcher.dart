@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../../data/network/tmdb_models.dart';
+import 'metadata_provider.dart';
 
 /// Scored candidate result from confidence evaluation.
 class ScoredMovieMatch {
@@ -21,6 +22,18 @@ class ScoredTvMatch {
   final String rationale;
 
   const ScoredTvMatch({
+    required this.candidate,
+    required this.confidence,
+    required this.rationale,
+  });
+}
+
+class ScoredProviderMatch {
+  final ProviderCandidate candidate;
+  final double confidence;
+  final String rationale;
+
+  const ScoredProviderMatch({
     required this.candidate,
     required this.confidence,
     required this.rationale,
@@ -260,6 +273,107 @@ class MetadataMatcher {
       confidence: clamped,
       rationale:
           'TV title similarity: ${(titleSim * 100).toStringAsFixed(0)}%, $yearRationale.',
+    );
+  }
+
+  /// Evaluates standardized [ProviderCandidate]s across any metadata provider.
+  MatchDecision<ProviderCandidate> evaluateProviderCandidates({
+    required String detectedTitle,
+    int? detectedYear,
+    required List<ProviderCandidate> candidates,
+  }) {
+    if (candidates.isEmpty) {
+      return const MatchDecision(
+        type: MatchDecisionType.noCandidates,
+        reason: 'No provider candidates returned for query.',
+      );
+    }
+
+    final scored = <ScoredProviderMatch>[];
+    for (final cand in candidates) {
+      final score = calculateProviderScore(
+        detectedTitle: detectedTitle,
+        detectedYear: detectedYear,
+        candidate: cand,
+      );
+      scored.add(score);
+    }
+
+    scored.sort((a, b) => b.confidence.compareTo(a.confidence));
+    final best = scored.first;
+
+    if (best.confidence >= highConfidenceThreshold) {
+      if (scored.length > 1) {
+        final second = scored[1];
+        if ((best.confidence - second.confidence) < ambiguityGap &&
+            best.candidate.providerItemId != second.candidate.providerItemId) {
+          return MatchDecision(
+            type: MatchDecisionType.needsVerification,
+            bestMatch: best.candidate,
+            confidence: best.confidence,
+            candidates: scored.map((s) => s.candidate).toList(),
+            reason:
+                'Ambiguous matches on ${best.candidate.providerId}: "${best.candidate.title} (${best.candidate.year})" vs "${second.candidate.title} (${second.candidate.year})"',
+          );
+        }
+      }
+
+      return MatchDecision(
+        type: MatchDecisionType.automaticMatch,
+        bestMatch: best.candidate,
+        confidence: best.confidence,
+        candidates: scored.map((s) => s.candidate).toList(),
+        reason: best.rationale,
+      );
+    }
+
+    return MatchDecision(
+      type: MatchDecisionType.needsVerification,
+      bestMatch: best.candidate,
+      confidence: best.confidence,
+      candidates: scored.map((s) => s.candidate).toList(),
+      reason:
+          'Confidence ${(best.confidence * 100).toStringAsFixed(0)}% on ${best.candidate.providerId} is below safe threshold ($highConfidenceThreshold).',
+    );
+  }
+
+  ScoredProviderMatch calculateProviderScore({
+    required String detectedTitle,
+    int? detectedYear,
+    required ProviderCandidate candidate,
+  }) {
+    final titleSim = max(
+      _stringSimilarity(detectedTitle, candidate.title),
+      candidate.originalTitle != null
+          ? _stringSimilarity(detectedTitle, candidate.originalTitle!)
+          : 0.0,
+    );
+
+    double yearScore = 0.15;
+    String yearRationale = 'Year unverified';
+
+    if (detectedYear != null && candidate.year != null) {
+      final diff = (candidate.year! - detectedYear).abs();
+      if (diff == 0) {
+        yearScore = 0.30;
+        yearRationale = 'Exact year match ($detectedYear)';
+      } else if (diff == 1) {
+        yearScore = 0.20;
+        yearRationale = 'Close year match (${candidate.year} vs $detectedYear)';
+      } else {
+        yearScore = 0.00;
+        yearRationale = 'Year mismatch (${candidate.year} vs $detectedYear)';
+      }
+    }
+
+    final totalScore = (titleSim * 0.70) + yearScore;
+    final clamped = totalScore.clamp(0.0, 1.0);
+
+    return ScoredProviderMatch(
+      candidate: candidate,
+      confidence: clamped,
+      rationale:
+          '${candidate.providerId} title similarity: ${(titleSim * 100).toStringAsFixed(0)}%, $yearRationale.',
     );
   }
 

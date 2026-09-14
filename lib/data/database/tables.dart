@@ -33,6 +33,10 @@ class Movies extends Table {
   IntColumn get voteCount => integer().nullable()();
   TextColumn get imdbId => text().nullable()();
   IntColumn get tmdbId => integer().nullable()();
+  TextColumn get metadataProvider =>
+      text().nullable()(); // 'TMDB' | 'OMDb' | 'TVmaze'
+  TextColumn get providerItemId => text().nullable()();
+  DateTimeColumn get metadataUpdatedAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -61,6 +65,9 @@ class TvShows extends Table {
   RealColumn get rating => real().nullable()();
   IntColumn get tmdbId => integer().nullable()();
   TextColumn get imdbId => text().nullable()();
+  TextColumn get metadataProvider => text().nullable()(); // 'TMDB' | 'TVmaze'
+  TextColumn get providerItemId => text().nullable()();
+  DateTimeColumn get metadataUpdatedAt => dateTime().nullable()();
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
   BoolColumn get isWatchlist => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime()();

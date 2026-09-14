@@ -76,12 +76,12 @@ class CinemaPosterCard extends StatelessWidget {
                       ),
                     ),
 
-                  // Availability badge (top-left)
+                  // Availability micro-indicator (top-left) - understated so artwork dominates
                   if (availabilityStatus != null)
                     Positioned(
                       top: 8,
                       left: 8,
-                      child: _buildAvailabilityBadge(availabilityStatus!),
+                      child: _buildAvailabilityIndicator(availabilityStatus!),
                     ),
 
                   // In-progress watch line (bottom of poster)
@@ -92,9 +92,9 @@ class CinemaPosterCard extends StatelessWidget {
                       right: 0,
                       child: LinearProgressIndicator(
                         value: watchProgress ?? 0.4,
-                        minHeight: 3.5,
+                        minHeight: 2.5,
                         backgroundColor: CinemaColors.canvas.withValues(
-                          alpha: 0.6,
+                          alpha: 0.7,
                         ),
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           CinemaColors.amber,
@@ -106,33 +106,15 @@ class CinemaPosterCard extends StatelessWidget {
                       bottom: 8,
                       right: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
+                        padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: CinemaColors.canvas.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(4),
+                          color: CinemaColors.canvas.withValues(alpha: 0.75),
+                          shape: BoxShape.circle,
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              color: CinemaColors.amber,
-                              size: 11,
-                            ),
-                            SizedBox(width: 3),
-                            Text(
-                              'WATCHED',
-                              style: TextStyle(
-                                color: CinemaColors.textSecondary,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
+                        child: const Icon(
+                          Icons.check_circle,
+                          color: CinemaColors.amber,
+                          size: 13,
                         ),
                       ),
                     ),
@@ -140,9 +122,9 @@ class CinemaPosterCard extends StatelessWidget {
               ),
             ),
 
-            // Text info below poster
+            // Text info below poster: title and year
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -153,11 +135,12 @@ class CinemaPosterCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: CinemaColors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      letterSpacing: 0.2,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     year != null ? '$year' : '—',
                     style: const TextStyle(
@@ -174,55 +157,65 @@ class CinemaPosterCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAvailabilityBadge(AvailabilityStatus status) {
-    Color badgeColor;
-    IconData badgeIcon;
-    String label;
+  /// Understated micro-indicator to avoid competing with poster artwork.
+  Widget _buildAvailabilityIndicator(AvailabilityStatus status) {
+    Color dotColor;
+    IconData? icon;
+    String tooltip;
 
     switch (status) {
       case AvailabilityStatus.availableLocally:
-        badgeColor = CinemaColors.amber;
-        badgeIcon = Icons.offline_pin_outlined;
-        label = 'Offline';
+        dotColor = CinemaColors.amber;
+        icon = Icons.offline_pin_outlined;
+        tooltip = 'Downloaded locally';
       case AvailabilityStatus.availableOnRemovableStorage:
-        badgeColor = CinemaColors.textSecondary;
-        badgeIcon = Icons.album_outlined;
-        label = 'Disk';
+        dotColor = CinemaColors.textSecondary;
+        icon = Icons.album_outlined;
+        tooltip = 'On connected disk';
       case AvailabilityStatus.availableOnMultipleSources:
-        badgeColor = CinemaColors.amber;
-        badgeIcon = Icons.done_all;
-        label = 'Available';
+        dotColor = CinemaColors.amber;
+        icon = Icons.done_all;
+        tooltip = 'Available locally and on disk';
       case AvailabilityStatus.unavailable:
-        badgeColor = CinemaColors.textMuted;
-        badgeIcon = Icons.cloud_off_outlined;
-        label = 'Disconnected';
+        dotColor = CinemaColors.textMuted;
+        icon = Icons.cloud_off_outlined;
+        tooltip = 'Storage disk disconnected';
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: CinemaColors.canvas.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: badgeColor.withValues(alpha: 0.4),
-          width: 0.8,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(badgeIcon, color: badgeColor, size: 10),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: badgeColor,
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-            ),
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: CinemaColors.canvas.withValues(alpha: 0.75),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: dotColor.withValues(alpha: 0.25),
+            width: 0.8,
           ),
-        ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: dotColor, size: 10),
+            const SizedBox(width: 4),
+            Text(
+              status == AvailabilityStatus.availableLocally
+                  ? 'OFFLINE'
+                  : status == AvailabilityStatus.availableOnRemovableStorage
+                  ? 'DISK'
+                  : status == AvailabilityStatus.unavailable
+                  ? 'OFFLINE'
+                  : 'READY',
+              style: TextStyle(
+                color: dotColor,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

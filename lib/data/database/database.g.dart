@@ -632,6 +632,40 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _metadataProviderMeta = const VerificationMeta(
+    'metadataProvider',
+  );
+  @override
+  late final GeneratedColumn<String> metadataProvider = GeneratedColumn<String>(
+    'metadata_provider',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _providerItemIdMeta = const VerificationMeta(
+    'providerItemId',
+  );
+  @override
+  late final GeneratedColumn<String> providerItemId = GeneratedColumn<String>(
+    'provider_item_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _metadataUpdatedAtMeta = const VerificationMeta(
+    'metadataUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> metadataUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'metadata_updated_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -724,6 +758,9 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
     voteCount,
     imdbId,
     tmdbId,
+    metadataProvider,
+    providerItemId,
+    metadataUpdatedAt,
     createdAt,
     updatedAt,
     isFavorite,
@@ -837,6 +874,33 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
         tmdbId.isAcceptableOrUnknown(data['tmdb_id']!, _tmdbIdMeta),
       );
     }
+    if (data.containsKey('metadata_provider')) {
+      context.handle(
+        _metadataProviderMeta,
+        metadataProvider.isAcceptableOrUnknown(
+          data['metadata_provider']!,
+          _metadataProviderMeta,
+        ),
+      );
+    }
+    if (data.containsKey('provider_item_id')) {
+      context.handle(
+        _providerItemIdMeta,
+        providerItemId.isAcceptableOrUnknown(
+          data['provider_item_id']!,
+          _providerItemIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('metadata_updated_at')) {
+      context.handle(
+        _metadataUpdatedAtMeta,
+        metadataUpdatedAt.isAcceptableOrUnknown(
+          data['metadata_updated_at']!,
+          _metadataUpdatedAtMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -948,6 +1012,18 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
         DriftSqlType.int,
         data['${effectivePrefix}tmdb_id'],
       ),
+      metadataProvider: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}metadata_provider'],
+      ),
+      providerItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}provider_item_id'],
+      ),
+      metadataUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}metadata_updated_at'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -996,6 +1072,9 @@ class Movie extends DataClass implements Insertable<Movie> {
   final int? voteCount;
   final String? imdbId;
   final int? tmdbId;
+  final String? metadataProvider;
+  final String? providerItemId;
+  final DateTime? metadataUpdatedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isFavorite;
@@ -1017,6 +1096,9 @@ class Movie extends DataClass implements Insertable<Movie> {
     this.voteCount,
     this.imdbId,
     this.tmdbId,
+    this.metadataProvider,
+    this.providerItemId,
+    this.metadataUpdatedAt,
     required this.createdAt,
     required this.updatedAt,
     required this.isFavorite,
@@ -1065,6 +1147,15 @@ class Movie extends DataClass implements Insertable<Movie> {
     if (!nullToAbsent || tmdbId != null) {
       map['tmdb_id'] = Variable<int>(tmdbId);
     }
+    if (!nullToAbsent || metadataProvider != null) {
+      map['metadata_provider'] = Variable<String>(metadataProvider);
+    }
+    if (!nullToAbsent || providerItemId != null) {
+      map['provider_item_id'] = Variable<String>(providerItemId);
+    }
+    if (!nullToAbsent || metadataUpdatedAt != null) {
+      map['metadata_updated_at'] = Variable<DateTime>(metadataUpdatedAt);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['is_favorite'] = Variable<bool>(isFavorite);
@@ -1112,6 +1203,15 @@ class Movie extends DataClass implements Insertable<Movie> {
       tmdbId: tmdbId == null && nullToAbsent
           ? const Value.absent()
           : Value(tmdbId),
+      metadataProvider: metadataProvider == null && nullToAbsent
+          ? const Value.absent()
+          : Value(metadataProvider),
+      providerItemId: providerItemId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(providerItemId),
+      metadataUpdatedAt: metadataUpdatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(metadataUpdatedAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       isFavorite: Value(isFavorite),
@@ -1141,6 +1241,11 @@ class Movie extends DataClass implements Insertable<Movie> {
       voteCount: serializer.fromJson<int?>(json['voteCount']),
       imdbId: serializer.fromJson<String?>(json['imdbId']),
       tmdbId: serializer.fromJson<int?>(json['tmdbId']),
+      metadataProvider: serializer.fromJson<String?>(json['metadataProvider']),
+      providerItemId: serializer.fromJson<String?>(json['providerItemId']),
+      metadataUpdatedAt: serializer.fromJson<DateTime?>(
+        json['metadataUpdatedAt'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
@@ -1169,6 +1274,9 @@ class Movie extends DataClass implements Insertable<Movie> {
       'voteCount': serializer.toJson<int?>(voteCount),
       'imdbId': serializer.toJson<String?>(imdbId),
       'tmdbId': serializer.toJson<int?>(tmdbId),
+      'metadataProvider': serializer.toJson<String?>(metadataProvider),
+      'providerItemId': serializer.toJson<String?>(providerItemId),
+      'metadataUpdatedAt': serializer.toJson<DateTime?>(metadataUpdatedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'isFavorite': serializer.toJson<bool>(isFavorite),
@@ -1195,6 +1303,9 @@ class Movie extends DataClass implements Insertable<Movie> {
     Value<int?> voteCount = const Value.absent(),
     Value<String?> imdbId = const Value.absent(),
     Value<int?> tmdbId = const Value.absent(),
+    Value<String?> metadataProvider = const Value.absent(),
+    Value<String?> providerItemId = const Value.absent(),
+    Value<DateTime?> metadataUpdatedAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isFavorite,
@@ -1218,6 +1329,15 @@ class Movie extends DataClass implements Insertable<Movie> {
     voteCount: voteCount.present ? voteCount.value : this.voteCount,
     imdbId: imdbId.present ? imdbId.value : this.imdbId,
     tmdbId: tmdbId.present ? tmdbId.value : this.tmdbId,
+    metadataProvider: metadataProvider.present
+        ? metadataProvider.value
+        : this.metadataProvider,
+    providerItemId: providerItemId.present
+        ? providerItemId.value
+        : this.providerItemId,
+    metadataUpdatedAt: metadataUpdatedAt.present
+        ? metadataUpdatedAt.value
+        : this.metadataUpdatedAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     isFavorite: isFavorite ?? this.isFavorite,
@@ -1252,6 +1372,15 @@ class Movie extends DataClass implements Insertable<Movie> {
       voteCount: data.voteCount.present ? data.voteCount.value : this.voteCount,
       imdbId: data.imdbId.present ? data.imdbId.value : this.imdbId,
       tmdbId: data.tmdbId.present ? data.tmdbId.value : this.tmdbId,
+      metadataProvider: data.metadataProvider.present
+          ? data.metadataProvider.value
+          : this.metadataProvider,
+      providerItemId: data.providerItemId.present
+          ? data.providerItemId.value
+          : this.providerItemId,
+      metadataUpdatedAt: data.metadataUpdatedAt.present
+          ? data.metadataUpdatedAt.value
+          : this.metadataUpdatedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isFavorite: data.isFavorite.present
@@ -1286,6 +1415,9 @@ class Movie extends DataClass implements Insertable<Movie> {
           ..write('voteCount: $voteCount, ')
           ..write('imdbId: $imdbId, ')
           ..write('tmdbId: $tmdbId, ')
+          ..write('metadataProvider: $metadataProvider, ')
+          ..write('providerItemId: $providerItemId, ')
+          ..write('metadataUpdatedAt: $metadataUpdatedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isFavorite: $isFavorite, ')
@@ -1297,7 +1429,7 @@ class Movie extends DataClass implements Insertable<Movie> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     metadataId,
     title,
@@ -1312,13 +1444,16 @@ class Movie extends DataClass implements Insertable<Movie> {
     voteCount,
     imdbId,
     tmdbId,
+    metadataProvider,
+    providerItemId,
+    metadataUpdatedAt,
     createdAt,
     updatedAt,
     isFavorite,
     isWatchlist,
     watchState,
     playbackPositionSeconds,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1337,6 +1472,9 @@ class Movie extends DataClass implements Insertable<Movie> {
           other.voteCount == this.voteCount &&
           other.imdbId == this.imdbId &&
           other.tmdbId == this.tmdbId &&
+          other.metadataProvider == this.metadataProvider &&
+          other.providerItemId == this.providerItemId &&
+          other.metadataUpdatedAt == this.metadataUpdatedAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.isFavorite == this.isFavorite &&
@@ -1360,6 +1498,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
   final Value<int?> voteCount;
   final Value<String?> imdbId;
   final Value<int?> tmdbId;
+  final Value<String?> metadataProvider;
+  final Value<String?> providerItemId;
+  final Value<DateTime?> metadataUpdatedAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> isFavorite;
@@ -1382,6 +1523,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     this.voteCount = const Value.absent(),
     this.imdbId = const Value.absent(),
     this.tmdbId = const Value.absent(),
+    this.metadataProvider = const Value.absent(),
+    this.providerItemId = const Value.absent(),
+    this.metadataUpdatedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isFavorite = const Value.absent(),
@@ -1405,6 +1549,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     this.voteCount = const Value.absent(),
     this.imdbId = const Value.absent(),
     this.tmdbId = const Value.absent(),
+    this.metadataProvider = const Value.absent(),
+    this.providerItemId = const Value.absent(),
+    this.metadataUpdatedAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.isFavorite = const Value.absent(),
@@ -1431,6 +1578,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     Expression<int>? voteCount,
     Expression<String>? imdbId,
     Expression<int>? tmdbId,
+    Expression<String>? metadataProvider,
+    Expression<String>? providerItemId,
+    Expression<DateTime>? metadataUpdatedAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? isFavorite,
@@ -1454,6 +1604,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
       if (voteCount != null) 'vote_count': voteCount,
       if (imdbId != null) 'imdb_id': imdbId,
       if (tmdbId != null) 'tmdb_id': tmdbId,
+      if (metadataProvider != null) 'metadata_provider': metadataProvider,
+      if (providerItemId != null) 'provider_item_id': providerItemId,
+      if (metadataUpdatedAt != null) 'metadata_updated_at': metadataUpdatedAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isFavorite != null) 'is_favorite': isFavorite,
@@ -1480,6 +1633,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     Value<int?>? voteCount,
     Value<String?>? imdbId,
     Value<int?>? tmdbId,
+    Value<String?>? metadataProvider,
+    Value<String?>? providerItemId,
+    Value<DateTime?>? metadataUpdatedAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<bool>? isFavorite,
@@ -1503,6 +1659,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
       voteCount: voteCount ?? this.voteCount,
       imdbId: imdbId ?? this.imdbId,
       tmdbId: tmdbId ?? this.tmdbId,
+      metadataProvider: metadataProvider ?? this.metadataProvider,
+      providerItemId: providerItemId ?? this.providerItemId,
+      metadataUpdatedAt: metadataUpdatedAt ?? this.metadataUpdatedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isFavorite: isFavorite ?? this.isFavorite,
@@ -1559,6 +1718,15 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     if (tmdbId.present) {
       map['tmdb_id'] = Variable<int>(tmdbId.value);
     }
+    if (metadataProvider.present) {
+      map['metadata_provider'] = Variable<String>(metadataProvider.value);
+    }
+    if (providerItemId.present) {
+      map['provider_item_id'] = Variable<String>(providerItemId.value);
+    }
+    if (metadataUpdatedAt.present) {
+      map['metadata_updated_at'] = Variable<DateTime>(metadataUpdatedAt.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1602,6 +1770,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
           ..write('voteCount: $voteCount, ')
           ..write('imdbId: $imdbId, ')
           ..write('tmdbId: $tmdbId, ')
+          ..write('metadataProvider: $metadataProvider, ')
+          ..write('providerItemId: $providerItemId, ')
+          ..write('metadataUpdatedAt: $metadataUpdatedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isFavorite: $isFavorite, ')
@@ -1730,6 +1901,40 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _metadataProviderMeta = const VerificationMeta(
+    'metadataProvider',
+  );
+  @override
+  late final GeneratedColumn<String> metadataProvider = GeneratedColumn<String>(
+    'metadata_provider',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _providerItemIdMeta = const VerificationMeta(
+    'providerItemId',
+  );
+  @override
+  late final GeneratedColumn<String> providerItemId = GeneratedColumn<String>(
+    'provider_item_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _metadataUpdatedAtMeta = const VerificationMeta(
+    'metadataUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> metadataUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'metadata_updated_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
     'isFavorite',
   );
@@ -1795,6 +2000,9 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
     rating,
     tmdbId,
     imdbId,
+    metadataProvider,
+    providerItemId,
+    metadataUpdatedAt,
     isFavorite,
     isWatchlist,
     createdAt,
@@ -1888,6 +2096,33 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
         imdbId.isAcceptableOrUnknown(data['imdb_id']!, _imdbIdMeta),
       );
     }
+    if (data.containsKey('metadata_provider')) {
+      context.handle(
+        _metadataProviderMeta,
+        metadataProvider.isAcceptableOrUnknown(
+          data['metadata_provider']!,
+          _metadataProviderMeta,
+        ),
+      );
+    }
+    if (data.containsKey('provider_item_id')) {
+      context.handle(
+        _providerItemIdMeta,
+        providerItemId.isAcceptableOrUnknown(
+          data['provider_item_id']!,
+          _providerItemIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('metadata_updated_at')) {
+      context.handle(
+        _metadataUpdatedAtMeta,
+        metadataUpdatedAt.isAcceptableOrUnknown(
+          data['metadata_updated_at']!,
+          _metadataUpdatedAtMeta,
+        ),
+      );
+    }
     if (data.containsKey('is_favorite')) {
       context.handle(
         _isFavoriteMeta,
@@ -1972,6 +2207,18 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
         DriftSqlType.string,
         data['${effectivePrefix}imdb_id'],
       ),
+      metadataProvider: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}metadata_provider'],
+      ),
+      providerItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}provider_item_id'],
+      ),
+      metadataUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}metadata_updated_at'],
+      ),
       isFavorite: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_favorite'],
@@ -2009,6 +2256,9 @@ class TvShow extends DataClass implements Insertable<TvShow> {
   final double? rating;
   final int? tmdbId;
   final String? imdbId;
+  final String? metadataProvider;
+  final String? providerItemId;
+  final DateTime? metadataUpdatedAt;
   final bool isFavorite;
   final bool isWatchlist;
   final DateTime createdAt;
@@ -2025,6 +2275,9 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     this.rating,
     this.tmdbId,
     this.imdbId,
+    this.metadataProvider,
+    this.providerItemId,
+    this.metadataUpdatedAt,
     required this.isFavorite,
     required this.isWatchlist,
     required this.createdAt,
@@ -2061,6 +2314,15 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     }
     if (!nullToAbsent || imdbId != null) {
       map['imdb_id'] = Variable<String>(imdbId);
+    }
+    if (!nullToAbsent || metadataProvider != null) {
+      map['metadata_provider'] = Variable<String>(metadataProvider);
+    }
+    if (!nullToAbsent || providerItemId != null) {
+      map['provider_item_id'] = Variable<String>(providerItemId);
+    }
+    if (!nullToAbsent || metadataUpdatedAt != null) {
+      map['metadata_updated_at'] = Variable<DateTime>(metadataUpdatedAt);
     }
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['is_watchlist'] = Variable<bool>(isWatchlist);
@@ -2100,6 +2362,15 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       imdbId: imdbId == null && nullToAbsent
           ? const Value.absent()
           : Value(imdbId),
+      metadataProvider: metadataProvider == null && nullToAbsent
+          ? const Value.absent()
+          : Value(metadataProvider),
+      providerItemId: providerItemId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(providerItemId),
+      metadataUpdatedAt: metadataUpdatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(metadataUpdatedAt),
       isFavorite: Value(isFavorite),
       isWatchlist: Value(isWatchlist),
       createdAt: Value(createdAt),
@@ -2124,6 +2395,11 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       rating: serializer.fromJson<double?>(json['rating']),
       tmdbId: serializer.fromJson<int?>(json['tmdbId']),
       imdbId: serializer.fromJson<String?>(json['imdbId']),
+      metadataProvider: serializer.fromJson<String?>(json['metadataProvider']),
+      providerItemId: serializer.fromJson<String?>(json['providerItemId']),
+      metadataUpdatedAt: serializer.fromJson<DateTime?>(
+        json['metadataUpdatedAt'],
+      ),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       isWatchlist: serializer.fromJson<bool>(json['isWatchlist']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -2145,6 +2421,9 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       'rating': serializer.toJson<double?>(rating),
       'tmdbId': serializer.toJson<int?>(tmdbId),
       'imdbId': serializer.toJson<String?>(imdbId),
+      'metadataProvider': serializer.toJson<String?>(metadataProvider),
+      'providerItemId': serializer.toJson<String?>(providerItemId),
+      'metadataUpdatedAt': serializer.toJson<DateTime?>(metadataUpdatedAt),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'isWatchlist': serializer.toJson<bool>(isWatchlist),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -2164,6 +2443,9 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     Value<double?> rating = const Value.absent(),
     Value<int?> tmdbId = const Value.absent(),
     Value<String?> imdbId = const Value.absent(),
+    Value<String?> metadataProvider = const Value.absent(),
+    Value<String?> providerItemId = const Value.absent(),
+    Value<DateTime?> metadataUpdatedAt = const Value.absent(),
     bool? isFavorite,
     bool? isWatchlist,
     DateTime? createdAt,
@@ -2182,6 +2464,15 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     rating: rating.present ? rating.value : this.rating,
     tmdbId: tmdbId.present ? tmdbId.value : this.tmdbId,
     imdbId: imdbId.present ? imdbId.value : this.imdbId,
+    metadataProvider: metadataProvider.present
+        ? metadataProvider.value
+        : this.metadataProvider,
+    providerItemId: providerItemId.present
+        ? providerItemId.value
+        : this.providerItemId,
+    metadataUpdatedAt: metadataUpdatedAt.present
+        ? metadataUpdatedAt.value
+        : this.metadataUpdatedAt,
     isFavorite: isFavorite ?? this.isFavorite,
     isWatchlist: isWatchlist ?? this.isWatchlist,
     createdAt: createdAt ?? this.createdAt,
@@ -2210,6 +2501,15 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       rating: data.rating.present ? data.rating.value : this.rating,
       tmdbId: data.tmdbId.present ? data.tmdbId.value : this.tmdbId,
       imdbId: data.imdbId.present ? data.imdbId.value : this.imdbId,
+      metadataProvider: data.metadataProvider.present
+          ? data.metadataProvider.value
+          : this.metadataProvider,
+      providerItemId: data.providerItemId.present
+          ? data.providerItemId.value
+          : this.providerItemId,
+      metadataUpdatedAt: data.metadataUpdatedAt.present
+          ? data.metadataUpdatedAt.value
+          : this.metadataUpdatedAt,
       isFavorite: data.isFavorite.present
           ? data.isFavorite.value
           : this.isFavorite,
@@ -2235,6 +2535,9 @@ class TvShow extends DataClass implements Insertable<TvShow> {
           ..write('rating: $rating, ')
           ..write('tmdbId: $tmdbId, ')
           ..write('imdbId: $imdbId, ')
+          ..write('metadataProvider: $metadataProvider, ')
+          ..write('providerItemId: $providerItemId, ')
+          ..write('metadataUpdatedAt: $metadataUpdatedAt, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isWatchlist: $isWatchlist, ')
           ..write('createdAt: $createdAt, ')
@@ -2256,6 +2559,9 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     rating,
     tmdbId,
     imdbId,
+    metadataProvider,
+    providerItemId,
+    metadataUpdatedAt,
     isFavorite,
     isWatchlist,
     createdAt,
@@ -2276,6 +2582,9 @@ class TvShow extends DataClass implements Insertable<TvShow> {
           other.rating == this.rating &&
           other.tmdbId == this.tmdbId &&
           other.imdbId == this.imdbId &&
+          other.metadataProvider == this.metadataProvider &&
+          other.providerItemId == this.providerItemId &&
+          other.metadataUpdatedAt == this.metadataUpdatedAt &&
           other.isFavorite == this.isFavorite &&
           other.isWatchlist == this.isWatchlist &&
           other.createdAt == this.createdAt &&
@@ -2294,6 +2603,9 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
   final Value<double?> rating;
   final Value<int?> tmdbId;
   final Value<String?> imdbId;
+  final Value<String?> metadataProvider;
+  final Value<String?> providerItemId;
+  final Value<DateTime?> metadataUpdatedAt;
   final Value<bool> isFavorite;
   final Value<bool> isWatchlist;
   final Value<DateTime> createdAt;
@@ -2311,6 +2623,9 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     this.rating = const Value.absent(),
     this.tmdbId = const Value.absent(),
     this.imdbId = const Value.absent(),
+    this.metadataProvider = const Value.absent(),
+    this.providerItemId = const Value.absent(),
+    this.metadataUpdatedAt = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isWatchlist = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2329,6 +2644,9 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     this.rating = const Value.absent(),
     this.tmdbId = const Value.absent(),
     this.imdbId = const Value.absent(),
+    this.metadataProvider = const Value.absent(),
+    this.providerItemId = const Value.absent(),
+    this.metadataUpdatedAt = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isWatchlist = const Value.absent(),
     required DateTime createdAt,
@@ -2350,6 +2668,9 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     Expression<double>? rating,
     Expression<int>? tmdbId,
     Expression<String>? imdbId,
+    Expression<String>? metadataProvider,
+    Expression<String>? providerItemId,
+    Expression<DateTime>? metadataUpdatedAt,
     Expression<bool>? isFavorite,
     Expression<bool>? isWatchlist,
     Expression<DateTime>? createdAt,
@@ -2368,6 +2689,9 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
       if (rating != null) 'rating': rating,
       if (tmdbId != null) 'tmdb_id': tmdbId,
       if (imdbId != null) 'imdb_id': imdbId,
+      if (metadataProvider != null) 'metadata_provider': metadataProvider,
+      if (providerItemId != null) 'provider_item_id': providerItemId,
+      if (metadataUpdatedAt != null) 'metadata_updated_at': metadataUpdatedAt,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (isWatchlist != null) 'is_watchlist': isWatchlist,
       if (createdAt != null) 'created_at': createdAt,
@@ -2388,6 +2712,9 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     Value<double?>? rating,
     Value<int?>? tmdbId,
     Value<String?>? imdbId,
+    Value<String?>? metadataProvider,
+    Value<String?>? providerItemId,
+    Value<DateTime?>? metadataUpdatedAt,
     Value<bool>? isFavorite,
     Value<bool>? isWatchlist,
     Value<DateTime>? createdAt,
@@ -2406,6 +2733,9 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
       rating: rating ?? this.rating,
       tmdbId: tmdbId ?? this.tmdbId,
       imdbId: imdbId ?? this.imdbId,
+      metadataProvider: metadataProvider ?? this.metadataProvider,
+      providerItemId: providerItemId ?? this.providerItemId,
+      metadataUpdatedAt: metadataUpdatedAt ?? this.metadataUpdatedAt,
       isFavorite: isFavorite ?? this.isFavorite,
       isWatchlist: isWatchlist ?? this.isWatchlist,
       createdAt: createdAt ?? this.createdAt,
@@ -2450,6 +2780,15 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     if (imdbId.present) {
       map['imdb_id'] = Variable<String>(imdbId.value);
     }
+    if (metadataProvider.present) {
+      map['metadata_provider'] = Variable<String>(metadataProvider.value);
+    }
+    if (providerItemId.present) {
+      map['provider_item_id'] = Variable<String>(providerItemId.value);
+    }
+    if (metadataUpdatedAt.present) {
+      map['metadata_updated_at'] = Variable<DateTime>(metadataUpdatedAt.value);
+    }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
@@ -2482,6 +2821,9 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
           ..write('rating: $rating, ')
           ..write('tmdbId: $tmdbId, ')
           ..write('imdbId: $imdbId, ')
+          ..write('metadataProvider: $metadataProvider, ')
+          ..write('providerItemId: $providerItemId, ')
+          ..write('metadataUpdatedAt: $metadataUpdatedAt, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isWatchlist: $isWatchlist, ')
           ..write('createdAt: $createdAt, ')
@@ -6964,6 +7306,9 @@ typedef $$MoviesTableCreateCompanionBuilder = MoviesCompanion Function({
   Value<int?> voteCount,
   Value<String?> imdbId,
   Value<int?> tmdbId,
+  Value<String?> metadataProvider,
+  Value<String?> providerItemId,
+  Value<DateTime?> metadataUpdatedAt,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<bool> isFavorite,
@@ -6987,6 +7332,9 @@ typedef $$MoviesTableUpdateCompanionBuilder = MoviesCompanion Function({
   Value<int?> voteCount,
   Value<String?> imdbId,
   Value<int?> tmdbId,
+  Value<String?> metadataProvider,
+  Value<String?> providerItemId,
+  Value<DateTime?> metadataUpdatedAt,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<bool> isFavorite,
@@ -7115,6 +7463,21 @@ class $$MoviesTableFilterComposer
 
   ColumnFilters<int> get tmdbId => $composableBuilder(
     column: $table.tmdbId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get metadataProvider => $composableBuilder(
+    column: $table.metadataProvider,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get providerItemId => $composableBuilder(
+    column: $table.providerItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get metadataUpdatedAt => $composableBuilder(
+    column: $table.metadataUpdatedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7278,6 +7641,21 @@ class $$MoviesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get metadataProvider => $composableBuilder(
+    column: $table.metadataProvider,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get providerItemId => $composableBuilder(
+    column: $table.providerItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get metadataUpdatedAt => $composableBuilder(
+    column: $table.metadataUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -7369,6 +7747,21 @@ class $$MoviesTableAnnotationComposer
 
   GeneratedColumn<int> get tmdbId =>
       $composableBuilder(column: $table.tmdbId, builder: (column) => column);
+
+  GeneratedColumn<String> get metadataProvider => $composableBuilder(
+    column: $table.metadataProvider,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get providerItemId => $composableBuilder(
+    column: $table.providerItemId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get metadataUpdatedAt => $composableBuilder(
+    column: $table.metadataUpdatedAt,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -7492,6 +7885,9 @@ class $$MoviesTableTableManager
                 Value<int?> voteCount = const Value.absent(),
                 Value<String?> imdbId = const Value.absent(),
                 Value<int?> tmdbId = const Value.absent(),
+                Value<String?> metadataProvider = const Value.absent(),
+                Value<String?> providerItemId = const Value.absent(),
+                Value<DateTime?> metadataUpdatedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
@@ -7514,6 +7910,9 @@ class $$MoviesTableTableManager
                 voteCount: voteCount,
                 imdbId: imdbId,
                 tmdbId: tmdbId,
+                metadataProvider: metadataProvider,
+                providerItemId: providerItemId,
+                metadataUpdatedAt: metadataUpdatedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 isFavorite: isFavorite,
@@ -7538,6 +7937,9 @@ class $$MoviesTableTableManager
                 Value<int?> voteCount = const Value.absent(),
                 Value<String?> imdbId = const Value.absent(),
                 Value<int?> tmdbId = const Value.absent(),
+                Value<String?> metadataProvider = const Value.absent(),
+                Value<String?> providerItemId = const Value.absent(),
+                Value<DateTime?> metadataUpdatedAt = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<bool> isFavorite = const Value.absent(),
@@ -7560,6 +7962,9 @@ class $$MoviesTableTableManager
                 voteCount: voteCount,
                 imdbId: imdbId,
                 tmdbId: tmdbId,
+                metadataProvider: metadataProvider,
+                providerItemId: providerItemId,
+                metadataUpdatedAt: metadataUpdatedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 isFavorite: isFavorite,
@@ -7663,6 +8068,9 @@ typedef $$TvShowsTableCreateCompanionBuilder = TvShowsCompanion Function({
   Value<double?> rating,
   Value<int?> tmdbId,
   Value<String?> imdbId,
+  Value<String?> metadataProvider,
+  Value<String?> providerItemId,
+  Value<DateTime?> metadataUpdatedAt,
   Value<bool> isFavorite,
   Value<bool> isWatchlist,
   required DateTime createdAt,
@@ -7681,6 +8089,9 @@ typedef $$TvShowsTableUpdateCompanionBuilder = TvShowsCompanion Function({
   Value<double?> rating,
   Value<int?> tmdbId,
   Value<String?> imdbId,
+  Value<String?> metadataProvider,
+  Value<String?> providerItemId,
+  Value<DateTime?> metadataUpdatedAt,
   Value<bool> isFavorite,
   Value<bool> isWatchlist,
   Value<DateTime> createdAt,
@@ -7793,6 +8204,21 @@ class $$TvShowsTableFilterComposer
 
   ColumnFilters<String> get imdbId => $composableBuilder(
     column: $table.imdbId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get metadataProvider => $composableBuilder(
+    column: $table.metadataProvider,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get providerItemId => $composableBuilder(
+    column: $table.providerItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get metadataUpdatedAt => $composableBuilder(
+    column: $table.metadataUpdatedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7931,6 +8357,21 @@ class $$TvShowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get metadataProvider => $composableBuilder(
+    column: $table.metadataProvider,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get providerItemId => $composableBuilder(
+    column: $table.providerItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get metadataUpdatedAt => $composableBuilder(
+    column: $table.metadataUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
     builder: (column) => ColumnOrderings(column),
@@ -8003,6 +8444,21 @@ class $$TvShowsTableAnnotationComposer
 
   GeneratedColumn<String> get imdbId =>
       $composableBuilder(column: $table.imdbId, builder: (column) => column);
+
+  GeneratedColumn<String> get metadataProvider => $composableBuilder(
+    column: $table.metadataProvider,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get providerItemId => $composableBuilder(
+    column: $table.providerItemId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get metadataUpdatedAt => $composableBuilder(
+    column: $table.metadataUpdatedAt,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
@@ -8110,6 +8566,9 @@ class $$TvShowsTableTableManager
                 Value<double?> rating = const Value.absent(),
                 Value<int?> tmdbId = const Value.absent(),
                 Value<String?> imdbId = const Value.absent(),
+                Value<String?> metadataProvider = const Value.absent(),
+                Value<String?> providerItemId = const Value.absent(),
+                Value<DateTime?> metadataUpdatedAt = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<bool> isWatchlist = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -8127,6 +8586,9 @@ class $$TvShowsTableTableManager
                 rating: rating,
                 tmdbId: tmdbId,
                 imdbId: imdbId,
+                metadataProvider: metadataProvider,
+                providerItemId: providerItemId,
+                metadataUpdatedAt: metadataUpdatedAt,
                 isFavorite: isFavorite,
                 isWatchlist: isWatchlist,
                 createdAt: createdAt,
@@ -8146,6 +8608,9 @@ class $$TvShowsTableTableManager
                 Value<double?> rating = const Value.absent(),
                 Value<int?> tmdbId = const Value.absent(),
                 Value<String?> imdbId = const Value.absent(),
+                Value<String?> metadataProvider = const Value.absent(),
+                Value<String?> providerItemId = const Value.absent(),
+                Value<DateTime?> metadataUpdatedAt = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<bool> isWatchlist = const Value.absent(),
                 required DateTime createdAt,
@@ -8163,6 +8628,9 @@ class $$TvShowsTableTableManager
                 rating: rating,
                 tmdbId: tmdbId,
                 imdbId: imdbId,
+                metadataProvider: metadataProvider,
+                providerItemId: providerItemId,
+                metadataUpdatedAt: metadataUpdatedAt,
                 isFavorite: isFavorite,
                 isWatchlist: isWatchlist,
                 createdAt: createdAt,

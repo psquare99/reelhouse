@@ -11,6 +11,7 @@ import '../../domain/services/storage_monitor_service.dart';
 import '../collections/collections_screen.dart';
 import '../home/home_screen.dart';
 import '../movies/movies_screen.dart';
+import '../offline/offline_screen.dart';
 import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
 import '../tv_shows/tv_shows_screen.dart';
@@ -67,10 +68,12 @@ class _CinemaShellState extends State<CinemaShell> {
         database: widget.database,
         onNavigateToMovies: () => _onDestinationSelected(1),
         onNavigateToTv: () => _onDestinationSelected(2),
-        onNavigateToSettings: () => _onDestinationSelected(5),
+        onNavigateToOffline: () => _onDestinationSelected(3),
+        onNavigateToSettings: () => _onDestinationSelected(6),
       ),
       MoviesScreen(database: widget.database),
       TvShowsScreen(database: widget.database),
+      OfflineScreen(database: widget.database),
       CollectionsScreen(database: widget.database),
       SearchScreen(database: widget.database),
       SettingsScreen(
@@ -147,6 +150,11 @@ class _CinemaShellState extends State<CinemaShell> {
                       label: Text('TV Shows'),
                     ),
                     NavigationRailDestination(
+                      icon: Icon(Icons.offline_pin_outlined),
+                      selectedIcon: Icon(Icons.offline_pin),
+                      label: Text('Offline'),
+                    ),
+                    NavigationRailDestination(
                       icon: Icon(Icons.collections_bookmark_outlined),
                       selectedIcon: Icon(Icons.collections_bookmark),
                       label: Text('Collections'),
@@ -193,6 +201,11 @@ class _CinemaShellState extends State<CinemaShell> {
                 icon: Icon(Icons.tv_outlined),
                 selectedIcon: Icon(Icons.tv),
                 label: 'TV',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.offline_pin_outlined),
+                selectedIcon: Icon(Icons.offline_pin),
+                label: 'Offline',
               ),
               NavigationDestination(
                 icon: Icon(Icons.collections_bookmark_outlined),

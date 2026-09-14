@@ -11,6 +11,7 @@ class HomeScreen extends StatelessWidget {
   final AppDatabase database;
   final VoidCallback onNavigateToMovies;
   final VoidCallback onNavigateToTv;
+  final VoidCallback? onNavigateToOffline;
   final VoidCallback onNavigateToSettings;
 
   const HomeScreen({
@@ -18,6 +19,7 @@ class HomeScreen extends StatelessWidget {
     required this.database,
     required this.onNavigateToMovies,
     required this.onNavigateToTv,
+    this.onNavigateToOffline,
     required this.onNavigateToSettings,
   });
 
@@ -176,9 +178,9 @@ class HomeScreen extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 36),
 
-              // 1. CONTINUE WATCHING (Only when relevant)
+              // 1. CONTINUE WATCHING (What I am currently watching)
               StreamBuilder<List<Movie>>(
                 stream: database.watchContinueWatchingMovies(),
                 builder: (context, snapshot) {
@@ -192,17 +194,17 @@ class HomeScreen extends StatelessWidget {
                         title: 'CONTINUE WATCHING',
                         subtitle: 'Resume playback where you left off',
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       SizedBox(
-                        height: 240,
+                        height: 275,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: inProgressMovies.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 14),
+                          separatorBuilder: (_, _) => const SizedBox(width: 20),
                           itemBuilder: (context, index) {
                             final movie = inProgressMovies[index];
                             return SizedBox(
-                              width: 150,
+                              width: 170,
                               child: CinemaPosterCard(
                                 title: movie.title,
                                 year: movie.year,
@@ -224,13 +226,66 @@ class HomeScreen extends StatelessWidget {
                           },
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 38),
                     ],
                   );
                 },
               ),
 
-              // 2. FAVORITES (Only if user has favorites)
+              // 2. RECENTLY ADDED (What I recently acquired)
+              StreamBuilder<List<Movie>>(
+                stream: database.watchRecentlyAddedMovies(limit: 10),
+                builder: (context, snapshot) {
+                  final recent = snapshot.data ?? [];
+                  if (recent.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _SectionHeader(
+                        title: 'RECENTLY ADDED',
+                        subtitle:
+                            'Latest acquisitions discovered across your disks',
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 275,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: recent.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 20),
+                          itemBuilder: (context, index) {
+                            final movie = recent[index];
+                            return SizedBox(
+                              width: 170,
+                              child: CinemaPosterCard(
+                                title: movie.title,
+                                year: movie.year,
+                                posterPath: movie.posterPath,
+                                isFavorite: movie.isFavorite,
+                                watchState: movie.watchState,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => MovieDetailScreen(
+                                        movieId: movie.id,
+                                        database: database,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 38),
+                    ],
+                  );
+                },
+              ),
+
+              // 3. FAVORITES (What I personally selected)
               StreamBuilder<List<Movie>>(
                 stream: database.watchFavoriteMovies(),
                 builder: (context, snapshot) {
@@ -244,17 +299,17 @@ class HomeScreen extends StatelessWidget {
                         title: 'FAVORITES',
                         subtitle: 'Your personal cinema highlights',
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       SizedBox(
-                        height: 240,
+                        height: 275,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: favorites.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 14),
+                          separatorBuilder: (_, _) => const SizedBox(width: 20),
                           itemBuilder: (context, index) {
                             final movie = favorites[index];
                             return SizedBox(
-                              width: 150,
+                              width: 170,
                               child: CinemaPosterCard(
                                 title: movie.title,
                                 year: movie.year,
@@ -276,13 +331,13 @@ class HomeScreen extends StatelessWidget {
                           },
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 38),
                     ],
                   );
                 },
               ),
 
-              // 3. WATCHLIST (Only if user has watchlist items)
+              // 4. WATCHLIST (Titles saved for your next screening)
               StreamBuilder<List<Movie>>(
                 stream: database.watchWatchlistMovies(),
                 builder: (context, snapshot) {
@@ -296,17 +351,17 @@ class HomeScreen extends StatelessWidget {
                         title: 'WATCHLIST',
                         subtitle: 'Titles saved for your next screening',
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       SizedBox(
-                        height: 240,
+                        height: 275,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: watchlist.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 14),
+                          separatorBuilder: (_, _) => const SizedBox(width: 20),
                           itemBuilder: (context, index) {
                             final movie = watchlist[index];
                             return SizedBox(
-                              width: 150,
+                              width: 170,
                               child: CinemaPosterCard(
                                 title: movie.title,
                                 year: movie.year,
@@ -328,100 +383,79 @@ class HomeScreen extends StatelessWidget {
                           },
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 38),
                     ],
                   );
                 },
               ),
 
-              // 4. RECENTLY ADDED
-              StreamBuilder<List<Movie>>(
-                stream: database.watchRecentlyAddedMovies(limit: 10),
-                builder: (context, snapshot) {
-                  final recent = snapshot.data ?? [];
-                  if (recent.isEmpty) return const SizedBox.shrink();
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const _SectionHeader(
-                        title: 'RECENTLY ADDED',
-                        subtitle:
-                            'Latest acquisitions discovered across your disks',
-                      ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        height: 240,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: recent.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 14),
-                          itemBuilder: (context, index) {
-                            final movie = recent[index];
-                            return SizedBox(
-                              width: 150,
-                              child: CinemaPosterCard(
-                                title: movie.title,
-                                year: movie.year,
-                                posterPath: movie.posterPath,
-                                isFavorite: movie.isFavorite,
-                                watchState: movie.watchState,
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => MovieDetailScreen(
-                                        movieId: movie.id,
-                                        database: database,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                    ],
-                  );
-                },
-              ),
-
-              // 5. EXPLORE CATALOGUE TILES (Movies & TV Shows)
+              // 5. EXPLORE CATALOGUE (Where I can browse my cinema)
               const _SectionHeader(
-                title: 'Explore Catalogue',
+                title: 'EXPLORE CINEMA',
                 subtitle: 'Browse your personal cinema by category',
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final isWide = constraints.maxWidth >= 600;
-                  return Row(
+                  final isWide = constraints.maxWidth >= 780;
+                  return Column(
                     children: [
-                      Expanded(
-                        child: _CatalogueEntryCard(
-                          title: 'Movies',
-                          subtitle: 'Browse your personal feature film library',
-                          icon: Icons.movie_outlined,
-                          streamCount: database.watchMovieCount(),
-                          onTap: onNavigateToMovies,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _CatalogueEntryCard(
+                              title: 'Movies',
+                              subtitle:
+                                  'Feature films across all storage disks',
+                              icon: Icons.movie_outlined,
+                              streamCount: database.watchMovieCount(),
+                              onTap: onNavigateToMovies,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _CatalogueEntryCard(
+                              title: 'TV Shows',
+                              subtitle: 'Series, seasons, and episode archives',
+                              icon: Icons.tv_outlined,
+                              streamCount: database.watchTvShowCount(),
+                              onTap: onNavigateToTv,
+                            ),
+                          ),
+                          if (isWide && onNavigateToOffline != null) ...[
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _CatalogueEntryCard(
+                                title: 'Offline Library',
+                                subtitle:
+                                    'Media downloaded directly to this device',
+                                icon: Icons.offline_pin_outlined,
+                                streamCount: database.watchOfflineMovies().map(
+                                  (m) => m.length,
+                                ),
+                                onTap: onNavigateToOffline!,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      SizedBox(width: isWide ? 20 : 12),
-                      Expanded(
-                        child: _CatalogueEntryCard(
-                          title: 'TV Shows',
-                          subtitle: 'Series, seasons, and episode collections',
-                          icon: Icons.tv_outlined,
-                          streamCount: database.watchTvShowCount(),
-                          onTap: onNavigateToTv,
+                      if (!isWide && onNavigateToOffline != null) ...[
+                        const SizedBox(height: 16),
+                        _CatalogueEntryCard(
+                          title: 'Offline Library',
+                          subtitle: 'Media downloaded directly to this device',
+                          icon: Icons.offline_pin_outlined,
+                          streamCount: database.watchOfflineMovies().map(
+                            (m) => m.length,
+                          ),
+                          onTap: onNavigateToOffline!,
                         ),
-                      ),
+                      ],
                     ],
                   );
                 },
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 42),
 
               // Cinema Principle Footer
               Container(

@@ -1,10 +1,11 @@
-import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/database/database.dart';
+import '../../domain/models/playback_resolution.dart';
 import '../../domain/services/availability_resolver.dart';
+import '../../domain/services/playback_launcher_service.dart';
 import '../../domain/services/playback_source_resolver.dart';
 import '../widgets/availability_action_button.dart';
 import '../widgets/cinema_poster_image.dart';
@@ -27,6 +28,7 @@ class TvShowDetailScreen extends StatefulWidget {
 
 class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
   final PlaybackSourceResolver _resolver = const PlaybackSourceResolver();
+  late final PlaybackLauncherService _playbackLauncher;
   String? _selectedSeasonId;
   late Stream<TvShow?> _showStream;
   late Stream<List<Storage>> _storageStream;
@@ -35,6 +37,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _playbackLauncher = PlaybackLauncherService(database: widget.database);
     _initStreams();
   }
 
@@ -99,76 +102,156 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
     );
   }
 
-  void _queueEpisodeDownload(MediaSource source, String episodeId) async {
-    final now = DateTime.now();
-    await widget.database.createTransferJob(
-      TransferJobsCompanion.insert(
-        id: 'job-${DateTime.now().millisecondsSinceEpoch}',
-        mediaType: 'episode',
-        mediaId: episodeId,
-        sourceMediaSourceId: source.id,
-        destinationStorageId: 'local-device',
-        destinationRelativePath: source.filename,
-        status: 'DOWNLOADING',
-        bytesTransferred: drift.Value(BigInt.zero),
-        totalBytes: source.fileSize,
-        startedAt: now,
+  void _handlePlayEpisode(
+    PlaybackResolution resolution,
+    Episode episode,
+  ) async {
+    final sourceId = resolution.selectedSourceId;
+    if (sourceId == null) {
+      _showConnectDiskDialog(resolution.storageName);
+      return;
+    }
+
+    final epTitle = episode.name ?? 'Episode ${episode.episodeNumber}';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Opening $epTitle in player...'),
+        backgroundColor: CinemaColors.surface,
+        duration: const Duration(seconds: 2),
       ),
     );
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Offline transfer queued for ${source.filename}'),
-          backgroundColor: CinemaColors.surface,
-        ),
-      );
+    final result = await _playbackLauncher.launchPlayback(
+      mediaSourceId: sourceId,
+    );
+    if (!mounted) return;
+
+    if (!result.isSuccess) {
+      _showPlaybackDiagnosticDialog(result);
     }
   }
 
-  void _batchDownloadSeason(List<Episode> episodes) async {
-    int queuedCount = 0;
-    final now = DateTime.now();
-
-    for (final ep in episodes) {
-      final sources = await widget.database.getSourcesForEpisode(ep.id);
-      final hasLocal = sources.any((s) => s.sourceType == 'localDevice');
-      final availableRemovable = sources.cast<MediaSource?>().firstWhere(
-        (s) => s?.sourceType == 'removableStorage' && s!.available,
-        orElse: () => null,
-      );
-
-      if (!hasLocal && availableRemovable != null) {
-        await widget.database.createTransferJob(
-          TransferJobsCompanion.insert(
-            id: 'job-${DateTime.now().millisecondsSinceEpoch}-$queuedCount',
-            mediaType: 'episode',
-            mediaId: ep.id,
-            sourceMediaSourceId: availableRemovable.id,
-            destinationStorageId: 'local-device',
-            destinationRelativePath: availableRemovable.filename,
-            status: 'DOWNLOADING',
-            bytesTransferred: drift.Value(BigInt.zero),
-            totalBytes: availableRemovable.fileSize,
-            startedAt: now,
-          ),
-        );
-        queuedCount++;
-      }
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            queuedCount > 0
-                ? 'Queued $queuedCount episodes for offline download.'
-                : 'All episodes already downloaded or sources unavailable.',
-          ),
-          backgroundColor: CinemaColors.surface,
+  void _showPlaybackDiagnosticDialog(PlaybackLaunchResult result) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: CinemaColors.card,
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: CinemaColors.amber, size: 24),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Playback Diagnostic',
+                style: TextStyle(color: CinemaColors.textPrimary, fontSize: 18),
+              ),
+            ),
+          ],
         ),
-      );
-    }
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              result.errorMessage ?? 'Unable to start playback.',
+              style: const TextStyle(
+                color: CinemaColors.textSecondary,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+            if (result.resolvedPath != null) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'RESOLVED PATH',
+                style: TextStyle(
+                  color: CinemaColors.amber,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 4),
+              SelectableText(
+                result.resolvedPath!,
+                style: const TextStyle(
+                  color: CinemaColors.textMuted,
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'OK',
+              style: TextStyle(color: CinemaColors.amber),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showM5DownloadDialog(String title, String description) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: CinemaColors.card,
+        title: const Row(
+          children: [
+            Icon(
+              Icons.download_for_offline_outlined,
+              color: CinemaColors.amber,
+              size: 24,
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Offline Download',
+                style: TextStyle(color: CinemaColors.textPrimary, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Copying $description to local device storage is scheduled for Milestone 5.',
+              style: const TextStyle(
+                color: CinemaColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'REELHOUSE maintains each episode\'s identity and physical source location in your library.\n\n'
+              'The background file streaming engine with verify-after-write and resume capability will be delivered in Milestone 5.',
+              style: TextStyle(
+                color: CinemaColors.textSecondary,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'Understood',
+              style: TextStyle(color: CinemaColors.amber),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -415,13 +498,10 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                     ),
                                     if (selectedSeason != null)
                                       OutlinedButton.icon(
-                                        onPressed: () async {
-                                          final eps = await widget.database
-                                              .getEpisodesForSeason(
-                                                selectedSeason.id,
-                                              );
-                                          _batchDownloadSeason(eps);
-                                        },
+                                        onPressed: () => _showM5DownloadDialog(
+                                          'Season Download',
+                                          'all episodes in this season',
+                                        ),
                                         icon: const Icon(
                                           Icons.download_rounded,
                                           size: 14,
@@ -540,7 +620,13 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                     storageMap: storageMap,
                                     resolver: _resolver,
                                     onConnectDisk: _showConnectDiskDialog,
-                                    onQueueDownload: _queueEpisodeDownload,
+                                    onPlay: (res) =>
+                                        _handlePlayEpisode(res, episode),
+                                    onDownload: (source) =>
+                                        _showM5DownloadDialog(
+                                          'Episode Download',
+                                          source.filename,
+                                        ),
                                   );
                                 }, childCount: episodes.length),
                               ),
@@ -566,7 +652,8 @@ class _EpisodeCard extends StatefulWidget {
   final Map<String, Storage> storageMap;
   final PlaybackSourceResolver resolver;
   final void Function(String?) onConnectDisk;
-  final void Function(MediaSource, String) onQueueDownload;
+  final void Function(PlaybackResolution) onPlay;
+  final void Function(MediaSource) onDownload;
 
   const _EpisodeCard({
     required this.episode,
@@ -574,7 +661,8 @@ class _EpisodeCard extends StatefulWidget {
     required this.storageMap,
     required this.resolver,
     required this.onConnectDisk,
-    required this.onQueueDownload,
+    required this.onPlay,
+    required this.onDownload,
   });
 
   @override
@@ -746,26 +834,14 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                   AvailabilityActionButton(
                     resolution: resolution,
                     isCompact: true,
-                    onPlay: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Playing ${widget.episode.name ?? 'Episode ${widget.episode.episodeNumber}'}',
-                          ),
-                          backgroundColor: CinemaColors.surface,
-                        ),
-                      );
-                    },
+                    onPlay: () => widget.onPlay(resolution),
                     onConnectDisk: () =>
                         widget.onConnectDisk(resolution.storageName),
                   ),
 
                   if (!hasLocalCopy && primaryRemovable != null)
                     OutlinedButton.icon(
-                      onPressed: () => widget.onQueueDownload(
-                        primaryRemovable,
-                        widget.episode.id,
-                      ),
+                      onPressed: () => widget.onDownload(primaryRemovable),
                       icon: const Icon(Icons.download_rounded, size: 14),
                       label: const Text(
                         'DOWNLOAD',

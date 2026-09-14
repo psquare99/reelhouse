@@ -7,29 +7,31 @@ import 'package:flutter/material.dart';
 class CinemaColors {
   CinemaColors._();
 
-  // Canvas & Backgrounds
-  static const Color canvas = Color(0xFF0B0C0E);
-  static const Color surface = Color(0xFF121418);
-  static const Color card = Color(0xFF1A1D24);
-  static const Color cardHover = Color(0xFF242831);
-  static const Color border = Color(0xFF282D37);
-  static const Color borderSubtle = Color(0xFF1F232B);
+  // Canvas & Surfaces (Obsidian, Warm Charcoal, Elevation layers)
+  static const Color canvas = Color(0xFF0D0E11);
+  static const Color surface = Color(0xFF15171C);
+  static const Color surfaceElevated = Color(0xFF1D2026);
+  static const Color card = Color(0xFF1A1C22);
+  static const Color cardHover = Color(0xFF23262E);
+  static const Color interactive = Color(0xFF2B2F38);
+  static const Color border = Color(0xFF272A32);
+  static const Color borderSubtle = Color(0xFF1E2128);
 
-  // Warm Amber Accents (Cinema Projection)
-  static const Color amber = Color(0xFFE5A93C);
-  static const Color amberLight = Color(0xFFF5B942);
-  static const Color amberDark = Color(0xFFC48A2C);
-  static const Color amberSubtle = Color(0x26E5A93C);
+  // Muted Brass & Warm Gold Accents (Cinematic highlight, restrained)
+  static const Color amber = Color(0xFFC5A059);
+  static const Color amberLight = Color(0xFFD4B36D);
+  static const Color amberDark = Color(0xFFA8843E);
+  static const Color amberSubtle = Color(0x1FC5A059);
 
-  // Typography
-  static const Color textPrimary = Color(0xFFF3F4F6);
-  static const Color textSecondary = Color(0xFF9CA3AF);
-  static const Color textMuted = Color(0xFF6B7280);
+  // Typography (Restrained Ivory & Softer Secondary Text)
+  static const Color textPrimary = Color(0xFFEAE6DF);
+  static const Color textSecondary = Color(0xFF9CA1A6);
+  static const Color textMuted = Color(0xFF63686E);
 
-  // Status Indicators
+  // Status Indicators (Understated)
   static const Color statusAvailable = Color(0xFF10B981);
   static const Color statusOfflineAvailable = Color(0xFF38BDF8);
-  static const Color statusUnavailable = Color(0xFF6B7280);
-  static const Color statusWarning = Color(0xFFF59E0B);
-  static const Color statusError = Color(0xFFEF4444);
+  static const Color statusUnavailable = Color(0xFF63686E);
+  static const Color statusWarning = Color(0xFFD97706);
+  static const Color statusError = Color(0xFFDC2626);
 }

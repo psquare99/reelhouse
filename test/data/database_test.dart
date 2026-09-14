@@ -310,5 +310,154 @@ void main() {
       expect(overviewSearch.length, 1);
       expect(overviewSearch.first.id, 'm-matrix');
     });
+
+    test('watchOfflineMovies and watchOfflineTvShows reflect only available device-local copies', () async {
+      final now = DateTime.now();
+
+      // 1. Storage: external HDD and local device
+      await db
+          .into(db.storages)
+          .insert(
+            StoragesCompanion.insert(
+              id: 'hdd-ext',
+              name: 'External HDD',
+              storageType: 'REMOVABLE_VOLUME',
+              filesystemIdentifier: 'HDD-01',
+              rootUri: r'D:\Movies',
+              lastSeenAt: now,
+            ),
+          );
+
+      // 2. Movie 1: only on external HDD (should NOT be offline)
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-external-only',
+              title: 'Gladiator',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.mediaSources)
+          .insert(
+            MediaSourcesCompanion.insert(
+              id: 'src-glad-hdd',
+              movieId: const drift.Value('m-external-only'),
+              storageId: 'hdd-ext',
+              sourceType: 'removableStorage',
+              relativePath: 'Gladiator.mkv',
+              filename: 'Gladiator.mkv',
+              extension: 'mkv',
+              fileSize: BigInt.from(1000000),
+              createdAt: now,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            ),
+          );
+
+      // 3. Movie 2: has device-local copy (SHOULD be offline)
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-local-copy',
+              title: 'Blade Runner',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.mediaSources)
+          .insert(
+            MediaSourcesCompanion.insert(
+              id: 'src-br-local',
+              movieId: const drift.Value('m-local-copy'),
+              storageId: 'local-device',
+              sourceType: 'localDevice',
+              relativePath: 'Blade Runner.mkv',
+              filename: 'Blade Runner.mkv',
+              extension: 'mkv',
+              fileSize: BigInt.from(2000000),
+              createdAt: now,
+              firstSeenAt: now,
+              lastSeenAt: now,
+              available: const drift.Value(true),
+            ),
+          );
+
+      // Verify watchOfflineMovies
+      final offlineMovies = await db.watchOfflineMovies().first;
+      expect(offlineMovies.length, 1);
+      expect(offlineMovies.first.id, 'm-local-copy');
+      expect(offlineMovies.first.title, 'Blade Runner');
+
+      // Test metadata provenance storage & retrieval
+      await db.updateMovieMetadata(
+        'm-local-copy',
+        tmdbId: 78,
+        metadataProvider: 'TMDB',
+        providerItemId: '78',
+        metadataUpdatedAt: now,
+      );
+
+      final updatedMovie = await db.findMovieById('m-local-copy');
+      expect(updatedMovie!.metadataProvider, 'TMDB');
+      expect(updatedMovie.providerItemId, '78');
+      expect(updatedMovie.metadataUpdatedAt, isNotNull);
+
+      // 4. Test offline TV show
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-chernobyl',
+              title: 'Chernobyl',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.seasons)
+          .insert(
+            SeasonsCompanion.insert(
+              id: 'season-chern-1',
+              showId: 'tv-chernobyl',
+              seasonNumber: 1,
+            ),
+          );
+      await db
+          .into(db.episodes)
+          .insert(
+            EpisodesCompanion.insert(
+              id: 'ep-chern-1',
+              seasonId: 'season-chern-1',
+              episodeNumber: 1,
+            ),
+          );
+      await db
+          .into(db.mediaSources)
+          .insert(
+            MediaSourcesCompanion.insert(
+              id: 'src-chern-local',
+              episodeId: const drift.Value('ep-chern-1'),
+              storageId: 'local-device',
+              sourceType: 'localDevice',
+              relativePath: 'Chernobyl S01E01.mkv',
+              filename: 'Chernobyl S01E01.mkv',
+              extension: 'mkv',
+              fileSize: BigInt.from(1500000),
+              createdAt: now,
+              firstSeenAt: now,
+              lastSeenAt: now,
+              available: const drift.Value(true),
+            ),
+          );
+
+      final offlineShows = await db.watchOfflineTvShows().first;
+      expect(offlineShows.length, 1);
+      expect(offlineShows.first.id, 'tv-chernobyl');
+    });
   });
 }

@@ -72,7 +72,7 @@ void main() {
     // Verify cinematic header
     expect(find.text('REELHOUSE'), findsAtLeastNWidgets(1));
     expect(find.text('Personal Digital Cinema'), findsOneWidget);
-    expect(find.text('Explore Catalogue'), findsOneWidget);
+    expect(find.text('EXPLORE CINEMA'), findsOneWidget);
 
     await db.close();
   });

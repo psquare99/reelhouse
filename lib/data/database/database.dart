@@ -22,7 +22,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? connect());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -58,6 +58,15 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(collections);
         await m.createTable(collectionItems);
       }
+      if (from < 3) {
+        await m.addColumn(movies, movies.metadataProvider);
+        await m.addColumn(movies, movies.providerItemId);
+        await m.addColumn(movies, movies.metadataUpdatedAt);
+
+        await m.addColumn(tvShows, tvShows.metadataProvider);
+        await m.addColumn(tvShows, tvShows.providerItemId);
+        await m.addColumn(tvShows, tvShows.metadataUpdatedAt);
+      }
     },
   );
 
@@ -68,6 +77,14 @@ class AppDatabase extends _$AppDatabase {
 
   /// Get all registered storages.
   Future<List<Storage>> getAllStorages() => select(storages).get();
+
+  /// Find a storage by its internal ID.
+  Future<Storage?> getStorageById(String id) =>
+      (select(storages)..where((s) => s.id.equals(id))).getSingleOrNull();
+
+  /// Find a media source by its internal ID.
+  Future<MediaSource?> getMediaSourceById(String id) =>
+      (select(mediaSources)..where((s) => s.id.equals(id))).getSingleOrNull();
 
   /// Insert or update a storage location.
   Future<int> upsertStorage(StoragesCompanion storage) =>
@@ -232,7 +249,7 @@ class AppDatabase extends _$AppDatabase {
     return query.map((row) => row.readTable(mediaSources)).get();
   }
 
-  /// Update movie record with fetched TMDB metadata.
+  /// Update movie record with fetched TMDB/fallback metadata.
   Future<int> updateMovieMetadata(
     String movieId, {
     required int tmdbId,
@@ -246,6 +263,9 @@ class AppDatabase extends _$AppDatabase {
     double? rating,
     int? voteCount,
     String? metadataId,
+    String? metadataProvider,
+    String? providerItemId,
+    DateTime? metadataUpdatedAt,
   }) {
     return (update(movies)..where((m) => m.id.equals(movieId))).write(
       MoviesCompanion(
@@ -270,12 +290,21 @@ class AppDatabase extends _$AppDatabase {
         metadataId: metadataId != null
             ? Value(metadataId)
             : const Value.absent(),
+        metadataProvider: metadataProvider != null
+            ? Value(metadataProvider)
+            : const Value.absent(),
+        providerItemId: providerItemId != null
+            ? Value(providerItemId)
+            : const Value.absent(),
+        metadataUpdatedAt: metadataUpdatedAt != null
+            ? Value(metadataUpdatedAt)
+            : const Value.absent(),
         updatedAt: Value(DateTime.now()),
       ),
     );
   }
 
-  /// Update TV show record with fetched TMDB metadata.
+  /// Update TV show record with fetched TMDB/fallback metadata.
   Future<int> updateTvShowMetadata(
     String showId, {
     required int tmdbId,
@@ -287,6 +316,9 @@ class AppDatabase extends _$AppDatabase {
     String? backdropPath,
     double? rating,
     String? metadataId,
+    String? metadataProvider,
+    String? providerItemId,
+    DateTime? metadataUpdatedAt,
   }) {
     return (update(tvShows)..where((t) => t.id.equals(showId))).write(
       TvShowsCompanion(
@@ -308,6 +340,15 @@ class AppDatabase extends _$AppDatabase {
         rating: rating != null ? Value(rating) : const Value.absent(),
         metadataId: metadataId != null
             ? Value(metadataId)
+            : const Value.absent(),
+        metadataProvider: metadataProvider != null
+            ? Value(metadataProvider)
+            : const Value.absent(),
+        providerItemId: providerItemId != null
+            ? Value(providerItemId)
+            : const Value.absent(),
+        metadataUpdatedAt: metadataUpdatedAt != null
+            ? Value(metadataUpdatedAt)
             : const Value.absent(),
         updatedAt: Value(DateTime.now()),
       ),
@@ -411,6 +452,38 @@ class AppDatabase extends _$AppDatabase {
             ..where((t) => t.isWatchlist.equals(true))
             ..orderBy([(t) => OrderingTerm.asc(t.title)]))
           .watch();
+
+  /// Watch movies that have an available device-local copy (Offline Library).
+  Stream<List<Movie>> watchOfflineMovies() {
+    final query = select(movies).join([
+      innerJoin(
+        mediaSources,
+        mediaSources.movieId.equalsExp(movies.id) &
+            mediaSources.sourceType.equals('localDevice') &
+            mediaSources.available.equals(true),
+      ),
+    ]);
+    query.groupBy([movies.id]);
+    query.orderBy([OrderingTerm.asc(movies.title)]);
+    return query.map((row) => row.readTable(movies)).watch();
+  }
+
+  /// Watch TV shows that have at least one available device-local episode copy (Offline Library).
+  Stream<List<TvShow>> watchOfflineTvShows() {
+    final query = select(tvShows).join([
+      innerJoin(seasons, seasons.showId.equalsExp(tvShows.id)),
+      innerJoin(episodes, episodes.seasonId.equalsExp(seasons.id)),
+      innerJoin(
+        mediaSources,
+        mediaSources.episodeId.equalsExp(episodes.id) &
+            mediaSources.sourceType.equals('localDevice') &
+            mediaSources.available.equals(true),
+      ),
+    ]);
+    query.groupBy([tvShows.id]);
+    query.orderBy([OrderingTerm.asc(tvShows.title)]);
+    return query.map((row) => row.readTable(tvShows)).watch();
+  }
 
   /// Toggle movie favorite status.
   Future<int> toggleMovieFavorite(String movieId, bool isFavorite) =>

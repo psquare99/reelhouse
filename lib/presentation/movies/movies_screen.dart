@@ -131,15 +131,15 @@ class _MoviesScreenState extends State<MoviesScreen> {
                           )
                         : GridView.builder(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
+                              horizontal: 32,
+                              vertical: 20,
                             ),
                             gridDelegate:
                                 const SliverGridDelegateWithMaxCrossAxisExtent(
-                                  maxCrossAxisExtent: 220,
-                                  childAspectRatio: 0.65,
-                                  crossAxisSpacing: 18,
-                                  mainAxisSpacing: 18,
+                                  maxCrossAxisExtent: 260,
+                                  childAspectRatio: 0.60,
+                                  crossAxisSpacing: 28,
+                                  mainAxisSpacing: 32,
                                 ),
                             itemCount: filteredMovies.length,
                             itemBuilder: (context, index) {
@@ -209,10 +209,10 @@ class _MoviesScreenState extends State<MoviesScreen> {
           setState(() => _filter = filterKey);
         }
       },
-      selectedColor: CinemaColors.amber,
+      selectedColor: CinemaColors.surfaceElevated,
       backgroundColor: CinemaColors.surface,
       labelStyle: TextStyle(
-        color: isSelected ? CinemaColors.canvas : CinemaColors.textSecondary,
+        color: isSelected ? CinemaColors.amber : CinemaColors.textSecondary,
         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
         fontSize: 12,
       ),
