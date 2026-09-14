@@ -14,13 +14,15 @@ part 'database.g.dart';
     Episodes,
     MediaSources,
     TransferJobs,
+    Collections,
+    CollectionItems,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? connect());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -39,6 +41,23 @@ class AppDatabase extends _$AppDatabase {
           available: const Value(true),
         ),
       );
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(movies, movies.isFavorite);
+        await m.addColumn(movies, movies.isWatchlist);
+        await m.addColumn(movies, movies.watchState);
+        await m.addColumn(movies, movies.playbackPositionSeconds);
+
+        await m.addColumn(tvShows, tvShows.isFavorite);
+        await m.addColumn(tvShows, tvShows.isWatchlist);
+
+        await m.addColumn(episodes, episodes.watchState);
+        await m.addColumn(episodes, episodes.playbackPositionSeconds);
+
+        await m.createTable(collections);
+        await m.createTable(collectionItems);
+      }
     },
   );
 
@@ -323,7 +342,309 @@ class AppDatabase extends _$AppDatabase {
   Future<Movie?> findMovieById(String movieId) =>
       (select(movies)..where((m) => m.id.equals(movieId))).getSingleOrNull();
 
+  /// Watch movie by its internal ID.
+  Stream<Movie?> watchMovieById(String movieId) =>
+      (select(movies)..where((m) => m.id.equals(movieId))).watchSingleOrNull();
+
   /// Find TV show by its internal ID.
   Future<TvShow?> findTvShowById(String showId) =>
       (select(tvShows)..where((t) => t.id.equals(showId))).getSingleOrNull();
+
+  /// Watch TV show by its internal ID.
+  Stream<TvShow?> watchTvShowById(String showId) =>
+      (select(tvShows)..where((t) => t.id.equals(showId))).watchSingleOrNull();
+
+  // --- Milestone 4: Cinema Experience UI Queries ---
+
+  /// Watch movies in progress (Continue Watching).
+  Stream<List<Movie>> watchContinueWatchingMovies() =>
+      (select(movies)
+            ..where((m) => m.watchState.equals('IN_PROGRESS'))
+            ..orderBy([(m) => OrderingTerm.desc(m.updatedAt)]))
+          .watch();
+
+  /// Watch episodes in progress (Continue Watching).
+  Stream<List<Episode>> watchContinueWatchingEpisodes() =>
+      (select(episodes)
+            ..where((e) => e.watchState.equals('IN_PROGRESS'))
+            ..orderBy([(e) => OrderingTerm.desc(e.airDate)]))
+          .watch();
+
+  /// Watch recently added movies.
+  Stream<List<Movie>> watchRecentlyAddedMovies({int limit = 10}) =>
+      (select(movies)
+            ..orderBy([(m) => OrderingTerm.desc(m.createdAt)])
+            ..limit(limit))
+          .watch();
+
+  /// Watch recently added TV shows.
+  Stream<List<TvShow>> watchRecentlyAddedTvShows({int limit = 10}) =>
+      (select(tvShows)
+            ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+            ..limit(limit))
+          .watch();
+
+  /// Watch favorite movies.
+  Stream<List<Movie>> watchFavoriteMovies() =>
+      (select(movies)
+            ..where((m) => m.isFavorite.equals(true))
+            ..orderBy([(m) => OrderingTerm.asc(m.title)]))
+          .watch();
+
+  /// Watch favorite TV shows.
+  Stream<List<TvShow>> watchFavoriteTvShows() =>
+      (select(tvShows)
+            ..where((t) => t.isFavorite.equals(true))
+            ..orderBy([(t) => OrderingTerm.asc(t.title)]))
+          .watch();
+
+  /// Watch watchlist movies.
+  Stream<List<Movie>> watchWatchlistMovies() =>
+      (select(movies)
+            ..where((m) => m.isWatchlist.equals(true))
+            ..orderBy([(m) => OrderingTerm.asc(m.title)]))
+          .watch();
+
+  /// Watch watchlist TV shows.
+  Stream<List<TvShow>> watchWatchlistTvShows() =>
+      (select(tvShows)
+            ..where((t) => t.isWatchlist.equals(true))
+            ..orderBy([(t) => OrderingTerm.asc(t.title)]))
+          .watch();
+
+  /// Toggle movie favorite status.
+  Future<int> toggleMovieFavorite(String movieId, bool isFavorite) =>
+      (update(movies)..where((m) => m.id.equals(movieId))).write(
+        MoviesCompanion(
+          isFavorite: Value(isFavorite),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  /// Toggle movie watchlist status.
+  Future<int> toggleMovieWatchlist(String movieId, bool isWatchlist) =>
+      (update(movies)..where((m) => m.id.equals(movieId))).write(
+        MoviesCompanion(
+          isWatchlist: Value(isWatchlist),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  /// Set movie watch state ('UNWATCHED', 'IN_PROGRESS', 'WATCHED').
+  Future<int> setMovieWatchState(
+    String movieId,
+    String watchState, {
+    int? positionSeconds,
+  }) => (update(movies)..where((m) => m.id.equals(movieId))).write(
+    MoviesCompanion(
+      watchState: Value(watchState),
+      playbackPositionSeconds: positionSeconds != null
+          ? Value(positionSeconds)
+          : const Value.absent(),
+      updatedAt: Value(DateTime.now()),
+    ),
+  );
+
+  /// Toggle TV show favorite status.
+  Future<int> toggleTvShowFavorite(String showId, bool isFavorite) =>
+      (update(tvShows)..where((t) => t.id.equals(showId))).write(
+        TvShowsCompanion(
+          isFavorite: Value(isFavorite),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  /// Toggle TV show watchlist status.
+  Future<int> toggleTvShowWatchlist(String showId, bool isWatchlist) =>
+      (update(tvShows)..where((t) => t.id.equals(showId))).write(
+        TvShowsCompanion(
+          isWatchlist: Value(isWatchlist),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  /// Set episode watch state ('UNWATCHED', 'IN_PROGRESS', 'WATCHED').
+  Future<int> setEpisodeWatchState(
+    String episodeId,
+    String watchState, {
+    int? positionSeconds,
+  }) => (update(episodes)..where((e) => e.id.equals(episodeId))).write(
+    EpisodesCompanion(
+      watchState: Value(watchState),
+      playbackPositionSeconds: positionSeconds != null
+          ? Value(positionSeconds)
+          : const Value.absent(),
+    ),
+  );
+
+  /// Watch seasons for a TV show ordered by season number.
+  Stream<List<Season>> watchSeasonsForShow(String showId) =>
+      (select(seasons)
+            ..where((s) => s.showId.equals(showId))
+            ..orderBy([(s) => OrderingTerm.asc(s.seasonNumber)]))
+          .watch();
+
+  /// Get seasons for a TV show ordered by season number.
+  Future<List<Season>> getSeasonsForShow(String showId) =>
+      (select(seasons)
+            ..where((s) => s.showId.equals(showId))
+            ..orderBy([(s) => OrderingTerm.asc(s.seasonNumber)]))
+          .get();
+
+  /// Watch episodes for a season ordered by episode number.
+  Stream<List<Episode>> watchEpisodesForSeason(String seasonId) =>
+      (select(episodes)
+            ..where((e) => e.seasonId.equals(seasonId))
+            ..orderBy([(e) => OrderingTerm.asc(e.episodeNumber)]))
+          .watch();
+
+  /// Get episodes for a season ordered by episode number.
+  Future<List<Episode>> getEpisodesForSeason(String seasonId) =>
+      (select(episodes)
+            ..where((e) => e.seasonId.equals(seasonId))
+            ..orderBy([(e) => OrderingTerm.asc(e.episodeNumber)]))
+          .get();
+
+  /// Watch physical media sources for a movie.
+  Stream<List<MediaSource>> watchSourcesForMovie(String movieId) =>
+      (select(mediaSources)..where((s) => s.movieId.equals(movieId))).watch();
+
+  /// Watch physical media sources for an episode.
+  Stream<List<MediaSource>> watchSourcesForEpisode(String episodeId) => (select(
+    mediaSources,
+  )..where((s) => s.episodeId.equals(episodeId))).watch();
+
+  /// Delete a physical media source record (e.g. removing device-local copy).
+  Future<int> deleteMediaSource(String sourceId) =>
+      (delete(mediaSources)..where((s) => s.id.equals(sourceId))).go();
+
+  /// Watch active transfer jobs for a movie.
+  Stream<List<TransferJob>> watchActiveTransferJobsForMovie(String movieId) =>
+      (select(transferJobs)..where(
+            (j) =>
+                j.mediaType.equals('movie') &
+                j.mediaId.equals(movieId) &
+                (j.status.equals('QUEUED') | j.status.equals('DOWNLOADING')),
+          ))
+          .watch();
+
+  /// Watch active transfer jobs for an episode.
+  Stream<List<TransferJob>> watchActiveTransferJobsForEpisode(
+    String episodeId,
+  ) =>
+      (select(transferJobs)..where(
+            (j) =>
+                j.mediaType.equals('episode') &
+                j.mediaId.equals(episodeId) &
+                (j.status.equals('QUEUED') | j.status.equals('DOWNLOADING')),
+          ))
+          .watch();
+
+  /// Create a transfer job record.
+  Future<int> createTransferJob(TransferJobsCompanion job) =>
+      into(transferJobs).insert(job);
+
+  // --- Curated Collections Queries ---
+
+  /// Watch all collections ordered by name.
+  Stream<List<Collection>> watchAllCollections() =>
+      (select(collections)..orderBy([(c) => OrderingTerm.asc(c.name)])).watch();
+
+  /// Get all collections.
+  Future<List<Collection>> getAllCollections() =>
+      (select(collections)..orderBy([(c) => OrderingTerm.asc(c.name)])).get();
+
+  /// Find collection by ID.
+  Future<Collection?> getCollection(String id) =>
+      (select(collections)..where((c) => c.id.equals(id))).getSingleOrNull();
+
+  /// Watch collection by ID.
+  Stream<Collection?> watchCollection(String id) =>
+      (select(collections)..where((c) => c.id.equals(id))).watchSingleOrNull();
+
+  /// Create a new collection.
+  Future<int> createCollection(CollectionsCompanion companion) =>
+      into(collections).insert(companion);
+
+  /// Delete a collection and its item associations.
+  Future<int> deleteCollection(String id) async {
+    await (delete(
+      collectionItems,
+    )..where((ci) => ci.collectionId.equals(id))).go();
+    return (delete(collections)..where((c) => c.id.equals(id))).go();
+  }
+
+  /// Watch all items inside a collection ordered by display order.
+  Stream<List<CollectionItem>> watchItemsForCollection(String collectionId) =>
+      (select(collectionItems)
+            ..where((ci) => ci.collectionId.equals(collectionId))
+            ..orderBy([(ci) => OrderingTerm.asc(ci.displayOrder)]))
+          .watch();
+
+  /// Get all items inside a collection ordered by display order.
+  Future<List<CollectionItem>> getItemsForCollection(String collectionId) =>
+      (select(collectionItems)
+            ..where((ci) => ci.collectionId.equals(collectionId))
+            ..orderBy([(ci) => OrderingTerm.asc(ci.displayOrder)]))
+          .get();
+
+  /// Add an item to a collection.
+  Future<int> addItemToCollection(CollectionItemsCompanion companion) =>
+      into(collectionItems).insert(companion);
+
+  /// Remove an item from a collection.
+  Future<int> removeItemFromCollection(
+    String collectionId, {
+    String? movieId,
+    String? tvShowId,
+  }) {
+    final query = delete(collectionItems)
+      ..where((ci) => ci.collectionId.equals(collectionId));
+    if (movieId != null) {
+      query.where((ci) => ci.movieId.equals(movieId));
+    }
+    if (tvShowId != null) {
+      query.where((ci) => ci.tvShowId.equals(tvShowId));
+    }
+    return query.go();
+  }
+
+  // --- Local Fast Search Queries ---
+
+  /// Search movies by title, original title, or overview.
+  Future<List<Movie>> searchMovies(String query) {
+    final term = '%${query.trim()}%';
+    return (select(movies)
+          ..where(
+            (m) =>
+                m.title.like(term) |
+                m.originalTitle.like(term) |
+                m.overview.like(term),
+          )
+          ..orderBy([(m) => OrderingTerm.asc(m.title)]))
+        .get();
+  }
+
+  /// Search TV shows by title, original title, or overview.
+  Future<List<TvShow>> searchTvShows(String query) {
+    final term = '%${query.trim()}%';
+    return (select(tvShows)
+          ..where(
+            (t) =>
+                t.title.like(term) |
+                t.originalTitle.like(term) |
+                t.overview.like(term),
+          )
+          ..orderBy([(t) => OrderingTerm.asc(t.title)]))
+        .get();
+  }
+
+  /// Search episodes by name or overview.
+  Future<List<Episode>> searchEpisodes(String query) {
+    final term = '%${query.trim()}%';
+    return (select(episodes)
+          ..where((e) => e.name.like(term) | e.overview.like(term))
+          ..orderBy([(e) => OrderingTerm.asc(e.name)]))
+        .get();
+  }
 }

@@ -1,58 +1,45 @@
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
+import '../widgets/cinema_poster_card.dart';
+import 'tv_show_detail_screen.dart';
 
-class TvShowsScreen extends StatelessWidget {
+/// Poster-first TV series catalogue grid with user library state filters.
+class TvShowsScreen extends StatefulWidget {
   final AppDatabase database;
 
   const TvShowsScreen({super.key, required this.database});
 
-  Widget _buildPoster(String? posterPath) {
-    if (posterPath != null && posterPath.isNotEmpty) {
-      if (kIsWeb || posterPath.startsWith('http')) {
-        return Image.network(
-          posterPath,
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: double.infinity,
-          errorBuilder: (_, _, _) => const Center(
-            child: Icon(Icons.tv, color: CinemaColors.textMuted, size: 40),
-          ),
-        );
-      } else {
-        final file = File(posterPath);
-        if (file.existsSync()) {
-          return Image.file(
-            file,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            errorBuilder: (_, _, _) => const Center(
-              child: Icon(Icons.tv, color: CinemaColors.textMuted, size: 40),
-            ),
-          );
-        }
-      }
-    }
+  @override
+  State<TvShowsScreen> createState() => _TvShowsScreenState();
+}
 
-    return const Center(
-      child: Icon(Icons.tv, color: CinemaColors.textMuted, size: 40),
-    );
-  }
+class _TvShowsScreenState extends State<TvShowsScreen> {
+  String _filter = 'ALL'; // 'ALL' | 'FAVORITES' | 'WATCHLIST'
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('TV Shows')),
       body: StreamBuilder<List<TvShow>>(
-        stream: database.select(database.tvShows).watch(),
+        stream: widget.database.select(widget.database.tvShows).watch(),
         builder: (context, snapshot) {
-          final shows = snapshot.data ?? [];
-          if (shows.isEmpty) {
+          final allShows = snapshot.data ?? [];
+
+          final filteredShows = allShows.where((s) {
+            switch (_filter) {
+              case 'FAVORITES':
+                return s.isFavorite;
+              case 'WATCHLIST':
+                return s.isWatchlist;
+              case 'ALL':
+              default:
+                return true;
+            }
+          }).toList();
+
+          if (allShows.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
@@ -88,70 +75,108 @@ class TvShowsScreen extends StatelessWidget {
             );
           }
 
-          return GridView.builder(
-            padding: const EdgeInsets.all(24),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 220,
-              childAspectRatio: 0.65,
-              crossAxisSpacing: 18,
-              mainAxisSpacing: 18,
-            ),
-            itemCount: shows.length,
-            itemBuilder: (context, index) {
-              final show = shows[index];
-              return Container(
-                decoration: BoxDecoration(
-                  color: CinemaColors.card,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: CinemaColors.borderSubtle),
+          return Column(
+            children: [
+              // Filter bar
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(10),
-                        ),
-                        child: Container(
-                          color: CinemaColors.surface,
-                          width: double.infinity,
-                          child: _buildPoster(show.posterPath),
-                        ),
+                alignment: Alignment.centerLeft,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('ALL', 'All (${allShows.length})'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        'FAVORITES',
+                        'Favorites (${allShows.where((s) => s.isFavorite).length})',
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            show.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: CinemaColors.textPrimary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Series',
-                            style: TextStyle(
-                              color: CinemaColors.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        'WATCHLIST',
+                        'Watchlist (${allShows.where((s) => s.isWatchlist).length})',
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              );
-            },
+              ),
+
+              // Poster Grid
+              Expanded(
+                child: filteredShows.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No TV shows matching this filter.',
+                          style: TextStyle(color: CinemaColors.textMuted),
+                        ),
+                      )
+                    : GridView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 220,
+                              childAspectRatio: 0.65,
+                              crossAxisSpacing: 18,
+                              mainAxisSpacing: 18,
+                            ),
+                        itemCount: filteredShows.length,
+                        itemBuilder: (context, index) {
+                          final show = filteredShows[index];
+                          return CinemaPosterCard(
+                            title: show.title,
+                            year: show.firstAirDate?.year,
+                            posterPath: show.posterPath,
+                            isFavorite: show.isFavorite,
+                            fallbackIcon: Icons.tv,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => TvShowDetailScreen(
+                                    showId: show.id,
+                                    database: widget.database,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String filterKey, String label) {
+    final isSelected = _filter == filterKey;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() => _filter = filterKey);
+        }
+      },
+      selectedColor: CinemaColors.amber,
+      backgroundColor: CinemaColors.surface,
+      labelStyle: TextStyle(
+        color: isSelected ? CinemaColors.canvas : CinemaColors.textSecondary,
+        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        fontSize: 12,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(
+          color: isSelected ? CinemaColors.amber : CinemaColors.borderSubtle,
+        ),
       ),
     );
   }

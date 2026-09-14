@@ -654,6 +654,60 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
+    'isFavorite',
+  );
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+    'is_favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isWatchlistMeta = const VerificationMeta(
+    'isWatchlist',
+  );
+  @override
+  late final GeneratedColumn<bool> isWatchlist = GeneratedColumn<bool>(
+    'is_watchlist',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_watchlist" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _watchStateMeta = const VerificationMeta(
+    'watchState',
+  );
+  @override
+  late final GeneratedColumn<String> watchState = GeneratedColumn<String>(
+    'watch_state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('UNWATCHED'),
+  );
+  static const VerificationMeta _playbackPositionSecondsMeta =
+      const VerificationMeta('playbackPositionSeconds');
+  @override
+  late final GeneratedColumn<int> playbackPositionSeconds =
+      GeneratedColumn<int>(
+        'playback_position_seconds',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -672,6 +726,10 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
     tmdbId,
     createdAt,
     updatedAt,
+    isFavorite,
+    isWatchlist,
+    watchState,
+    playbackPositionSeconds,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -795,6 +853,36 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+        _isFavoriteMeta,
+        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
+      );
+    }
+    if (data.containsKey('is_watchlist')) {
+      context.handle(
+        _isWatchlistMeta,
+        isWatchlist.isAcceptableOrUnknown(
+          data['is_watchlist']!,
+          _isWatchlistMeta,
+        ),
+      );
+    }
+    if (data.containsKey('watch_state')) {
+      context.handle(
+        _watchStateMeta,
+        watchState.isAcceptableOrUnknown(data['watch_state']!, _watchStateMeta),
+      );
+    }
+    if (data.containsKey('playback_position_seconds')) {
+      context.handle(
+        _playbackPositionSecondsMeta,
+        playbackPositionSeconds.isAcceptableOrUnknown(
+          data['playback_position_seconds']!,
+          _playbackPositionSecondsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -868,6 +956,22 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      isFavorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_favorite'],
+      )!,
+      isWatchlist: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_watchlist'],
+      )!,
+      watchState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}watch_state'],
+      )!,
+      playbackPositionSeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}playback_position_seconds'],
+      )!,
     );
   }
 
@@ -894,6 +998,10 @@ class Movie extends DataClass implements Insertable<Movie> {
   final int? tmdbId;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool isFavorite;
+  final bool isWatchlist;
+  final String watchState;
+  final int playbackPositionSeconds;
   const Movie({
     required this.id,
     this.metadataId,
@@ -911,6 +1019,10 @@ class Movie extends DataClass implements Insertable<Movie> {
     this.tmdbId,
     required this.createdAt,
     required this.updatedAt,
+    required this.isFavorite,
+    required this.isWatchlist,
+    required this.watchState,
+    required this.playbackPositionSeconds,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -955,6 +1067,10 @@ class Movie extends DataClass implements Insertable<Movie> {
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_favorite'] = Variable<bool>(isFavorite);
+    map['is_watchlist'] = Variable<bool>(isWatchlist);
+    map['watch_state'] = Variable<String>(watchState);
+    map['playback_position_seconds'] = Variable<int>(playbackPositionSeconds);
     return map;
   }
 
@@ -998,6 +1114,10 @@ class Movie extends DataClass implements Insertable<Movie> {
           : Value(tmdbId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      isFavorite: Value(isFavorite),
+      isWatchlist: Value(isWatchlist),
+      watchState: Value(watchState),
+      playbackPositionSeconds: Value(playbackPositionSeconds),
     );
   }
 
@@ -1023,6 +1143,12 @@ class Movie extends DataClass implements Insertable<Movie> {
       tmdbId: serializer.fromJson<int?>(json['tmdbId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
+      isWatchlist: serializer.fromJson<bool>(json['isWatchlist']),
+      watchState: serializer.fromJson<String>(json['watchState']),
+      playbackPositionSeconds: serializer.fromJson<int>(
+        json['playbackPositionSeconds'],
+      ),
     );
   }
   @override
@@ -1045,6 +1171,12 @@ class Movie extends DataClass implements Insertable<Movie> {
       'tmdbId': serializer.toJson<int?>(tmdbId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
+      'isWatchlist': serializer.toJson<bool>(isWatchlist),
+      'watchState': serializer.toJson<String>(watchState),
+      'playbackPositionSeconds': serializer.toJson<int>(
+        playbackPositionSeconds,
+      ),
     };
   }
 
@@ -1065,6 +1197,10 @@ class Movie extends DataClass implements Insertable<Movie> {
     Value<int?> tmdbId = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? isFavorite,
+    bool? isWatchlist,
+    String? watchState,
+    int? playbackPositionSeconds,
   }) => Movie(
     id: id ?? this.id,
     metadataId: metadataId.present ? metadataId.value : this.metadataId,
@@ -1084,6 +1220,11 @@ class Movie extends DataClass implements Insertable<Movie> {
     tmdbId: tmdbId.present ? tmdbId.value : this.tmdbId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    isFavorite: isFavorite ?? this.isFavorite,
+    isWatchlist: isWatchlist ?? this.isWatchlist,
+    watchState: watchState ?? this.watchState,
+    playbackPositionSeconds:
+        playbackPositionSeconds ?? this.playbackPositionSeconds,
   );
   Movie copyWithCompanion(MoviesCompanion data) {
     return Movie(
@@ -1113,6 +1254,18 @@ class Movie extends DataClass implements Insertable<Movie> {
       tmdbId: data.tmdbId.present ? data.tmdbId.value : this.tmdbId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isFavorite: data.isFavorite.present
+          ? data.isFavorite.value
+          : this.isFavorite,
+      isWatchlist: data.isWatchlist.present
+          ? data.isWatchlist.value
+          : this.isWatchlist,
+      watchState: data.watchState.present
+          ? data.watchState.value
+          : this.watchState,
+      playbackPositionSeconds: data.playbackPositionSeconds.present
+          ? data.playbackPositionSeconds.value
+          : this.playbackPositionSeconds,
     );
   }
 
@@ -1134,7 +1287,11 @@ class Movie extends DataClass implements Insertable<Movie> {
           ..write('imdbId: $imdbId, ')
           ..write('tmdbId: $tmdbId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('isWatchlist: $isWatchlist, ')
+          ..write('watchState: $watchState, ')
+          ..write('playbackPositionSeconds: $playbackPositionSeconds')
           ..write(')'))
         .toString();
   }
@@ -1157,6 +1314,10 @@ class Movie extends DataClass implements Insertable<Movie> {
     tmdbId,
     createdAt,
     updatedAt,
+    isFavorite,
+    isWatchlist,
+    watchState,
+    playbackPositionSeconds,
   );
   @override
   bool operator ==(Object other) =>
@@ -1177,7 +1338,11 @@ class Movie extends DataClass implements Insertable<Movie> {
           other.imdbId == this.imdbId &&
           other.tmdbId == this.tmdbId &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.isFavorite == this.isFavorite &&
+          other.isWatchlist == this.isWatchlist &&
+          other.watchState == this.watchState &&
+          other.playbackPositionSeconds == this.playbackPositionSeconds);
 }
 
 class MoviesCompanion extends UpdateCompanion<Movie> {
@@ -1197,6 +1362,10 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
   final Value<int?> tmdbId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<bool> isFavorite;
+  final Value<bool> isWatchlist;
+  final Value<String> watchState;
+  final Value<int> playbackPositionSeconds;
   final Value<int> rowid;
   const MoviesCompanion({
     this.id = const Value.absent(),
@@ -1215,6 +1384,10 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     this.tmdbId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.isFavorite = const Value.absent(),
+    this.isWatchlist = const Value.absent(),
+    this.watchState = const Value.absent(),
+    this.playbackPositionSeconds = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MoviesCompanion.insert({
@@ -1234,6 +1407,10 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     this.tmdbId = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.isFavorite = const Value.absent(),
+    this.isWatchlist = const Value.absent(),
+    this.watchState = const Value.absent(),
+    this.playbackPositionSeconds = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
@@ -1256,6 +1433,10 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     Expression<int>? tmdbId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<bool>? isFavorite,
+    Expression<bool>? isWatchlist,
+    Expression<String>? watchState,
+    Expression<int>? playbackPositionSeconds,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1275,6 +1456,11 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
       if (tmdbId != null) 'tmdb_id': tmdbId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (isFavorite != null) 'is_favorite': isFavorite,
+      if (isWatchlist != null) 'is_watchlist': isWatchlist,
+      if (watchState != null) 'watch_state': watchState,
+      if (playbackPositionSeconds != null)
+        'playback_position_seconds': playbackPositionSeconds,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1296,6 +1482,10 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     Value<int?>? tmdbId,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<bool>? isFavorite,
+    Value<bool>? isWatchlist,
+    Value<String>? watchState,
+    Value<int>? playbackPositionSeconds,
     Value<int>? rowid,
   }) {
     return MoviesCompanion(
@@ -1315,6 +1505,11 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
       tmdbId: tmdbId ?? this.tmdbId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isFavorite: isFavorite ?? this.isFavorite,
+      isWatchlist: isWatchlist ?? this.isWatchlist,
+      watchState: watchState ?? this.watchState,
+      playbackPositionSeconds:
+          playbackPositionSeconds ?? this.playbackPositionSeconds,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1370,6 +1565,20 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
+    if (isWatchlist.present) {
+      map['is_watchlist'] = Variable<bool>(isWatchlist.value);
+    }
+    if (watchState.present) {
+      map['watch_state'] = Variable<String>(watchState.value);
+    }
+    if (playbackPositionSeconds.present) {
+      map['playback_position_seconds'] = Variable<int>(
+        playbackPositionSeconds.value,
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1395,6 +1604,10 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
           ..write('tmdbId: $tmdbId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('isWatchlist: $isWatchlist, ')
+          ..write('watchState: $watchState, ')
+          ..write('playbackPositionSeconds: $playbackPositionSeconds, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1517,6 +1730,36 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
+    'isFavorite',
+  );
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+    'is_favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isWatchlistMeta = const VerificationMeta(
+    'isWatchlist',
+  );
+  @override
+  late final GeneratedColumn<bool> isWatchlist = GeneratedColumn<bool>(
+    'is_watchlist',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_watchlist" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1552,6 +1795,8 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
     rating,
     tmdbId,
     imdbId,
+    isFavorite,
+    isWatchlist,
     createdAt,
     updatedAt,
   ];
@@ -1643,6 +1888,21 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
         imdbId.isAcceptableOrUnknown(data['imdb_id']!, _imdbIdMeta),
       );
     }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+        _isFavoriteMeta,
+        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
+      );
+    }
+    if (data.containsKey('is_watchlist')) {
+      context.handle(
+        _isWatchlistMeta,
+        isWatchlist.isAcceptableOrUnknown(
+          data['is_watchlist']!,
+          _isWatchlistMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1712,6 +1972,14 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
         DriftSqlType.string,
         data['${effectivePrefix}imdb_id'],
       ),
+      isFavorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_favorite'],
+      )!,
+      isWatchlist: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_watchlist'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1741,6 +2009,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
   final double? rating;
   final int? tmdbId;
   final String? imdbId;
+  final bool isFavorite;
+  final bool isWatchlist;
   final DateTime createdAt;
   final DateTime updatedAt;
   const TvShow({
@@ -1755,6 +2025,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     this.rating,
     this.tmdbId,
     this.imdbId,
+    required this.isFavorite,
+    required this.isWatchlist,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1790,6 +2062,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     if (!nullToAbsent || imdbId != null) {
       map['imdb_id'] = Variable<String>(imdbId);
     }
+    map['is_favorite'] = Variable<bool>(isFavorite);
+    map['is_watchlist'] = Variable<bool>(isWatchlist);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1826,6 +2100,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       imdbId: imdbId == null && nullToAbsent
           ? const Value.absent()
           : Value(imdbId),
+      isFavorite: Value(isFavorite),
+      isWatchlist: Value(isWatchlist),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1848,6 +2124,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       rating: serializer.fromJson<double?>(json['rating']),
       tmdbId: serializer.fromJson<int?>(json['tmdbId']),
       imdbId: serializer.fromJson<String?>(json['imdbId']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
+      isWatchlist: serializer.fromJson<bool>(json['isWatchlist']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1867,6 +2145,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       'rating': serializer.toJson<double?>(rating),
       'tmdbId': serializer.toJson<int?>(tmdbId),
       'imdbId': serializer.toJson<String?>(imdbId),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
+      'isWatchlist': serializer.toJson<bool>(isWatchlist),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1884,6 +2164,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     Value<double?> rating = const Value.absent(),
     Value<int?> tmdbId = const Value.absent(),
     Value<String?> imdbId = const Value.absent(),
+    bool? isFavorite,
+    bool? isWatchlist,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => TvShow(
@@ -1900,6 +2182,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     rating: rating.present ? rating.value : this.rating,
     tmdbId: tmdbId.present ? tmdbId.value : this.tmdbId,
     imdbId: imdbId.present ? imdbId.value : this.imdbId,
+    isFavorite: isFavorite ?? this.isFavorite,
+    isWatchlist: isWatchlist ?? this.isWatchlist,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1926,6 +2210,12 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       rating: data.rating.present ? data.rating.value : this.rating,
       tmdbId: data.tmdbId.present ? data.tmdbId.value : this.tmdbId,
       imdbId: data.imdbId.present ? data.imdbId.value : this.imdbId,
+      isFavorite: data.isFavorite.present
+          ? data.isFavorite.value
+          : this.isFavorite,
+      isWatchlist: data.isWatchlist.present
+          ? data.isWatchlist.value
+          : this.isWatchlist,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1945,6 +2235,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
           ..write('rating: $rating, ')
           ..write('tmdbId: $tmdbId, ')
           ..write('imdbId: $imdbId, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('isWatchlist: $isWatchlist, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1964,6 +2256,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     rating,
     tmdbId,
     imdbId,
+    isFavorite,
+    isWatchlist,
     createdAt,
     updatedAt,
   );
@@ -1982,6 +2276,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
           other.rating == this.rating &&
           other.tmdbId == this.tmdbId &&
           other.imdbId == this.imdbId &&
+          other.isFavorite == this.isFavorite &&
+          other.isWatchlist == this.isWatchlist &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1998,6 +2294,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
   final Value<double?> rating;
   final Value<int?> tmdbId;
   final Value<String?> imdbId;
+  final Value<bool> isFavorite;
+  final Value<bool> isWatchlist;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -2013,6 +2311,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     this.rating = const Value.absent(),
     this.tmdbId = const Value.absent(),
     this.imdbId = const Value.absent(),
+    this.isFavorite = const Value.absent(),
+    this.isWatchlist = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2029,6 +2329,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     this.rating = const Value.absent(),
     this.tmdbId = const Value.absent(),
     this.imdbId = const Value.absent(),
+    this.isFavorite = const Value.absent(),
+    this.isWatchlist = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -2048,6 +2350,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     Expression<double>? rating,
     Expression<int>? tmdbId,
     Expression<String>? imdbId,
+    Expression<bool>? isFavorite,
+    Expression<bool>? isWatchlist,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -2064,6 +2368,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
       if (rating != null) 'rating': rating,
       if (tmdbId != null) 'tmdb_id': tmdbId,
       if (imdbId != null) 'imdb_id': imdbId,
+      if (isFavorite != null) 'is_favorite': isFavorite,
+      if (isWatchlist != null) 'is_watchlist': isWatchlist,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -2082,6 +2388,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     Value<double?>? rating,
     Value<int?>? tmdbId,
     Value<String?>? imdbId,
+    Value<bool>? isFavorite,
+    Value<bool>? isWatchlist,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -2098,6 +2406,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
       rating: rating ?? this.rating,
       tmdbId: tmdbId ?? this.tmdbId,
       imdbId: imdbId ?? this.imdbId,
+      isFavorite: isFavorite ?? this.isFavorite,
+      isWatchlist: isWatchlist ?? this.isWatchlist,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -2140,6 +2450,12 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     if (imdbId.present) {
       map['imdb_id'] = Variable<String>(imdbId.value);
     }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
+    if (isWatchlist.present) {
+      map['is_watchlist'] = Variable<bool>(isWatchlist.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2166,6 +2482,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
           ..write('rating: $rating, ')
           ..write('tmdbId: $tmdbId, ')
           ..write('imdbId: $imdbId, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('isWatchlist: $isWatchlist, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -2802,6 +3120,30 @@ class $EpisodesTable extends Episodes with TableInfo<$EpisodesTable, Episode> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _watchStateMeta = const VerificationMeta(
+    'watchState',
+  );
+  @override
+  late final GeneratedColumn<String> watchState = GeneratedColumn<String>(
+    'watch_state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('UNWATCHED'),
+  );
+  static const VerificationMeta _playbackPositionSecondsMeta =
+      const VerificationMeta('playbackPositionSeconds');
+  @override
+  late final GeneratedColumn<int> playbackPositionSeconds =
+      GeneratedColumn<int>(
+        'playback_position_seconds',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2814,6 +3156,8 @@ class $EpisodesTable extends Episodes with TableInfo<$EpisodesTable, Episode> {
     stillPath,
     rating,
     tmdbId,
+    watchState,
+    playbackPositionSeconds,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2893,6 +3237,21 @@ class $EpisodesTable extends Episodes with TableInfo<$EpisodesTable, Episode> {
         tmdbId.isAcceptableOrUnknown(data['tmdb_id']!, _tmdbIdMeta),
       );
     }
+    if (data.containsKey('watch_state')) {
+      context.handle(
+        _watchStateMeta,
+        watchState.isAcceptableOrUnknown(data['watch_state']!, _watchStateMeta),
+      );
+    }
+    if (data.containsKey('playback_position_seconds')) {
+      context.handle(
+        _playbackPositionSecondsMeta,
+        playbackPositionSeconds.isAcceptableOrUnknown(
+          data['playback_position_seconds']!,
+          _playbackPositionSecondsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2942,6 +3301,14 @@ class $EpisodesTable extends Episodes with TableInfo<$EpisodesTable, Episode> {
         DriftSqlType.int,
         data['${effectivePrefix}tmdb_id'],
       ),
+      watchState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}watch_state'],
+      )!,
+      playbackPositionSeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}playback_position_seconds'],
+      )!,
     );
   }
 
@@ -2962,6 +3329,8 @@ class Episode extends DataClass implements Insertable<Episode> {
   final String? stillPath;
   final double? rating;
   final int? tmdbId;
+  final String watchState;
+  final int playbackPositionSeconds;
   const Episode({
     required this.id,
     required this.seasonId,
@@ -2973,6 +3342,8 @@ class Episode extends DataClass implements Insertable<Episode> {
     this.stillPath,
     this.rating,
     this.tmdbId,
+    required this.watchState,
+    required this.playbackPositionSeconds,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3001,6 +3372,8 @@ class Episode extends DataClass implements Insertable<Episode> {
     if (!nullToAbsent || tmdbId != null) {
       map['tmdb_id'] = Variable<int>(tmdbId);
     }
+    map['watch_state'] = Variable<String>(watchState);
+    map['playback_position_seconds'] = Variable<int>(playbackPositionSeconds);
     return map;
   }
 
@@ -3028,6 +3401,8 @@ class Episode extends DataClass implements Insertable<Episode> {
       tmdbId: tmdbId == null && nullToAbsent
           ? const Value.absent()
           : Value(tmdbId),
+      watchState: Value(watchState),
+      playbackPositionSeconds: Value(playbackPositionSeconds),
     );
   }
 
@@ -3047,6 +3422,10 @@ class Episode extends DataClass implements Insertable<Episode> {
       stillPath: serializer.fromJson<String?>(json['stillPath']),
       rating: serializer.fromJson<double?>(json['rating']),
       tmdbId: serializer.fromJson<int?>(json['tmdbId']),
+      watchState: serializer.fromJson<String>(json['watchState']),
+      playbackPositionSeconds: serializer.fromJson<int>(
+        json['playbackPositionSeconds'],
+      ),
     );
   }
   @override
@@ -3063,6 +3442,10 @@ class Episode extends DataClass implements Insertable<Episode> {
       'stillPath': serializer.toJson<String?>(stillPath),
       'rating': serializer.toJson<double?>(rating),
       'tmdbId': serializer.toJson<int?>(tmdbId),
+      'watchState': serializer.toJson<String>(watchState),
+      'playbackPositionSeconds': serializer.toJson<int>(
+        playbackPositionSeconds,
+      ),
     };
   }
 
@@ -3077,6 +3460,8 @@ class Episode extends DataClass implements Insertable<Episode> {
     Value<String?> stillPath = const Value.absent(),
     Value<double?> rating = const Value.absent(),
     Value<int?> tmdbId = const Value.absent(),
+    String? watchState,
+    int? playbackPositionSeconds,
   }) => Episode(
     id: id ?? this.id,
     seasonId: seasonId ?? this.seasonId,
@@ -3088,6 +3473,9 @@ class Episode extends DataClass implements Insertable<Episode> {
     stillPath: stillPath.present ? stillPath.value : this.stillPath,
     rating: rating.present ? rating.value : this.rating,
     tmdbId: tmdbId.present ? tmdbId.value : this.tmdbId,
+    watchState: watchState ?? this.watchState,
+    playbackPositionSeconds:
+        playbackPositionSeconds ?? this.playbackPositionSeconds,
   );
   Episode copyWithCompanion(EpisodesCompanion data) {
     return Episode(
@@ -3103,6 +3491,12 @@ class Episode extends DataClass implements Insertable<Episode> {
       stillPath: data.stillPath.present ? data.stillPath.value : this.stillPath,
       rating: data.rating.present ? data.rating.value : this.rating,
       tmdbId: data.tmdbId.present ? data.tmdbId.value : this.tmdbId,
+      watchState: data.watchState.present
+          ? data.watchState.value
+          : this.watchState,
+      playbackPositionSeconds: data.playbackPositionSeconds.present
+          ? data.playbackPositionSeconds.value
+          : this.playbackPositionSeconds,
     );
   }
 
@@ -3118,7 +3512,9 @@ class Episode extends DataClass implements Insertable<Episode> {
           ..write('runtime: $runtime, ')
           ..write('stillPath: $stillPath, ')
           ..write('rating: $rating, ')
-          ..write('tmdbId: $tmdbId')
+          ..write('tmdbId: $tmdbId, ')
+          ..write('watchState: $watchState, ')
+          ..write('playbackPositionSeconds: $playbackPositionSeconds')
           ..write(')'))
         .toString();
   }
@@ -3135,6 +3531,8 @@ class Episode extends DataClass implements Insertable<Episode> {
     stillPath,
     rating,
     tmdbId,
+    watchState,
+    playbackPositionSeconds,
   );
   @override
   bool operator ==(Object other) =>
@@ -3149,7 +3547,9 @@ class Episode extends DataClass implements Insertable<Episode> {
           other.runtime == this.runtime &&
           other.stillPath == this.stillPath &&
           other.rating == this.rating &&
-          other.tmdbId == this.tmdbId);
+          other.tmdbId == this.tmdbId &&
+          other.watchState == this.watchState &&
+          other.playbackPositionSeconds == this.playbackPositionSeconds);
 }
 
 class EpisodesCompanion extends UpdateCompanion<Episode> {
@@ -3163,6 +3563,8 @@ class EpisodesCompanion extends UpdateCompanion<Episode> {
   final Value<String?> stillPath;
   final Value<double?> rating;
   final Value<int?> tmdbId;
+  final Value<String> watchState;
+  final Value<int> playbackPositionSeconds;
   final Value<int> rowid;
   const EpisodesCompanion({
     this.id = const Value.absent(),
@@ -3175,6 +3577,8 @@ class EpisodesCompanion extends UpdateCompanion<Episode> {
     this.stillPath = const Value.absent(),
     this.rating = const Value.absent(),
     this.tmdbId = const Value.absent(),
+    this.watchState = const Value.absent(),
+    this.playbackPositionSeconds = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   EpisodesCompanion.insert({
@@ -3188,6 +3592,8 @@ class EpisodesCompanion extends UpdateCompanion<Episode> {
     this.stillPath = const Value.absent(),
     this.rating = const Value.absent(),
     this.tmdbId = const Value.absent(),
+    this.watchState = const Value.absent(),
+    this.playbackPositionSeconds = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        seasonId = Value(seasonId),
@@ -3203,6 +3609,8 @@ class EpisodesCompanion extends UpdateCompanion<Episode> {
     Expression<String>? stillPath,
     Expression<double>? rating,
     Expression<int>? tmdbId,
+    Expression<String>? watchState,
+    Expression<int>? playbackPositionSeconds,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3216,6 +3624,9 @@ class EpisodesCompanion extends UpdateCompanion<Episode> {
       if (stillPath != null) 'still_path': stillPath,
       if (rating != null) 'rating': rating,
       if (tmdbId != null) 'tmdb_id': tmdbId,
+      if (watchState != null) 'watch_state': watchState,
+      if (playbackPositionSeconds != null)
+        'playback_position_seconds': playbackPositionSeconds,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3231,6 +3642,8 @@ class EpisodesCompanion extends UpdateCompanion<Episode> {
     Value<String?>? stillPath,
     Value<double?>? rating,
     Value<int?>? tmdbId,
+    Value<String>? watchState,
+    Value<int>? playbackPositionSeconds,
     Value<int>? rowid,
   }) {
     return EpisodesCompanion(
@@ -3244,6 +3657,9 @@ class EpisodesCompanion extends UpdateCompanion<Episode> {
       stillPath: stillPath ?? this.stillPath,
       rating: rating ?? this.rating,
       tmdbId: tmdbId ?? this.tmdbId,
+      watchState: watchState ?? this.watchState,
+      playbackPositionSeconds:
+          playbackPositionSeconds ?? this.playbackPositionSeconds,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3281,6 +3697,14 @@ class EpisodesCompanion extends UpdateCompanion<Episode> {
     if (tmdbId.present) {
       map['tmdb_id'] = Variable<int>(tmdbId.value);
     }
+    if (watchState.present) {
+      map['watch_state'] = Variable<String>(watchState.value);
+    }
+    if (playbackPositionSeconds.present) {
+      map['playback_position_seconds'] = Variable<int>(
+        playbackPositionSeconds.value,
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3300,6 +3724,8 @@ class EpisodesCompanion extends UpdateCompanion<Episode> {
           ..write('stillPath: $stillPath, ')
           ..write('rating: $rating, ')
           ..write('tmdbId: $tmdbId, ')
+          ..write('watchState: $watchState, ')
+          ..write('playbackPositionSeconds: $playbackPositionSeconds, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5212,6 +5638,847 @@ class TransferJobsCompanion extends UpdateCompanion<TransferJob> {
   }
 }
 
+class $CollectionsTable extends Collections
+    with TableInfo<$CollectionsTable, Collection> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CollectionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _overviewMeta = const VerificationMeta(
+    'overview',
+  );
+  @override
+  late final GeneratedColumn<String> overview = GeneratedColumn<String>(
+    'overview',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _posterPathMeta = const VerificationMeta(
+    'posterPath',
+  );
+  @override
+  late final GeneratedColumn<String> posterPath = GeneratedColumn<String>(
+    'poster_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    overview,
+    posterPath,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'collections';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Collection> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('overview')) {
+      context.handle(
+        _overviewMeta,
+        overview.isAcceptableOrUnknown(data['overview']!, _overviewMeta),
+      );
+    }
+    if (data.containsKey('poster_path')) {
+      context.handle(
+        _posterPathMeta,
+        posterPath.isAcceptableOrUnknown(data['poster_path']!, _posterPathMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Collection map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Collection(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      overview: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}overview'],
+      ),
+      posterPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}poster_path'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CollectionsTable createAlias(String alias) {
+    return $CollectionsTable(attachedDatabase, alias);
+  }
+}
+
+class Collection extends DataClass implements Insertable<Collection> {
+  final String id;
+  final String name;
+  final String? overview;
+  final String? posterPath;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const Collection({
+    required this.id,
+    required this.name,
+    this.overview,
+    this.posterPath,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || overview != null) {
+      map['overview'] = Variable<String>(overview);
+    }
+    if (!nullToAbsent || posterPath != null) {
+      map['poster_path'] = Variable<String>(posterPath);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CollectionsCompanion toCompanion(bool nullToAbsent) {
+    return CollectionsCompanion(
+      id: Value(id),
+      name: Value(name),
+      overview: overview == null && nullToAbsent
+          ? const Value.absent()
+          : Value(overview),
+      posterPath: posterPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(posterPath),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory Collection.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Collection(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      overview: serializer.fromJson<String?>(json['overview']),
+      posterPath: serializer.fromJson<String?>(json['posterPath']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'overview': serializer.toJson<String?>(overview),
+      'posterPath': serializer.toJson<String?>(posterPath),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  Collection copyWith({
+    String? id,
+    String? name,
+    Value<String?> overview = const Value.absent(),
+    Value<String?> posterPath = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => Collection(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    overview: overview.present ? overview.value : this.overview,
+    posterPath: posterPath.present ? posterPath.value : this.posterPath,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  Collection copyWithCompanion(CollectionsCompanion data) {
+    return Collection(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      overview: data.overview.present ? data.overview.value : this.overview,
+      posterPath: data.posterPath.present
+          ? data.posterPath.value
+          : this.posterPath,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Collection(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('overview: $overview, ')
+          ..write('posterPath: $posterPath, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, overview, posterPath, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Collection &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.overview == this.overview &&
+          other.posterPath == this.posterPath &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CollectionsCompanion extends UpdateCompanion<Collection> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> overview;
+  final Value<String?> posterPath;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CollectionsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.overview = const Value.absent(),
+    this.posterPath = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CollectionsCompanion.insert({
+    required String id,
+    required String name,
+    this.overview = const Value.absent(),
+    this.posterPath = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<Collection> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? overview,
+    Expression<String>? posterPath,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (overview != null) 'overview': overview,
+      if (posterPath != null) 'poster_path': posterPath,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CollectionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String?>? overview,
+    Value<String?>? posterPath,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return CollectionsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      overview: overview ?? this.overview,
+      posterPath: posterPath ?? this.posterPath,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (overview.present) {
+      map['overview'] = Variable<String>(overview.value);
+    }
+    if (posterPath.present) {
+      map['poster_path'] = Variable<String>(posterPath.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CollectionsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('overview: $overview, ')
+          ..write('posterPath: $posterPath, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CollectionItemsTable extends CollectionItems
+    with TableInfo<$CollectionItemsTable, CollectionItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CollectionItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _collectionIdMeta = const VerificationMeta(
+    'collectionId',
+  );
+  @override
+  late final GeneratedColumn<String> collectionId = GeneratedColumn<String>(
+    'collection_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES collections (id)',
+    ),
+  );
+  static const VerificationMeta _movieIdMeta = const VerificationMeta(
+    'movieId',
+  );
+  @override
+  late final GeneratedColumn<String> movieId = GeneratedColumn<String>(
+    'movie_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES movies (id)',
+    ),
+  );
+  static const VerificationMeta _tvShowIdMeta = const VerificationMeta(
+    'tvShowId',
+  );
+  @override
+  late final GeneratedColumn<String> tvShowId = GeneratedColumn<String>(
+    'tv_show_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tv_shows (id)',
+    ),
+  );
+  static const VerificationMeta _displayOrderMeta = const VerificationMeta(
+    'displayOrder',
+  );
+  @override
+  late final GeneratedColumn<int> displayOrder = GeneratedColumn<int>(
+    'display_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _addedAtMeta = const VerificationMeta(
+    'addedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> addedAt = GeneratedColumn<DateTime>(
+    'added_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    collectionId,
+    movieId,
+    tvShowId,
+    displayOrder,
+    addedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'collection_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CollectionItem> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('collection_id')) {
+      context.handle(
+        _collectionIdMeta,
+        collectionId.isAcceptableOrUnknown(
+          data['collection_id']!,
+          _collectionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_collectionIdMeta);
+    }
+    if (data.containsKey('movie_id')) {
+      context.handle(
+        _movieIdMeta,
+        movieId.isAcceptableOrUnknown(data['movie_id']!, _movieIdMeta),
+      );
+    }
+    if (data.containsKey('tv_show_id')) {
+      context.handle(
+        _tvShowIdMeta,
+        tvShowId.isAcceptableOrUnknown(data['tv_show_id']!, _tvShowIdMeta),
+      );
+    }
+    if (data.containsKey('display_order')) {
+      context.handle(
+        _displayOrderMeta,
+        displayOrder.isAcceptableOrUnknown(
+          data['display_order']!,
+          _displayOrderMeta,
+        ),
+      );
+    }
+    if (data.containsKey('added_at')) {
+      context.handle(
+        _addedAtMeta,
+        addedAt.isAcceptableOrUnknown(data['added_at']!, _addedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_addedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CollectionItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CollectionItem(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      collectionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}collection_id'],
+      )!,
+      movieId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}movie_id'],
+      ),
+      tvShowId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tv_show_id'],
+      ),
+      displayOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}display_order'],
+      )!,
+      addedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}added_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CollectionItemsTable createAlias(String alias) {
+    return $CollectionItemsTable(attachedDatabase, alias);
+  }
+}
+
+class CollectionItem extends DataClass implements Insertable<CollectionItem> {
+  final String id;
+  final String collectionId;
+  final String? movieId;
+  final String? tvShowId;
+  final int displayOrder;
+  final DateTime addedAt;
+  const CollectionItem({
+    required this.id,
+    required this.collectionId,
+    this.movieId,
+    this.tvShowId,
+    required this.displayOrder,
+    required this.addedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['collection_id'] = Variable<String>(collectionId);
+    if (!nullToAbsent || movieId != null) {
+      map['movie_id'] = Variable<String>(movieId);
+    }
+    if (!nullToAbsent || tvShowId != null) {
+      map['tv_show_id'] = Variable<String>(tvShowId);
+    }
+    map['display_order'] = Variable<int>(displayOrder);
+    map['added_at'] = Variable<DateTime>(addedAt);
+    return map;
+  }
+
+  CollectionItemsCompanion toCompanion(bool nullToAbsent) {
+    return CollectionItemsCompanion(
+      id: Value(id),
+      collectionId: Value(collectionId),
+      movieId: movieId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(movieId),
+      tvShowId: tvShowId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tvShowId),
+      displayOrder: Value(displayOrder),
+      addedAt: Value(addedAt),
+    );
+  }
+
+  factory CollectionItem.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CollectionItem(
+      id: serializer.fromJson<String>(json['id']),
+      collectionId: serializer.fromJson<String>(json['collectionId']),
+      movieId: serializer.fromJson<String?>(json['movieId']),
+      tvShowId: serializer.fromJson<String?>(json['tvShowId']),
+      displayOrder: serializer.fromJson<int>(json['displayOrder']),
+      addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'collectionId': serializer.toJson<String>(collectionId),
+      'movieId': serializer.toJson<String?>(movieId),
+      'tvShowId': serializer.toJson<String?>(tvShowId),
+      'displayOrder': serializer.toJson<int>(displayOrder),
+      'addedAt': serializer.toJson<DateTime>(addedAt),
+    };
+  }
+
+  CollectionItem copyWith({
+    String? id,
+    String? collectionId,
+    Value<String?> movieId = const Value.absent(),
+    Value<String?> tvShowId = const Value.absent(),
+    int? displayOrder,
+    DateTime? addedAt,
+  }) => CollectionItem(
+    id: id ?? this.id,
+    collectionId: collectionId ?? this.collectionId,
+    movieId: movieId.present ? movieId.value : this.movieId,
+    tvShowId: tvShowId.present ? tvShowId.value : this.tvShowId,
+    displayOrder: displayOrder ?? this.displayOrder,
+    addedAt: addedAt ?? this.addedAt,
+  );
+  CollectionItem copyWithCompanion(CollectionItemsCompanion data) {
+    return CollectionItem(
+      id: data.id.present ? data.id.value : this.id,
+      collectionId: data.collectionId.present
+          ? data.collectionId.value
+          : this.collectionId,
+      movieId: data.movieId.present ? data.movieId.value : this.movieId,
+      tvShowId: data.tvShowId.present ? data.tvShowId.value : this.tvShowId,
+      displayOrder: data.displayOrder.present
+          ? data.displayOrder.value
+          : this.displayOrder,
+      addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CollectionItem(')
+          ..write('id: $id, ')
+          ..write('collectionId: $collectionId, ')
+          ..write('movieId: $movieId, ')
+          ..write('tvShowId: $tvShowId, ')
+          ..write('displayOrder: $displayOrder, ')
+          ..write('addedAt: $addedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, collectionId, movieId, tvShowId, displayOrder, addedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CollectionItem &&
+          other.id == this.id &&
+          other.collectionId == this.collectionId &&
+          other.movieId == this.movieId &&
+          other.tvShowId == this.tvShowId &&
+          other.displayOrder == this.displayOrder &&
+          other.addedAt == this.addedAt);
+}
+
+class CollectionItemsCompanion extends UpdateCompanion<CollectionItem> {
+  final Value<String> id;
+  final Value<String> collectionId;
+  final Value<String?> movieId;
+  final Value<String?> tvShowId;
+  final Value<int> displayOrder;
+  final Value<DateTime> addedAt;
+  final Value<int> rowid;
+  const CollectionItemsCompanion({
+    this.id = const Value.absent(),
+    this.collectionId = const Value.absent(),
+    this.movieId = const Value.absent(),
+    this.tvShowId = const Value.absent(),
+    this.displayOrder = const Value.absent(),
+    this.addedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CollectionItemsCompanion.insert({
+    required String id,
+    required String collectionId,
+    this.movieId = const Value.absent(),
+    this.tvShowId = const Value.absent(),
+    this.displayOrder = const Value.absent(),
+    required DateTime addedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       collectionId = Value(collectionId),
+       addedAt = Value(addedAt);
+  static Insertable<CollectionItem> custom({
+    Expression<String>? id,
+    Expression<String>? collectionId,
+    Expression<String>? movieId,
+    Expression<String>? tvShowId,
+    Expression<int>? displayOrder,
+    Expression<DateTime>? addedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (collectionId != null) 'collection_id': collectionId,
+      if (movieId != null) 'movie_id': movieId,
+      if (tvShowId != null) 'tv_show_id': tvShowId,
+      if (displayOrder != null) 'display_order': displayOrder,
+      if (addedAt != null) 'added_at': addedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CollectionItemsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? collectionId,
+    Value<String?>? movieId,
+    Value<String?>? tvShowId,
+    Value<int>? displayOrder,
+    Value<DateTime>? addedAt,
+    Value<int>? rowid,
+  }) {
+    return CollectionItemsCompanion(
+      id: id ?? this.id,
+      collectionId: collectionId ?? this.collectionId,
+      movieId: movieId ?? this.movieId,
+      tvShowId: tvShowId ?? this.tvShowId,
+      displayOrder: displayOrder ?? this.displayOrder,
+      addedAt: addedAt ?? this.addedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (collectionId.present) {
+      map['collection_id'] = Variable<String>(collectionId.value);
+    }
+    if (movieId.present) {
+      map['movie_id'] = Variable<String>(movieId.value);
+    }
+    if (tvShowId.present) {
+      map['tv_show_id'] = Variable<String>(tvShowId.value);
+    }
+    if (displayOrder.present) {
+      map['display_order'] = Variable<int>(displayOrder.value);
+    }
+    if (addedAt.present) {
+      map['added_at'] = Variable<DateTime>(addedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CollectionItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('collectionId: $collectionId, ')
+          ..write('movieId: $movieId, ')
+          ..write('tvShowId: $tvShowId, ')
+          ..write('displayOrder: $displayOrder, ')
+          ..write('addedAt: $addedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5222,6 +6489,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $EpisodesTable episodes = $EpisodesTable(this);
   late final $MediaSourcesTable mediaSources = $MediaSourcesTable(this);
   late final $TransferJobsTable transferJobs = $TransferJobsTable(this);
+  late final $CollectionsTable collections = $CollectionsTable(this);
+  late final $CollectionItemsTable collectionItems = $CollectionItemsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5234,6 +6505,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     episodes,
     mediaSources,
     transferJobs,
+    collections,
+    collectionItems,
   ];
 }
 
@@ -5693,6 +6966,10 @@ typedef $$MoviesTableCreateCompanionBuilder = MoviesCompanion Function({
   Value<int?> tmdbId,
   required DateTime createdAt,
   required DateTime updatedAt,
+  Value<bool> isFavorite,
+  Value<bool> isWatchlist,
+  Value<String> watchState,
+  Value<int> playbackPositionSeconds,
   Value<int> rowid,
 });
 typedef $$MoviesTableUpdateCompanionBuilder = MoviesCompanion Function({
@@ -5712,6 +6989,10 @@ typedef $$MoviesTableUpdateCompanionBuilder = MoviesCompanion Function({
   Value<int?> tmdbId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<bool> isFavorite,
+  Value<bool> isWatchlist,
+  Value<String> watchState,
+  Value<int> playbackPositionSeconds,
   Value<int> rowid,
 });
 
@@ -5732,6 +7013,26 @@ final class $$MoviesTableReferences
     ).filter((f) => f.movieId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_mediaSourcesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$CollectionItemsTable, List<CollectionItem>>
+  _collectionItemsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.collectionItems,
+    aliasName: 'movies__id__collection_items__movie_id',
+  );
+
+  $$CollectionItemsTableProcessedTableManager get collectionItemsRefs {
+    final manager = $$CollectionItemsTableTableManager(
+      $_db,
+      $_db.collectionItems,
+    ).filter((f) => f.movieId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _collectionItemsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -5827,6 +7128,26 @@ class $$MoviesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isWatchlist => $composableBuilder(
+    column: $table.isWatchlist,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get watchState => $composableBuilder(
+    column: $table.watchState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get playbackPositionSeconds => $composableBuilder(
+    column: $table.playbackPositionSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> mediaSourcesRefs(
     Expression<bool> Function($$MediaSourcesTableFilterComposer f) f,
   ) {
@@ -5843,6 +7164,31 @@ class $$MoviesTableFilterComposer
           }) => $$MediaSourcesTableFilterComposer(
             $db: $db,
             $table: $db.mediaSources,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> collectionItemsRefs(
+    Expression<bool> Function($$CollectionItemsTableFilterComposer f) f,
+  ) {
+    final $$CollectionItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.collectionItems,
+      getReferencedColumn: (t) => t.movieId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.collectionItems,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -5941,6 +7287,26 @@ class $$MoviesTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isWatchlist => $composableBuilder(
+    column: $table.isWatchlist,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get watchState => $composableBuilder(
+    column: $table.watchState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get playbackPositionSeconds => $composableBuilder(
+    column: $table.playbackPositionSeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MoviesTableAnnotationComposer
@@ -6010,6 +7376,26 @@ class $$MoviesTableAnnotationComposer
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isWatchlist => $composableBuilder(
+    column: $table.isWatchlist,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get watchState => $composableBuilder(
+    column: $table.watchState,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get playbackPositionSeconds => $composableBuilder(
+    column: $table.playbackPositionSeconds,
+    builder: (column) => column,
+  );
+
   Expression<T> mediaSourcesRefs<T extends Object>(
     Expression<T> Function($$MediaSourcesTableAnnotationComposer a) f,
   ) {
@@ -6034,6 +7420,31 @@ class $$MoviesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> collectionItemsRefs<T extends Object>(
+    Expression<T> Function($$CollectionItemsTableAnnotationComposer a) f,
+  ) {
+    final $$CollectionItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.collectionItems,
+      getReferencedColumn: (t) => t.movieId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.collectionItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$MoviesTableTableManager
@@ -6049,7 +7460,10 @@ class $$MoviesTableTableManager
           $$MoviesTableUpdateCompanionBuilder,
           (Movie, $$MoviesTableReferences),
           Movie,
-          PrefetchHooks Function({bool mediaSourcesRefs})
+          PrefetchHooks Function({
+            bool mediaSourcesRefs,
+            bool collectionItemsRefs,
+          })
         > {
   $$MoviesTableTableManager(_$AppDatabase db, $MoviesTable table)
     : super(
@@ -6080,6 +7494,10 @@ class $$MoviesTableTableManager
                 Value<int?> tmdbId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
+                Value<bool> isWatchlist = const Value.absent(),
+                Value<String> watchState = const Value.absent(),
+                Value<int> playbackPositionSeconds = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MoviesCompanion(
                 id: id,
@@ -6098,6 +7516,10 @@ class $$MoviesTableTableManager
                 tmdbId: tmdbId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                isFavorite: isFavorite,
+                isWatchlist: isWatchlist,
+                watchState: watchState,
+                playbackPositionSeconds: playbackPositionSeconds,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6118,6 +7540,10 @@ class $$MoviesTableTableManager
                 Value<int?> tmdbId = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
+                Value<bool> isFavorite = const Value.absent(),
+                Value<bool> isWatchlist = const Value.absent(),
+                Value<String> watchState = const Value.absent(),
+                Value<int> playbackPositionSeconds = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MoviesCompanion.insert(
                 id: id,
@@ -6136,6 +7562,10 @@ class $$MoviesTableTableManager
                 tmdbId: tmdbId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                isFavorite: isFavorite,
+                isWatchlist: isWatchlist,
+                watchState: watchState,
+                playbackPositionSeconds: playbackPositionSeconds,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -6146,31 +7576,63 @@ class $$MoviesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({mediaSourcesRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (mediaSourcesRefs) db.mediaSources],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (mediaSourcesRefs)
-                    await $_getPrefetchedData<Movie, $MoviesTable, MediaSource>(
-                      currentTable: table,
-                      referencedTable: $$MoviesTableReferences
-                          ._mediaSourcesRefsTable(db),
-                      managerFromTypedResult: (p0) => $$MoviesTableReferences(
-                        db,
-                        table,
-                        p0,
-                      ).mediaSourcesRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.movieId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({mediaSourcesRefs = false, collectionItemsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (mediaSourcesRefs) db.mediaSources,
+                    if (collectionItemsRefs) db.collectionItems,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (mediaSourcesRefs)
+                        await $_getPrefetchedData<
+                          Movie,
+                          $MoviesTable,
+                          MediaSource
+                        >(
+                          currentTable: table,
+                          referencedTable: $$MoviesTableReferences
+                              ._mediaSourcesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$MoviesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).mediaSourcesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.movieId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (collectionItemsRefs)
+                        await $_getPrefetchedData<
+                          Movie,
+                          $MoviesTable,
+                          CollectionItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$MoviesTableReferences
+                              ._collectionItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$MoviesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).collectionItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.movieId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -6187,7 +7649,7 @@ typedef $$MoviesTableProcessedTableManager =
       $$MoviesTableUpdateCompanionBuilder,
       (Movie, $$MoviesTableReferences),
       Movie,
-      PrefetchHooks Function({bool mediaSourcesRefs})
+      PrefetchHooks Function({bool mediaSourcesRefs, bool collectionItemsRefs})
     >;
 typedef $$TvShowsTableCreateCompanionBuilder = TvShowsCompanion Function({
   required String id,
@@ -6201,6 +7663,8 @@ typedef $$TvShowsTableCreateCompanionBuilder = TvShowsCompanion Function({
   Value<double?> rating,
   Value<int?> tmdbId,
   Value<String?> imdbId,
+  Value<bool> isFavorite,
+  Value<bool> isWatchlist,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<int> rowid,
@@ -6217,6 +7681,8 @@ typedef $$TvShowsTableUpdateCompanionBuilder = TvShowsCompanion Function({
   Value<double?> rating,
   Value<int?> tmdbId,
   Value<String?> imdbId,
+  Value<bool> isFavorite,
+  Value<bool> isWatchlist,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -6240,6 +7706,26 @@ final class $$TvShowsTableReferences
     ).filter((f) => f.showId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_seasonsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$CollectionItemsTable, List<CollectionItem>>
+  _collectionItemsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.collectionItems,
+    aliasName: 'tv_shows__id__collection_items__tv_show_id',
+  );
+
+  $$CollectionItemsTableProcessedTableManager get collectionItemsRefs {
+    final manager = $$CollectionItemsTableTableManager(
+      $_db,
+      $_db.collectionItems,
+    ).filter((f) => f.tvShowId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _collectionItemsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -6310,6 +7796,16 @@ class $$TvShowsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isWatchlist => $composableBuilder(
+    column: $table.isWatchlist,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -6336,6 +7832,31 @@ class $$TvShowsTableFilterComposer
           }) => $$SeasonsTableFilterComposer(
             $db: $db,
             $table: $db.seasons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> collectionItemsRefs(
+    Expression<bool> Function($$CollectionItemsTableFilterComposer f) f,
+  ) {
+    final $$CollectionItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.collectionItems,
+      getReferencedColumn: (t) => t.tvShowId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.collectionItems,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -6410,6 +7931,16 @@ class $$TvShowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isWatchlist => $composableBuilder(
+    column: $table.isWatchlist,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6473,6 +8004,16 @@ class $$TvShowsTableAnnotationComposer
   GeneratedColumn<String> get imdbId =>
       $composableBuilder(column: $table.imdbId, builder: (column) => column);
 
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isWatchlist => $composableBuilder(
+    column: $table.isWatchlist,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -6503,6 +8044,31 @@ class $$TvShowsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> collectionItemsRefs<T extends Object>(
+    Expression<T> Function($$CollectionItemsTableAnnotationComposer a) f,
+  ) {
+    final $$CollectionItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.collectionItems,
+      getReferencedColumn: (t) => t.tvShowId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.collectionItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TvShowsTableTableManager
@@ -6518,7 +8084,7 @@ class $$TvShowsTableTableManager
           $$TvShowsTableUpdateCompanionBuilder,
           (TvShow, $$TvShowsTableReferences),
           TvShow,
-          PrefetchHooks Function({bool seasonsRefs})
+          PrefetchHooks Function({bool seasonsRefs, bool collectionItemsRefs})
         > {
   $$TvShowsTableTableManager(_$AppDatabase db, $TvShowsTable table)
     : super(
@@ -6544,6 +8110,8 @@ class $$TvShowsTableTableManager
                 Value<double?> rating = const Value.absent(),
                 Value<int?> tmdbId = const Value.absent(),
                 Value<String?> imdbId = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
+                Value<bool> isWatchlist = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -6559,6 +8127,8 @@ class $$TvShowsTableTableManager
                 rating: rating,
                 tmdbId: tmdbId,
                 imdbId: imdbId,
+                isFavorite: isFavorite,
+                isWatchlist: isWatchlist,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -6576,6 +8146,8 @@ class $$TvShowsTableTableManager
                 Value<double?> rating = const Value.absent(),
                 Value<int?> tmdbId = const Value.absent(),
                 Value<String?> imdbId = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
+                Value<bool> isWatchlist = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -6591,6 +8163,8 @@ class $$TvShowsTableTableManager
                 rating: rating,
                 tmdbId: tmdbId,
                 imdbId: imdbId,
+                isFavorite: isFavorite,
+                isWatchlist: isWatchlist,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -6603,28 +8177,63 @@ class $$TvShowsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({seasonsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (seasonsRefs) db.seasons],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (seasonsRefs)
-                    await $_getPrefetchedData<TvShow, $TvShowsTable, Season>(
-                      currentTable: table,
-                      referencedTable: $$TvShowsTableReferences
-                          ._seasonsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$TvShowsTableReferences(db, table, p0).seasonsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.showId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({seasonsRefs = false, collectionItemsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (seasonsRefs) db.seasons,
+                    if (collectionItemsRefs) db.collectionItems,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (seasonsRefs)
+                        await $_getPrefetchedData<
+                          TvShow,
+                          $TvShowsTable,
+                          Season
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TvShowsTableReferences
+                              ._seasonsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TvShowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).seasonsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.showId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (collectionItemsRefs)
+                        await $_getPrefetchedData<
+                          TvShow,
+                          $TvShowsTable,
+                          CollectionItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TvShowsTableReferences
+                              ._collectionItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TvShowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).collectionItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tvShowId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -6641,7 +8250,7 @@ typedef $$TvShowsTableProcessedTableManager =
       $$TvShowsTableUpdateCompanionBuilder,
       (TvShow, $$TvShowsTableReferences),
       TvShow,
-      PrefetchHooks Function({bool seasonsRefs})
+      PrefetchHooks Function({bool seasonsRefs, bool collectionItemsRefs})
     >;
 typedef $$SeasonsTableCreateCompanionBuilder = SeasonsCompanion Function({
   required String id,
@@ -7110,6 +8719,8 @@ typedef $$EpisodesTableCreateCompanionBuilder = EpisodesCompanion Function({
   Value<String?> stillPath,
   Value<double?> rating,
   Value<int?> tmdbId,
+  Value<String> watchState,
+  Value<int> playbackPositionSeconds,
   Value<int> rowid,
 });
 typedef $$EpisodesTableUpdateCompanionBuilder = EpisodesCompanion Function({
@@ -7123,6 +8734,8 @@ typedef $$EpisodesTableUpdateCompanionBuilder = EpisodesCompanion Function({
   Value<String?> stillPath,
   Value<double?> rating,
   Value<int?> tmdbId,
+  Value<String> watchState,
+  Value<int> playbackPositionSeconds,
   Value<int> rowid,
 });
 
@@ -7217,6 +8830,16 @@ class $$EpisodesTableFilterComposer
 
   ColumnFilters<int> get tmdbId => $composableBuilder(
     column: $table.tmdbId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get watchState => $composableBuilder(
+    column: $table.watchState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get playbackPositionSeconds => $composableBuilder(
+    column: $table.playbackPositionSeconds,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7323,6 +8946,16 @@ class $$EpisodesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get watchState => $composableBuilder(
+    column: $table.watchState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get playbackPositionSeconds => $composableBuilder(
+    column: $table.playbackPositionSeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$SeasonsTableOrderingComposer get seasonId {
     final $$SeasonsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7384,6 +9017,16 @@ class $$EpisodesTableAnnotationComposer
 
   GeneratedColumn<int> get tmdbId =>
       $composableBuilder(column: $table.tmdbId, builder: (column) => column);
+
+  GeneratedColumn<String> get watchState => $composableBuilder(
+    column: $table.watchState,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get playbackPositionSeconds => $composableBuilder(
+    column: $table.playbackPositionSeconds,
+    builder: (column) => column,
+  );
 
   $$SeasonsTableAnnotationComposer get seasonId {
     final $$SeasonsTableAnnotationComposer composer = $composerBuilder(
@@ -7472,6 +9115,8 @@ class $$EpisodesTableTableManager
                 Value<String?> stillPath = const Value.absent(),
                 Value<double?> rating = const Value.absent(),
                 Value<int?> tmdbId = const Value.absent(),
+                Value<String> watchState = const Value.absent(),
+                Value<int> playbackPositionSeconds = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EpisodesCompanion(
                 id: id,
@@ -7484,6 +9129,8 @@ class $$EpisodesTableTableManager
                 stillPath: stillPath,
                 rating: rating,
                 tmdbId: tmdbId,
+                watchState: watchState,
+                playbackPositionSeconds: playbackPositionSeconds,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7498,6 +9145,8 @@ class $$EpisodesTableTableManager
                 Value<String?> stillPath = const Value.absent(),
                 Value<double?> rating = const Value.absent(),
                 Value<int?> tmdbId = const Value.absent(),
+                Value<String> watchState = const Value.absent(),
+                Value<int> playbackPositionSeconds = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EpisodesCompanion.insert(
                 id: id,
@@ -7510,6 +9159,8 @@ class $$EpisodesTableTableManager
                 stillPath: stillPath,
                 rating: rating,
                 tmdbId: tmdbId,
+                watchState: watchState,
+                playbackPositionSeconds: playbackPositionSeconds,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -9050,6 +10701,851 @@ typedef $$TransferJobsTableProcessedTableManager =
         bool destinationStorageId,
       })
     >;
+typedef $$CollectionsTableCreateCompanionBuilder =
+    CollectionsCompanion Function({
+      required String id,
+      required String name,
+      Value<String?> overview,
+      Value<String?> posterPath,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$CollectionsTableUpdateCompanionBuilder =
+    CollectionsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String?> overview,
+      Value<String?> posterPath,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$CollectionsTableReferences
+    extends BaseReferences<_$AppDatabase, $CollectionsTable, Collection> {
+  $$CollectionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$CollectionItemsTable, List<CollectionItem>>
+  _collectionItemsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.collectionItems,
+    aliasName: 'collections__id__collection_items__collection_id',
+  );
+
+  $$CollectionItemsTableProcessedTableManager get collectionItemsRefs {
+    final manager = $$CollectionItemsTableTableManager(
+      $_db,
+      $_db.collectionItems,
+    ).filter((f) => f.collectionId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _collectionItemsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$CollectionsTableFilterComposer
+    extends Composer<_$AppDatabase, $CollectionsTable> {
+  $$CollectionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get overview => $composableBuilder(
+    column: $table.overview,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get posterPath => $composableBuilder(
+    column: $table.posterPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> collectionItemsRefs(
+    Expression<bool> Function($$CollectionItemsTableFilterComposer f) f,
+  ) {
+    final $$CollectionItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.collectionItems,
+      getReferencedColumn: (t) => t.collectionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.collectionItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$CollectionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CollectionsTable> {
+  $$CollectionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get overview => $composableBuilder(
+    column: $table.overview,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get posterPath => $composableBuilder(
+    column: $table.posterPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CollectionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CollectionsTable> {
+  $$CollectionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get overview =>
+      $composableBuilder(column: $table.overview, builder: (column) => column);
+
+  GeneratedColumn<String> get posterPath => $composableBuilder(
+    column: $table.posterPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> collectionItemsRefs<T extends Object>(
+    Expression<T> Function($$CollectionItemsTableAnnotationComposer a) f,
+  ) {
+    final $$CollectionItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.collectionItems,
+      getReferencedColumn: (t) => t.collectionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.collectionItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$CollectionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CollectionsTable,
+          Collection,
+          $$CollectionsTableFilterComposer,
+          $$CollectionsTableOrderingComposer,
+          $$CollectionsTableAnnotationComposer,
+          $$CollectionsTableCreateCompanionBuilder,
+          $$CollectionsTableUpdateCompanionBuilder,
+          (Collection, $$CollectionsTableReferences),
+          Collection,
+          PrefetchHooks Function({bool collectionItemsRefs})
+        > {
+  $$CollectionsTableTableManager(_$AppDatabase db, $CollectionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CollectionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CollectionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CollectionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> overview = const Value.absent(),
+                Value<String?> posterPath = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CollectionsCompanion(
+                id: id,
+                name: name,
+                overview: overview,
+                posterPath: posterPath,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<String?> overview = const Value.absent(),
+                Value<String?> posterPath = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CollectionsCompanion.insert(
+                id: id,
+                name: name,
+                overview: overview,
+                posterPath: posterPath,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$CollectionsTable, Collection>(table),
+                  $$CollectionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({collectionItemsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (collectionItemsRefs) db.collectionItems,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (collectionItemsRefs)
+                    await $_getPrefetchedData<
+                      Collection,
+                      $CollectionsTable,
+                      CollectionItem
+                    >(
+                      currentTable: table,
+                      referencedTable: $$CollectionsTableReferences
+                          ._collectionItemsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$CollectionsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).collectionItemsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.collectionId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CollectionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CollectionsTable,
+      Collection,
+      $$CollectionsTableFilterComposer,
+      $$CollectionsTableOrderingComposer,
+      $$CollectionsTableAnnotationComposer,
+      $$CollectionsTableCreateCompanionBuilder,
+      $$CollectionsTableUpdateCompanionBuilder,
+      (Collection, $$CollectionsTableReferences),
+      Collection,
+      PrefetchHooks Function({bool collectionItemsRefs})
+    >;
+typedef $$CollectionItemsTableCreateCompanionBuilder =
+    CollectionItemsCompanion Function({
+      required String id,
+      required String collectionId,
+      Value<String?> movieId,
+      Value<String?> tvShowId,
+      Value<int> displayOrder,
+      required DateTime addedAt,
+      Value<int> rowid,
+    });
+typedef $$CollectionItemsTableUpdateCompanionBuilder =
+    CollectionItemsCompanion Function({
+      Value<String> id,
+      Value<String> collectionId,
+      Value<String?> movieId,
+      Value<String?> tvShowId,
+      Value<int> displayOrder,
+      Value<DateTime> addedAt,
+      Value<int> rowid,
+    });
+
+final class $$CollectionItemsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $CollectionItemsTable, CollectionItem> {
+  $$CollectionItemsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $CollectionsTable _collectionIdTable(_$AppDatabase db) => db
+      .collections
+      .createAlias('collection_items__collection_id__collections__id');
+
+  $$CollectionsTableProcessedTableManager get collectionId {
+    final $_column = $_itemColumn<String>('collection_id')!;
+
+    final manager = $$CollectionsTableTableManager(
+      $_db,
+      $_db.collections,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_collectionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $MoviesTable _movieIdTable(_$AppDatabase db) =>
+      db.movies.createAlias('collection_items__movie_id__movies__id');
+
+  $$MoviesTableProcessedTableManager? get movieId {
+    final $_column = $_itemColumn<String>('movie_id');
+    if ($_column == null) return null;
+    final manager = $$MoviesTableTableManager(
+      $_db,
+      $_db.movies,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_movieIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TvShowsTable _tvShowIdTable(_$AppDatabase db) =>
+      db.tvShows.createAlias('collection_items__tv_show_id__tv_shows__id');
+
+  $$TvShowsTableProcessedTableManager? get tvShowId {
+    final $_column = $_itemColumn<String>('tv_show_id');
+    if ($_column == null) return null;
+    final manager = $$TvShowsTableTableManager(
+      $_db,
+      $_db.tvShows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tvShowIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$CollectionItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $CollectionItemsTable> {
+  $$CollectionItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get displayOrder => $composableBuilder(
+    column: $table.displayOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CollectionsTableFilterComposer get collectionId {
+    final $$CollectionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.collectionId,
+      referencedTable: $db.collections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionsTableFilterComposer(
+            $db: $db,
+            $table: $db.collections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$MoviesTableFilterComposer get movieId {
+    final $$MoviesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.movieId,
+      referencedTable: $db.movies,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MoviesTableFilterComposer(
+            $db: $db,
+            $table: $db.movies,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TvShowsTableFilterComposer get tvShowId {
+    final $$TvShowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tvShowId,
+      referencedTable: $db.tvShows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TvShowsTableFilterComposer(
+            $db: $db,
+            $table: $db.tvShows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CollectionItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CollectionItemsTable> {
+  $$CollectionItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get displayOrder => $composableBuilder(
+    column: $table.displayOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CollectionsTableOrderingComposer get collectionId {
+    final $$CollectionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.collectionId,
+      referencedTable: $db.collections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.collections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$MoviesTableOrderingComposer get movieId {
+    final $$MoviesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.movieId,
+      referencedTable: $db.movies,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MoviesTableOrderingComposer(
+            $db: $db,
+            $table: $db.movies,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TvShowsTableOrderingComposer get tvShowId {
+    final $$TvShowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tvShowId,
+      referencedTable: $db.tvShows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TvShowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.tvShows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CollectionItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CollectionItemsTable> {
+  $$CollectionItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get displayOrder => $composableBuilder(
+    column: $table.displayOrder,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get addedAt =>
+      $composableBuilder(column: $table.addedAt, builder: (column) => column);
+
+  $$CollectionsTableAnnotationComposer get collectionId {
+    final $$CollectionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.collectionId,
+      referencedTable: $db.collections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.collections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$MoviesTableAnnotationComposer get movieId {
+    final $$MoviesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.movieId,
+      referencedTable: $db.movies,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MoviesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.movies,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TvShowsTableAnnotationComposer get tvShowId {
+    final $$TvShowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tvShowId,
+      referencedTable: $db.tvShows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TvShowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tvShows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CollectionItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CollectionItemsTable,
+          CollectionItem,
+          $$CollectionItemsTableFilterComposer,
+          $$CollectionItemsTableOrderingComposer,
+          $$CollectionItemsTableAnnotationComposer,
+          $$CollectionItemsTableCreateCompanionBuilder,
+          $$CollectionItemsTableUpdateCompanionBuilder,
+          (CollectionItem, $$CollectionItemsTableReferences),
+          CollectionItem,
+          PrefetchHooks Function({
+            bool collectionId,
+            bool movieId,
+            bool tvShowId,
+          })
+        > {
+  $$CollectionItemsTableTableManager(
+    _$AppDatabase db,
+    $CollectionItemsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CollectionItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CollectionItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CollectionItemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> collectionId = const Value.absent(),
+                Value<String?> movieId = const Value.absent(),
+                Value<String?> tvShowId = const Value.absent(),
+                Value<int> displayOrder = const Value.absent(),
+                Value<DateTime> addedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CollectionItemsCompanion(
+                id: id,
+                collectionId: collectionId,
+                movieId: movieId,
+                tvShowId: tvShowId,
+                displayOrder: displayOrder,
+                addedAt: addedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String collectionId,
+                Value<String?> movieId = const Value.absent(),
+                Value<String?> tvShowId = const Value.absent(),
+                Value<int> displayOrder = const Value.absent(),
+                required DateTime addedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CollectionItemsCompanion.insert(
+                id: id,
+                collectionId: collectionId,
+                movieId: movieId,
+                tvShowId: tvShowId,
+                displayOrder: displayOrder,
+                addedAt: addedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$CollectionItemsTable, CollectionItem>(table),
+                  $$CollectionItemsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({collectionId = false, movieId = false, tvShowId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (collectionId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.collectionId,
+                            referencedTable: $$CollectionItemsTableReferences
+                                ._collectionIdTable(db),
+                            referencedColumn: $$CollectionItemsTableReferences
+                                ._collectionIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+                        if (movieId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.movieId,
+                            referencedTable: $$CollectionItemsTableReferences
+                                ._movieIdTable(db),
+                            referencedColumn: $$CollectionItemsTableReferences
+                                ._movieIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+                        if (tvShowId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.tvShowId,
+                            referencedTable: $$CollectionItemsTableReferences
+                                ._tvShowIdTable(db),
+                            referencedColumn: $$CollectionItemsTableReferences
+                                ._tvShowIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$CollectionItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CollectionItemsTable,
+      CollectionItem,
+      $$CollectionItemsTableFilterComposer,
+      $$CollectionItemsTableOrderingComposer,
+      $$CollectionItemsTableAnnotationComposer,
+      $$CollectionItemsTableCreateCompanionBuilder,
+      $$CollectionItemsTableUpdateCompanionBuilder,
+      (CollectionItem, $$CollectionItemsTableReferences),
+      CollectionItem,
+      PrefetchHooks Function({bool collectionId, bool movieId, bool tvShowId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9068,4 +11564,8 @@ class $AppDatabaseManager {
       $$MediaSourcesTableTableManager(_db, _db.mediaSources);
   $$TransferJobsTableTableManager get transferJobs =>
       $$TransferJobsTableTableManager(_db, _db.transferJobs);
+  $$CollectionsTableTableManager get collections =>
+      $$CollectionsTableTableManager(_db, _db.collections);
+  $$CollectionItemsTableTableManager get collectionItems =>
+      $$CollectionItemsTableTableManager(_db, _db.collectionItems);
 }

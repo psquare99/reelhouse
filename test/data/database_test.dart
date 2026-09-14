@@ -182,5 +182,133 @@ void main() {
       expect(job.bytesTransferred, BigInt.from(3400000000));
       expect(job.destinationStorageId, 'local-device');
     });
+
+    test(
+      'updates and queries user state (favorite, watchlist, watch state)',
+      () async {
+        final now = DateTime.now();
+        await db
+            .into(db.movies)
+            .insert(
+              MoviesCompanion.insert(
+                id: 'm-avatar',
+                title: 'Avatar',
+                year: const drift.Value(2009),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+
+        // Default state
+        var movie = await db.findMovieById('m-avatar');
+        expect(movie!.isFavorite, false);
+        expect(movie.isWatchlist, false);
+        expect(movie.watchState, 'UNWATCHED');
+
+        // Update favorite & watchlist
+        await db.toggleMovieFavorite('m-avatar', true);
+        await db.toggleMovieWatchlist('m-avatar', true);
+        await db.setMovieWatchState(
+          'm-avatar',
+          'IN_PROGRESS',
+          positionSeconds: 1200,
+        );
+
+        movie = await db.findMovieById('m-avatar');
+        expect(movie!.isFavorite, true);
+        expect(movie.isWatchlist, true);
+        expect(movie.watchState, 'IN_PROGRESS');
+        expect(movie.playbackPositionSeconds, 1200);
+
+        final inProgress = await db.watchContinueWatchingMovies().first;
+        expect(inProgress.length, 1);
+        expect(inProgress.first.id, 'm-avatar');
+      },
+    );
+
+    test('manages curated collections and items', () async {
+      final now = DateTime.now();
+      await db.createCollection(
+        CollectionsCompanion.insert(
+          id: 'col-scifi',
+          name: 'Sci-Fi Classics',
+          overview: const drift.Value('Best sci-fi films of all time'),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final collections = await db.getAllCollections();
+      expect(collections.length, 1);
+      expect(collections.first.name, 'Sci-Fi Classics');
+
+      // Add movie reference
+      await db.addItemToCollection(
+        CollectionItemsCompanion.insert(
+          id: 'item-1',
+          collectionId: 'col-scifi',
+          movieId: const drift.Value('m-avatar'),
+          addedAt: now,
+        ),
+      );
+
+      var items = await db.getItemsForCollection('col-scifi');
+      expect(items.length, 1);
+      expect(items.first.movieId, 'm-avatar');
+
+      // Remove item
+      await db.removeItemFromCollection('col-scifi', movieId: 'm-avatar');
+      items = await db.getItemsForCollection('col-scifi');
+      expect(items.isEmpty, true);
+
+      // Delete collection
+      await db.deleteCollection('col-scifi');
+      final remaining = await db.getAllCollections();
+      expect(remaining.isEmpty, true);
+    });
+
+    test('searches local library across movies and tv shows', () async {
+      final now = DateTime.now();
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-matrix',
+              title: 'The Matrix',
+              overview: const drift.Value(
+                'A computer hacker learns about the true nature of reality.',
+              ),
+              year: const drift.Value(1999),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-dark',
+              title: 'Dark',
+              overview: const drift.Value(
+                'A family saga with a supernatural twist.',
+              ),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      final movieResults = await db.searchMovies('matrix');
+      expect(movieResults.length, 1);
+      expect(movieResults.first.title, 'The Matrix');
+
+      final showResults = await db.searchTvShows('dark');
+      expect(showResults.length, 1);
+      expect(showResults.first.title, 'Dark');
+
+      final overviewSearch = await db.searchMovies('hacker');
+      expect(overviewSearch.length, 1);
+      expect(overviewSearch.first.id, 'm-matrix');
+    });
   });
 }

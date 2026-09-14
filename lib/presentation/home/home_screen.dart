@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
+import '../movies/movie_detail_screen.dart';
+import '../widgets/cinema_poster_card.dart';
 
+/// Cinematic Home screen displaying dynamic, state-aware cinema sections
+/// (Continue Watching, Recently Added, Favorites, Watchlist) and catalogue gateways.
 class HomeScreen extends StatelessWidget {
   final AppDatabase database;
   final VoidCallback onNavigateToMovies;
@@ -67,9 +71,9 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
 
-              // Storage and Availability Status Banner
+              // Storage & Cinema Status Banner
               StreamBuilder<List<Storage>>(
                 stream: database.watchAllStorages(),
                 builder: (context, snapshot) {
@@ -174,18 +178,221 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
 
-              // Quick Access Tiles
-              Text(
-                'Explore Catalogue',
-                style: const TextStyle(
-                  color: CinemaColors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(height: 16),
+              // 1. CONTINUE WATCHING (Only when relevant)
+              StreamBuilder<List<Movie>>(
+                stream: database.watchContinueWatchingMovies(),
+                builder: (context, snapshot) {
+                  final inProgressMovies = snapshot.data ?? [];
+                  if (inProgressMovies.isEmpty) return const SizedBox.shrink();
 
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _SectionHeader(
+                        title: 'CONTINUE WATCHING',
+                        subtitle: 'Resume playback where you left off',
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 240,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: inProgressMovies.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 14),
+                          itemBuilder: (context, index) {
+                            final movie = inProgressMovies[index];
+                            return SizedBox(
+                              width: 150,
+                              child: CinemaPosterCard(
+                                title: movie.title,
+                                year: movie.year,
+                                posterPath: movie.posterPath,
+                                isFavorite: movie.isFavorite,
+                                watchState: movie.watchState,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => MovieDetailScreen(
+                                        movieId: movie.id,
+                                        database: database,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                  );
+                },
+              ),
+
+              // 2. FAVORITES (Only if user has favorites)
+              StreamBuilder<List<Movie>>(
+                stream: database.watchFavoriteMovies(),
+                builder: (context, snapshot) {
+                  final favorites = snapshot.data ?? [];
+                  if (favorites.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _SectionHeader(
+                        title: 'FAVORITES',
+                        subtitle: 'Your personal cinema highlights',
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 240,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: favorites.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 14),
+                          itemBuilder: (context, index) {
+                            final movie = favorites[index];
+                            return SizedBox(
+                              width: 150,
+                              child: CinemaPosterCard(
+                                title: movie.title,
+                                year: movie.year,
+                                posterPath: movie.posterPath,
+                                isFavorite: true,
+                                watchState: movie.watchState,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => MovieDetailScreen(
+                                        movieId: movie.id,
+                                        database: database,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                  );
+                },
+              ),
+
+              // 3. WATCHLIST (Only if user has watchlist items)
+              StreamBuilder<List<Movie>>(
+                stream: database.watchWatchlistMovies(),
+                builder: (context, snapshot) {
+                  final watchlist = snapshot.data ?? [];
+                  if (watchlist.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _SectionHeader(
+                        title: 'WATCHLIST',
+                        subtitle: 'Titles saved for your next screening',
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 240,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: watchlist.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 14),
+                          itemBuilder: (context, index) {
+                            final movie = watchlist[index];
+                            return SizedBox(
+                              width: 150,
+                              child: CinemaPosterCard(
+                                title: movie.title,
+                                year: movie.year,
+                                posterPath: movie.posterPath,
+                                isFavorite: movie.isFavorite,
+                                watchState: movie.watchState,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => MovieDetailScreen(
+                                        movieId: movie.id,
+                                        database: database,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                  );
+                },
+              ),
+
+              // 4. RECENTLY ADDED
+              StreamBuilder<List<Movie>>(
+                stream: database.watchRecentlyAddedMovies(limit: 10),
+                builder: (context, snapshot) {
+                  final recent = snapshot.data ?? [];
+                  if (recent.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _SectionHeader(
+                        title: 'RECENTLY ADDED',
+                        subtitle:
+                            'Latest acquisitions discovered across your disks',
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 240,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: recent.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 14),
+                          itemBuilder: (context, index) {
+                            final movie = recent[index];
+                            return SizedBox(
+                              width: 150,
+                              child: CinemaPosterCard(
+                                title: movie.title,
+                                year: movie.year,
+                                posterPath: movie.posterPath,
+                                isFavorite: movie.isFavorite,
+                                watchState: movie.watchState,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => MovieDetailScreen(
+                                        movieId: movie.id,
+                                        database: database,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                  );
+                },
+              ),
+
+              // 5. EXPLORE CATALOGUE TILES (Movies & TV Shows)
+              const _SectionHeader(
+                title: 'Explore Catalogue',
+                subtitle: 'Browse your personal cinema by category',
+              ),
+              const SizedBox(height: 14),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final isWide = constraints.maxWidth >= 600;
@@ -216,10 +423,10 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 36),
 
-              // Empty Library Welcome
+              // Cinema Principle Footer
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(28),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: CinemaColors.card,
                   borderRadius: BorderRadius.circular(12),
@@ -229,35 +436,69 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     const Icon(
                       Icons.theaters_outlined,
-                      size: 48,
+                      size: 40,
                       color: CinemaColors.amber,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     const Text(
-                      'Your personal cinema is ready.',
+                      'Your personal cinema is permanent.',
                       style: TextStyle(
                         color: CinemaColors.textPrimary,
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     const Text(
-                      'The library is permanent; disks are sources.\nDisconnecting a drive never erases your cinema.',
+                      'Disks are sources. Disconnecting a drive never erases your library.\nCopies on this device remain ready to watch offline.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: CinemaColors.textSecondary,
-                        fontSize: 14,
+                        fontSize: 13,
                         height: 1.5,
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _SectionHeader({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: CinemaColors.amber,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 2.0,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            color: CinemaColors.textSecondary,
+            fontSize: 13,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -283,9 +524,9 @@ class _CatalogueEntryCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: CinemaColors.surface,
+          color: CinemaColors.card,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: CinemaColors.borderSubtle),
         ),
@@ -295,49 +536,48 @@ class _CatalogueEntryCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, color: CinemaColors.amber, size: 28),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: CinemaColors.amberSubtle,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: CinemaColors.amber, size: 24),
+                ),
                 StreamBuilder<int>(
                   stream: streamCount,
                   builder: (context, snapshot) {
                     final count = snapshot.data ?? 0;
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: CinemaColors.amberSubtle,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '$count Titles',
-                        style: const TextStyle(
-                          color: CinemaColors.amber,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
+                    return Text(
+                      '$count',
+                      style: const TextStyle(
+                        color: CinemaColors.amber,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
                       ),
                     );
                   },
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             Text(
               title,
               style: const TextStyle(
                 color: CinemaColors.textPrimary,
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: CinemaColors.textMuted,
+                color: CinemaColors.textSecondary,
                 fontSize: 13,
-                height: 1.3,
               ),
             ),
           ],

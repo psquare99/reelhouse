@@ -71,7 +71,7 @@ class _CinemaShellState extends State<CinemaShell> {
       ),
       MoviesScreen(database: widget.database),
       TvShowsScreen(database: widget.database),
-      const CollectionsScreen(),
+      CollectionsScreen(database: widget.database),
       SearchScreen(database: widget.database),
       SettingsScreen(
         database: widget.database,

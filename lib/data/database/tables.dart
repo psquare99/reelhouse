@@ -36,6 +36,14 @@ class Movies extends Table {
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
+  BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
+  BoolColumn get isWatchlist => boolean().withDefault(const Constant(false))();
+  TextColumn get watchState => text().withDefault(
+    const Constant('UNWATCHED'),
+  )(); // UNWATCHED, IN_PROGRESS, WATCHED
+  IntColumn get playbackPositionSeconds =>
+      integer().withDefault(const Constant(0))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -53,6 +61,8 @@ class TvShows extends Table {
   RealColumn get rating => real().nullable()();
   IntColumn get tmdbId => integer().nullable()();
   TextColumn get imdbId => text().nullable()();
+  BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
+  BoolColumn get isWatchlist => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -87,6 +97,37 @@ class Episodes extends Table {
   TextColumn get stillPath => text().nullable()();
   RealColumn get rating => real().nullable()();
   IntColumn get tmdbId => integer().nullable()();
+  TextColumn get watchState => text().withDefault(
+    const Constant('UNWATCHED'),
+  )(); // UNWATCHED, IN_PROGRESS, WATCHED
+  IntColumn get playbackPositionSeconds =>
+      integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Curated collections grouping related films, franchises, or custom lists.
+class Collections extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get overview => text().nullable()();
+  TextColumn get posterPath => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Association between collections and logical media items.
+class CollectionItems extends Table {
+  TextColumn get id => text()();
+  TextColumn get collectionId => text().references(Collections, #id)();
+  TextColumn get movieId => text().nullable().references(Movies, #id)();
+  TextColumn get tvShowId => text().nullable().references(TvShows, #id)();
+  IntColumn get displayOrder => integer().withDefault(const Constant(0))();
+  DateTimeColumn get addedAt => dateTime()();
 
   @override
   Set<Column> get primaryKey => {id};
