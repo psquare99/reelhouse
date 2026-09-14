@@ -213,7 +213,7 @@ Do NOT implement:
 - Media streaming server
 - Remote streaming
 - Torrent functionality
-- Download manager
+- General-purpose download manager (cloud downloads, torrents, URL downloads, remote transfers; REELHOUSE only supports direct local copy from connected removable media to device storage)
 - Subtitle downloading ecosystem
 - Media conversion
 - Complex parental-control system
@@ -240,13 +240,32 @@ Each platform maintains its own local database.
 
 ```text
                     REELHOUSE
+                        │
+                  Logical Library
+                        │
+            ┌───────────┴───────────┐
+            │                       │
+       Media Entity              Metadata
+            │
+     Physical Sources
+            │
+    ┌───────┴───────────────┐
+    │                       │
+Removable Storage     Device Storage
+    │                       │
+  HDD 1               Android Tablet
+  HDD 2               Desktop PC
+```
 
+The logical library survives independently of physical storage availability.
+
+```text
         ┌───────────────────────────────┐
         │         Desktop App           │
         │                               │
         │  Local DB + Metadata + State  │
         │              │                │
-        │         Local disks            │
+        │  Local Disks + Device Storage │
         └───────────────────────────────┘
 
 
@@ -255,7 +274,7 @@ Each platform maintains its own local database.
         │                               │
         │  Local DB + Metadata + State  │
         │              │                │
-        │        Android storage        │
+        │  OTG Disks + App Local Storage│
         └───────────────────────────────┘
 
 
@@ -422,19 +441,37 @@ Episode
 - tmdbId
 ```
 
-## Media File
+## Media Source
 
-A media file represents a specific physical copy of a movie or episode.
+Do not model an offline copy as merely a boolean such as `isDownloaded = true`. Instead, model it as a full-fledged physical media source/copy.
+
+A logical media entity (Movie or TV Episode) can have multiple physical sources:
 
 ```text
-MediaFile
+Media Entity
+│
+├── Media Source A (Removable Storage)
+│      └── Movies HDD (D:\Movies\Interstellar.mkv)
+│
+└── Media Source B (Device Local Storage)
+       └── App Local Storage (offline_media\interstellar.mkv)
+```
+
+Schema:
+
+```text
+MediaSource
 - id
 - movieId OR episodeId
 - storageId
+- sourceType (removableStorage | localDevice)
 - relativePath
 - filename
 - extension
 - fileSize
+- transferStatus (NOT_DOWNLOADED | QUEUED | DOWNLOADING | PAUSED | COMPLETED | FAILED | CANCELLED)
+- transferredBytes
+- downloadedAt
 - duration
 - videoCodec
 - audioCodec
@@ -442,13 +479,12 @@ MediaFile
 - audioChannels
 - subtitleInformation
 - fingerprint
-- copyType (ORIGINAL | DEVICE_LOCAL)
 - firstSeenAt
 - lastSeenAt
 - available
 ```
 
-A logical Movie or Episode can therefore have multiple physical MediaFiles simultaneously (e.g. one on an external HDD and another as a device-local offline copy).
+A removable-storage source references a registered external storage location (e.g. HDD, SD card, OTG drive). A local-device source references the application's managed local media storage directory. Do not hardcode the assumption that every media source belongs to an external HDD.
 
 ---
 
@@ -467,7 +503,7 @@ Storage
 - available
 ```
 
-Each device automatically maintains a built-in `DEVICE_LOCAL_STORAGE` entry pointing to REELHOUSE's secure local app storage. Removable disks (such as external USB hard drives or SD cards) are tracked with their native platform filesystem identifiers.
+Each device automatically maintains a built-in `DEVICE_LOCAL_STORAGE` entry pointing to REELHOUSE's application-managed local media directory. Removable disks (such as external USB hard drives or SD cards) are tracked with their native platform filesystem identifiers.
 
 Example:
 
@@ -484,27 +520,16 @@ Storage (Device Local):
     name: This Device
     storageType: DEVICE_LOCAL_STORAGE
     filesystemIdentifier: internal-app-storage
-    rootPath: C:\Users\...\AppData\Local\reelhouse\offline_media
-```
+    rootPath: C:\Users\...\AppData\Local\reelhouse\offline_media (or Android getExternalFilesDir)
 ```
 
-The filesystem identifier should be used where the platform provides a stable identifier.
+The filesystem identifier should be used where the platform provides a stable identifier (Volume Serial Number or GUID on Windows; Volume UUID on Android).
 
 Do not rely solely on drive letters.
 
-For example:
-
-```text
-D:
-```
-
-can change.
-
-The physical storage identity should remain recognizable when possible.
-
 ---
 
-# 9. Storage Availability
+# 9. Availability Must Become Source-Aware
 
 A storage device has one of two primary states:
 
@@ -513,21 +538,62 @@ AVAILABLE
 UNAVAILABLE
 ```
 
-A MediaFile inherits availability from the storage on which it resides, unless a more specific filesystem check establishes otherwise.
+However, **a logical media item must never be marked unavailable merely because its original HDD is disconnected if a device-local offline copy exists.**
 
-When a disk is disconnected:
+Availability is resolved dynamically from the item's underlying physical media sources:
 
 ```text
-Movie
-  ↓
-MediaFile
-  ↓
-Storage unavailable
-  ↓
-Movie remains in library
+AVAILABLE LOCALLY
+AVAILABLE ON REMOVABLE STORAGE
+AVAILABLE ON MULTIPLE SOURCES
+UNAVAILABLE
 ```
 
-The movie is **not deleted**.
+State resolution logic:
+
+```text
+Logical Movie
+     │
+     ├── MediaSource (Local Device)       ── Available? ── YES ──▶ PLAY OFFLINE
+     │
+     └── MediaSource (Removable Storage) ── Available? ── YES ──▶ PLAY
+                                                      ── NO  ──▶ CONNECT DISK
+```
+
+Example state resolution:
+
+```text
+Before disconnect:
+
+Game of Thrones
+HDD ✓
+Local Copy ✓
+
+After disconnect:
+
+Game of Thrones
+HDD ○
+Local Copy ✓
+
+Action:
+PLAY OFFLINE
+```
+
+Playback source resolution priority:
+
+1. **Device-local copy**: If a local offline copy exists, prefer it.
+2. **Connected original media**: If no local copy exists but the original storage is connected, use the original media.
+3. **Neither available**: Show **CONNECT DISK**. Do not show a misleading Play button.
+
+The application must never confuse:
+
+> **Original storage unavailable**
+
+with:
+
+> **Media unavailable.**
+
+Disconnecting a drive merely transitions that specific physical source to unavailable; the logical media item remains intact, visible, and playable if an offline copy exists on the device.
 
 ---
 
@@ -788,48 +854,78 @@ Information belongs on the detail page.
 
 ---
 
-# 18. Availability-Aware Cards
+# 18. Availability-Aware Cards & Revised State-Aware UI
 
-This is a defining feature of REELHOUSE.
+This is a defining feature of REELHOUSE. The UI resolves state directly from its physical media sources:
 
-### Available (Removable Storage Connected)
+The UI state rules are now:
 
+### 1. Original Available
 ```text
 [Poster]
 
 Interstellar
 2014
 
-▶ Play
+▶ PLAY
 ```
 
-### Available (Device-Local Offline Copy Present)
-
+### 2. Original Unavailable + Local Copy Available
 ```text
 [Poster]
 
 Interstellar
 2014
 
-▶ Play (On Device)
+▶ PLAY OFFLINE
 ```
 
 Even when external hard drives are completely disconnected, media with a local offline copy remains playable!
 
-### Unavailable (Storage Disconnected, No Local Copy)
-
+### 3. Original Available + Local Copy Absent
 ```text
 [Poster]
 
 Interstellar
 2014
 
-Connect Movies HDD
+▶ PLAY
+[ ⬇ DOWNLOAD TO DEVICE ]
 ```
 
-Do not show a misleading Play button when the physical media cannot currently be opened.
+### 4. Original Unavailable + Local Copy Absent
+```text
+[Poster]
 
-The unavailable state should be subtle and visually clear.
+Interstellar
+2014
+
+CONNECT DISK
+```
+
+Do not show a misleading Play button when the physical media cannot currently be opened. The unavailable state should be subtle and visually clear.
+
+### 5. Download in Progress
+```text
+[Poster]
+
+Interstellar
+2014
+
+DOWNLOADING 43%
+```
+
+### 6. Download Completed
+```text
+[Poster]
+
+Interstellar
+2014
+
+✓ AVAILABLE OFFLINE
+```
+
+These states should be visually distinct but restrained. Do not clutter media cards with every possible state.
 
 ---
 
@@ -914,7 +1010,7 @@ Seasons
    ↓
 Episodes
    ↓
-Media files
+Physical Media Sources (MediaSource)
 ```
 
 Show page:
@@ -1068,41 +1164,160 @@ Collections are **curated**, not automatically generated recommendation feeds.
 
 REELHOUSE v1.0 must allow the user to copy selected media from removable storage to the local storage of the current device.
 
-### Primary Use Case
+### 25.1 Primary Use Case & Philosophy
 
-> The user wants to watch media without keeping an external HDD connected because keeping the drive connected is inconvenient, unwieldy (e.g. laptop in bed, travel), or power-inefficient.
+> The user wants to watch media without keeping an external HDD connected because keeping the drive connected is inconvenient, unwieldy (e.g. tablet or laptop in bed, travel, commute), or power-inefficient.
 
-### Scope of Download Actions
+**Offline copy is a physical media source.** It must never be modeled merely as a boolean flag (such as `isDownloaded = true`). It is a full physical `MediaSource` record pointing to application-managed local storage.
 
-- **Movies**: Single-click `[ ⬇ DOWNLOAD TO DEVICE ]` on the Movie Detail page.
-- **TV Shows**: 
-  - Entire show batch transfer: `[ ⬇ DOWNLOAD TO DEVICE ]`
-  - Season batch transfer: `[ ⬇ DOWNLOAD SEASON ]`
-  - Individual episode transfer on the Episode item.
+### 25.2 Android & Tablet Priority
 
-### Copying Engine & Architecture
+This feature is designed to work exceptionally well for **Android devices and tablets**.
 
-1. **Background File Copy**:
-   - File transfer occurs via a dedicated background task using streaming file I/O (`openRead` -> `openWrite`) with chunked progress reporting.
-   - UI displays clear progress percentage, transfer speed, and estimated time remaining.
-2. **Storage Allocation**:
-   - Files are stored in REELHOUSE's dedicated app data directory (`DEVICE_LOCAL_STORAGE`).
-   - File integrity is verified post-copy using file size and quick fingerprinting.
-3. **Database Representation**:
-   - When copying completes, a new `MediaFile` record is created with:
-     - `copyType: DEVICE_LOCAL`
-     - `storageId: local-internal`
-     - `relativePath: offline_media/<media-id>.<ext>`
-     - `available: true`
-   - The original `MediaFile` record on the external HDD remains completely untouched with `copyType: ORIGINAL`.
-4. **Playback Resolution Hierarchy**:
-   When the user taps `PLAY`:
-   1. **Device-Local Copy (Priority 1)**: If a `DEVICE_LOCAL` copy exists and is physically present on disk, launch playback from this local copy. No external drive is needed.
-   2. **Connected Removable Source (Priority 2)**: If no local copy exists but the original external disk is connected, launch playback from the external disk.
-   3. **Disconnected Drive (Fallback)**: If no local copy exists and the external drive is disconnected, display the state-aware `[ CONNECT DISK ]` prompt.
-5. **Space Management & Deletion**:
-   - Users can delete a local offline copy at any time from the Movie/Episode Detail page or via **Settings → Local Device Storage**.
-   - Deleting a device-local copy **never** deletes the original copy from the external drive and **never** deletes the logical movie/show record or its metadata and watch state from the cinema database.
+The core intended workflow is:
+
+```text
+Connect HDD / USB OTG to Android tablet
+       ↓
+Open REELHOUSE
+       ↓
+Browse existing catalogue
+       ↓
+Select Game of Thrones
+       ↓
+Select Season / Episodes
+       ↓
+Download to Device
+       ↓
+Wait for transfer
+       ↓
+Disconnect HDD
+       ↓
+Watch offline
+```
+
+The Android implementation must handle Android storage permissions (SAF / Storage Access Framework for OTG drives) and write directly to application-managed internal/external storage (`getExternalFilesDir`).
+
+### 25.3 Desktop & Web Behavior
+
+- **Desktop**: Desktop also supports offline copies from external HDDs to internal SSD/HDD storage following the identical model.
+- **Web**: The web client may display offline-copy information where local library data supports it. The web app must **not** compromise the local-first architecture to force feature parity or create a streaming server merely to support downloads.
+
+### 25.4 Download Scope & Pre-Transfer Storage Inspection
+
+Users can initiate downloads from the Movie Detail or TV Show/Season/Episode views:
+
+- **Movies**: Single-click `[ ⬇ DOWNLOAD TO DEVICE ]`.
+- **TV Shows**: Support flexible granularity:
+  - Entire show: `[ ⬇ DOWNLOAD TO DEVICE ]`
+  - Individual season: `[ ⬇ DOWNLOAD SEASON ]`
+  - Individual episodes: Per-episode download icon.
+
+The maximum download size is **not artificially restricted** by REELHOUSE.
+
+Before beginning a transfer, the UI must inspect available device disk space and present clear context:
+
+```text
+Season 3
+10 episodes
+42.8 GB
+Available device storage
+68.4 GB
+[ DOWNLOAD ]
+```
+
+If available device storage is insufficient for the requested transfer, display a clear warning preventing the operation.
+
+### 25.5 Explicit Transfer States
+
+A media transfer must transition through explicit lifecycle states:
+
+```text
+NOT_DOWNLOADED
+QUEUED
+DOWNLOADING
+PAUSED
+COMPLETED
+FAILED
+CANCELLED
+```
+
+The transfer UI must clearly communicate live progress, transfer speed, and allow controls:
+
+```text
+Game of Thrones — Season 3
+Downloading...
+18.4 GB / 42.8 GB
+43%
+[ PAUSE ] [ CANCEL ]
+```
+
+After completion:
+
+```text
+✓ Available Offline
+```
+
+### 25.6 Data Integrity
+
+Offline copying must verify that the resulting local file is valid before presenting it as playable:
+
+- Verify expected byte size against original file size upon completion.
+- Detect incomplete or interrupted transfers and mark them `FAILED` or `PAUSED`.
+- Never present an incomplete file as playable in the cinema catalogue.
+- Use a lightweight file fingerprint (file size + file header/sample check) to verify physical media integrity without running expensive full-file cryptographic hashes on multi-gigabyte files.
+
+### 25.7 Local Copy Management & Space Reclamation
+
+Users must be able to view and manage all device-local copies from a dedicated interface:
+
+```text
+Settings
+  → Storage
+  → This Device
+Offline Media
+Game of Thrones — Season 3 · 42.8 GB · [ DELETE ]
+Interstellar · 14.2 GB · [ DELETE ]
+Total Offline Media: 57.0 GB / 68.4 GB Free
+```
+
+- Users can delete a local offline copy at any time from this settings view or directly on the media item's detail screen.
+- **Deleting a local copy must never delete the original file on the HDD.**
+- **Deleting a local copy must never delete the logical media item or its metadata and watch state from REELHOUSE.**
+- Once the local copy is removed, the media item's availability smoothly returns to reflecting its external storage state (`PLAY` if drive is connected; `CONNECT DISK` if disconnected).
+
+### 25.8 Application-Managed Local Storage
+
+REELHOUSE uses an application-managed directory for offline copies where appropriate for the platform (e.g. `getExternalFilesDir` on Android, local application support directory on Desktop).
+
+Do not require the user to manually manage the copied files.
+
+The application must maintain full ownership and knowledge of:
+- What was downloaded
+- Where it is stored
+- How large it is
+- Which logical media item (Movie or Episode) it belongs to
+- Whether the local copy is intact
+- When it was downloaded (`downloadedAt`)
+
+The user should always be able to inspect and remove any copy from inside REELHOUSE.
+
+### 25.9 Scope Discipline
+
+This feature must **NOT** evolve into a general-purpose download manager.
+
+Do not implement:
+- Cloud downloads
+- Torrent downloads
+- Remote downloads / URL fetching
+- Media transcoding
+- Streaming
+- Automatic compression
+- Format conversion
+
+The feature is strictly:
+
+> **Copy an existing local media file from one accessible physical source to the current device's local storage so it can be watched without the original source connected.**
 
 ---
 
@@ -1122,21 +1337,51 @@ Examples:
 - Windows Media Player
 - Other application
 
-The preference should be configurable later.
+The preference should be configurable later in Settings.
+
+### Playback Source Resolution Priority
+
+When the user triggers Play, REELHOUSE determines the best currently available physical source:
+
+1. **Device-local copy**: If a local offline copy exists on the current device, prefer it (`PLAY OFFLINE`).
+2. **Connected original media**: If no local copy exists but the original storage is connected, use the original media (`PLAY`).
+3. **Neither available**: Display **CONNECT DISK**. Do not show a misleading Play button.
 
 ```text
-Play
- ↓
-Check media availability (Local Offline Copy -> Connected Removable Source)
- ↓
-Resolve local file
- ↓
-Launch preferred player
+Local copy available
+        ↓
+   PLAY OFFLINE
+
+
+No local copy
+        ↓
+Original HDD connected
+        ↓
+      PLAY
+
+
+No local copy
+        ↓
+Original HDD disconnected
+        ↓
+  CONNECT DISK
 ```
 
-On desktop this should use the operating system's supported application-launch mechanism.
+Handoff flow:
 
-On Android, use an appropriate Android intent to open the media with the configured/preferred compatible player.
+```text
+Play / Play Offline
+       ↓
+Resolve Best Physical Source (Local Copy > Connected Removable Source)
+       ↓
+Obtain Local File Path / Content URI
+       ↓
+Launch Preferred External Player
+```
+
+On desktop this uses the operating system's supported application-launch mechanism (detached process).
+
+On Android, use an appropriate Android intent (`ACTION_VIEW`) to open the media with the configured/preferred compatible player.
 
 The application must not attempt to implement its own video playback engine.
 
@@ -1335,6 +1580,37 @@ Restore availability
       ↓
 Process new files
 ```
+
+### 31.1 Disk Disconnect Behavior With Offline Copies
+
+The application must never confuse:
+
+> **Original storage unavailable**
+
+with:
+
+> **Media unavailable.**
+
+Example:
+
+```text
+Before disconnect:
+
+Game of Thrones
+HDD ✓
+Local Copy ✓
+
+After disconnect:
+
+Game of Thrones
+HDD ○
+Local Copy ✓
+
+Action:
+PLAY OFFLINE
+```
+
+Disconnecting the external drive renders only that specific external storage source unavailable. Because the device-local physical source remains available and intact, the logical media item remains playable offline without disruption.
 
 ---
 
@@ -1647,14 +1923,14 @@ Interstellar
    └── Local Offline Copy (This Device / 14 GB)
 ```
 
-REELHOUSE represents this as one logical movie with multiple physical `MediaFile` copies.
+REELHOUSE represents this as one logical movie with multiple physical `MediaSource` copies.
 
 ### Playback Resolution
 
-- If a **device-local offline copy** exists on the current device, REELHOUSE defaults to playing this copy, allowing full offline viewing without requiring external drives to spin up or be plugged in.
-- If only **external storage copies** exist, REELHOUSE plays from whichever connected drive is available.
-- If multiple external copies are concurrently connected, REELHOUSE defaults to the primary or highest quality copy, while offering a copy-selector in the UI.
-- If all storage sources are disconnected and no local copy exists, the UI clearly displays `[ CONNECT DISK ]`.
+When resolving which copy to play:
+- **Priority 1 (Device-Local Copy)**: If a device-local offline copy exists on the current device, REELHOUSE defaults to playing this copy (`PLAY OFFLINE`), allowing untethered offline viewing without requiring external drives to spin up or be plugged in.
+- **Priority 2 (Connected Original Media)**: If only external storage copies exist, REELHOUSE plays from whichever connected drive is available (`PLAY`). If multiple external copies are concurrently connected, REELHOUSE defaults to the primary or highest quality copy, while offering a source selector in the UI.
+- **Priority 3 (Neither Available)**: If all storage sources are disconnected and no local copy exists, the UI clearly displays `[ CONNECT DISK ]`. Do not show a misleading Play button.
 
 ---
 
@@ -1732,79 +2008,91 @@ Keep these boundaries clean without creating unnecessary abstractions.
 
 ---
 
-# 49. Recommended Implementation Phases
+# 49. Revised Milestone Plan
 
-## Phase 1 — Foundation
+### M0 — Baseline Setup
+*Status: Completed.*
+- Git repository initialized, `.gitignore`, initial `README.md`, authoritative design document.
+- Remote linked to GitHub, baseline commit created and pushed.
 
-Implement:
+### M1 — Foundation & Core Architecture
+- Flutter project setup with targets: Windows Desktop, Android, Web.
+- Cinematic design system (deep obsidian canvas, warm amber accents, typography).
+- Drift SQLite relational database with `MediaSource` model:
+  - `MediaSource` abstraction (separation between logical entities `Movie`, `TvShow`, `Episode` and physical `MediaSource` records).
+  - Removable-storage source type (`removableStorage`).
+  - Device-local source type (`localDevice`).
+  - Source-aware availability model (`AVAILABLE_LOCALLY`, `AVAILABLE_ON_REMOVABLE_STORAGE`, `AVAILABLE_ON_MULTIPLE_SOURCES`, `UNAVAILABLE`).
+  - Local offline-copy schema (`transferStatus`, `transferredBytes`, `downloadedAt`).
+- Local storage manager interface (`LocalStorageManager` for application-managed offline media directory on Android and Desktop).
+- Platform Storage Identity service:
+  - Windows: Win32 Volume Serial Number and GUID path.
+  - Android: `StorageVolume` filesystem UUID.
+  - Optional secondary marker file fallback (`.reelhouse_source`).
+- Application shell with adaptive navigation (rail on desktop, bottom bar on mobile).
+- Settings screen displaying storage locations and connection status.
+*(Note: Do not implement the complete transfer UX or transfer engine in M1; establish the required data/domain abstractions).*
 
-- Flutter project
-- navigation
-- theme
-- database
-- core models
-- repository layer
-- basic settings
+### M2 — Storage & Scanner
+- Removable-storage scanning (background isolate-based recursive media scanner for registered storage locations).
+- Storage identity resolution and persistence.
+- Incremental scanning engine (discovering new files, updating disconnected states without deleting catalogue items).
+- Physical source registration (mapping files to `MediaSource` records).
+- Availability detection (monitoring volume connect/disconnect events).
+- Filename parser (title, year, season/episode, resolution, codec).
 
-## Phase 2 — Library Scanner
+### M3 — Metadata Pipeline
+- TMDB API client with throttled request queue and exponential backoff.
+- Title/Year/TV confidence scoring algorithm.
+- Manual verification queue for ambiguous media.
+- Local persistent metadata cache & filesystem poster/backdrop caching.
 
-Implement:
+### M4 — Cinema Experience UI
+- State-aware Home screen (Continue Watching, Recently Added, Favorites).
+- Movie & TV catalogue grids with poster-first presentation.
+- Source-aware availability integration across all cards and detail views.
+- Download to Device action and UI hooks.
+- Local-copy state indicators:
+  - `▶ PLAY`
+  - `▶ PLAY OFFLINE`
+  - `[ ⬇ DOWNLOAD TO DEVICE ]`
+  - `CONNECT DISK`
+  - `DOWNLOADING 43%`
+  - `✓ AVAILABLE OFFLINE`
+- Offline availability states.
+- TV Show hierarchy (Show $\rightarrow$ Seasons $\rightarrow$ Episodes) with flexible download selection (entire show, season, or individual episode).
+- Collections & Fast Search with FTS5.
 
-- storage registration
-- recursive scanning
-- media file detection
-- filename parsing
-- incremental scan
-- availability detection
+### M5 — Playback Handoff & Offline Media
+- External player configuration (preferred player selection and platform-specific launching).
+- Playback source resolution hierarchy:
+  1. Prefer device-local copy (`PLAY OFFLINE`).
+  2. Fall back to connected original media (`PLAY`).
+  3. Prompt to connect external storage (`CONNECT DISK`).
+- Local-copy playback (handoff local file path/URI to external player).
+- Removable-storage playback (handoff external path/URI to external player).
+- Media transfer engine:
+  - Streaming file copy with live progress and transfer speed.
+  - Pause / cancel controls where practical.
+  - Insufficient-storage handling (pre-transfer size inspection and warning).
+- Completed local copies registration and post-copy data integrity validation (byte length check, lightweight fingerprint).
+- Local-copy deletion (reclaim device space without deleting HDD original or logical cinema records).
+- Dynamic Play / Play Offline / Connect Disk state transitions.
 
-## Phase 3 — Metadata
-
-Implement:
-
-- TMDB integration
-- search
-- identification
-- metadata persistence
-- image caching
-- manual verification
-
-## Phase 4 — Cinema UI
-
-Implement:
-
-- Home
-- Movie catalogue
-- TV catalogue
-- Detail pages
-- Search
-- Collections
-- Favorites
-- Watchlist
-- Watch state
-
-## Phase 5 — Playback Handoff
-
-Implement:
-
-- preferred player
-- platform-specific application launching
-- availability-aware Play/Connect UI
-
-## Phase 6 — Polish
-
-Perform a dedicated UI/UX pass:
-
-- typography
-- spacing
-- animations
-- responsive layouts
-- loading states
-- empty states
-- error states
-- accessibility
-- performance
-
-The final phase must not be skipped.
+### M6 — Polish & Verification
+- Comprehensive offline media testing:
+  - Interrupted transfers and recovery.
+  - Insufficient storage handling.
+  - Disk disconnect during active transfer.
+  - Disk disconnect after download completion.
+  - Deleting local copies and restoring external HDD state.
+  - Reconnecting original media after local deletion.
+  - Duplicate source copies and source selection.
+  - Large-file transfers (multi-gigabyte movies and seasons).
+- Performance audit: Virtualized scrolling and query optimization for 5,000+ movies and tens of thousands of episodes.
+- Android tablet optimization (OTG storage, permissions, responsive layout).
+- Accessibility audit, subtle cinematic animations, empty states, error handling.
+- Full verification: `flutter analyze`, `flutter test`, disconnect/reconnect tests, offline download test.
 
 ---
 
@@ -1882,22 +2170,36 @@ v1.0 is considered successful when the following workflow works:
 
 No internal video player is launched.
 
-### Offline copy & download test
+### Offline Media Test
 
-1. Connect external HDD containing media.
-2. Navigate to movie or TV episode detail page.
-3. Click `[ ⬇ DOWNLOAD TO DEVICE ]`.
-4. Observe transfer progress indicator until copy completes.
-5. Disconnect the external HDD.
-6. Observe library state:
-   - Movie/episode continues to show `▶ Play (On Device)`.
-   - External HDD copy is marked disconnected under "Your Copies".
-   - Local offline copy is marked available.
-7. Click `▶ Play`.
-8. External player launches using the local offline file without prompting to connect external disk.
-9. Click `[ DELETE LOCAL COPY ]` from the detail page or settings.
-10. Local file is removed; card and detail page revert to `Connect HDD` when the drive remains disconnected.
-11. The movie itself, its metadata, watchlist state, and watch history remain 100% intact.
+1. Connect an external HDD to an Android device.
+2. REELHOUSE identifies the HDD.
+3. Select a movie or TV season.
+4. Select **Download to Device**.
+5. REELHOUSE displays size and available storage.
+6. Transfer begins.
+7. Progress is displayed.
+8. Transfer completes successfully.
+9. Local source is registered.
+10. Disconnect the HDD.
+11. The original source becomes unavailable.
+12. The media remains available through the local source.
+13. REELHOUSE displays **PLAY OFFLINE**.
+14. Selecting Play opens the preferred external media player using the local copy.
+15. Deleting the local copy removes only the local copy.
+16. The original media remains represented in the library.
+17. Reconnecting the HDD restores the original source.
+
+### TV Download Test
+
+1. Connect HDD.
+2. Open a TV show.
+3. Select a season.
+4. Download it.
+5. Disconnect HDD.
+6. Season remains available offline.
+7. Episodes are individually represented as locally available.
+8. Play launches the external player using the local episode files.
 
 ---
 
