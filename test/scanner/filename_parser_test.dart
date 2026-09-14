@@ -1,0 +1,170 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:reelhouse/domain/scanner/filename_parser.dart';
+import 'package:reelhouse/domain/scanner/parsed_media_info.dart';
+
+void main() {
+  const parser = FilenameParser();
+
+  group('FilenameParser — Movie Tests', () {
+    test('parses standard movie with year, resolution, source, and codec', () {
+      final result = parser.parse(
+        relativePath: 'Interstellar.2014.1080p.BluRay.x265.mkv',
+        fileSize: 2500000000,
+      );
+
+      expect(result.type, ParsedMediaType.movie);
+      expect(result.title, 'Interstellar');
+      expect(result.year, 2014);
+      expect(result.resolution, '1080p');
+      expect(result.videoCodec, 'HEVC');
+      expect(result.extension, 'mkv');
+    });
+
+    test('parses 4K UHD Atmos movie', () {
+      final result = parser.parse(
+        relativePath: r'Movies\The.Matrix.1999.2160p.UHD.HDR.HEVC.TrueHD.7.1.Atmos-SPARKS.mkv',
+        fileSize: 45000000000,
+      );
+
+      expect(result.type, ParsedMediaType.movie);
+      expect(result.title, 'The Matrix');
+      expect(result.year, 1999);
+      expect(result.resolution, '2160p');
+      expect(result.videoCodec, 'HEVC');
+      expect(result.audioCodec, 'TrueHD');
+      expect(result.audioChannels, '7.1');
+    });
+
+    test('parses movie with brackets and dots', () {
+      final result = parser.parse(
+        relativePath: 'Inception (2010) [1080p] [x264] [AAC 5.1].mp4',
+        fileSize: 3100000000,
+      );
+
+      expect(result.type, ParsedMediaType.movie);
+      expect(result.title, 'Inception');
+      expect(result.year, 2010);
+      expect(result.resolution, '1080p');
+      expect(result.videoCodec, 'AVC');
+      expect(result.audioCodec, 'AAC');
+      expect(result.audioChannels, '5.1');
+      expect(result.extension, 'mp4');
+    });
+
+    test('parses movie without year cleanly', () {
+      final result = parser.parse(
+        relativePath: 'Fight Club.mp4',
+        fileSize: 1500000000,
+      );
+
+      expect(result.type, ParsedMediaType.movie);
+      expect(result.title, 'Fight Club');
+      expect(result.year, isNull);
+    });
+
+    test('falls back to parent folder when filename is generic cd1', () {
+      final result = parser.parse(
+        relativePath: r'Pulp Fiction (1994)\cd1.avi',
+        fileSize: 700000000,
+      );
+
+      expect(result.type, ParsedMediaType.movie);
+      expect(result.title, 'Pulp Fiction');
+      expect(result.year, 1994);
+    });
+  });
+
+  group('FilenameParser — TV Series Tests', () {
+    test('parses standard SxxExx with episode title and quality', () {
+      final result = parser.parse(
+        relativePath:
+            'Breaking.Bad.S02E03.Bit.by.a.Dead.Bee.1080p.WEB-DL.x264.mkv',
+        fileSize: 1200000000,
+      );
+
+      expect(result.type, ParsedMediaType.tvEpisode);
+      expect(result.title, 'Breaking Bad');
+      expect(result.seasonNumber, 2);
+      expect(result.episodeNumber, 3);
+      expect(result.episodeTitle, 'Bit by a Dead Bee');
+      expect(result.resolution, '1080p');
+      expect(result.videoCodec, 'AVC');
+    });
+
+    test('parses NxNN format (e.g. 1x04)', () {
+      final result = parser.parse(
+        relativePath: 'The.Wire.1x04.Old.Cases.720p.HDTV.mkv',
+        fileSize: 800000000,
+      );
+
+      expect(result.type, ParsedMediaType.tvEpisode);
+      expect(result.title, 'The Wire');
+      expect(result.seasonNumber, 1);
+      expect(result.episodeNumber, 4);
+      expect(result.resolution, '720p');
+    });
+
+    test(
+      'resolves show title from grandparent directory with Season folder',
+      () {
+        final result = parser.parse(
+          relativePath: r'Severance\Season 1\S01E01.mkv',
+          fileSize: 1500000000,
+        );
+
+        expect(result.type, ParsedMediaType.tvEpisode);
+        expect(result.title, 'Severance');
+        expect(result.seasonNumber, 1);
+        expect(result.episodeNumber, 1);
+      },
+    );
+
+    test('resolves simple episode number inside Season folder', () {
+      final result = parser.parse(
+        relativePath: r'Succession/Season 3/04.mkv',
+        fileSize: 1600000000,
+      );
+
+      expect(result.type, ParsedMediaType.tvEpisode);
+      expect(result.title, 'Succession');
+      expect(result.seasonNumber, 3);
+      expect(result.episodeNumber, 4);
+    });
+  });
+
+  group('FilenameParser — Supported Media & Samples', () {
+    test('identifies supported video extensions', () {
+      expect(FilenameParser.isSupportedMediaFile('movie.mkv'), isTrue);
+      expect(FilenameParser.isSupportedMediaFile('movie.mp4'), isTrue);
+      expect(FilenameParser.isSupportedMediaFile('movie.avi'), isTrue);
+      expect(FilenameParser.isSupportedMediaFile('movie.mov'), isTrue);
+      expect(FilenameParser.isSupportedMediaFile('movie.m4v'), isTrue);
+      expect(FilenameParser.isSupportedMediaFile('movie.webm'), isTrue);
+      expect(FilenameParser.isSupportedMediaFile('movie.ts'), isTrue);
+      expect(FilenameParser.isSupportedMediaFile('movie.wmv'), isTrue);
+
+      expect(FilenameParser.isSupportedMediaFile('subtitle.srt'), isFalse);
+      expect(FilenameParser.isSupportedMediaFile('info.nfo'), isFalse);
+      expect(FilenameParser.isSupportedMediaFile('cover.jpg'), isFalse);
+      expect(FilenameParser.isSupportedMediaFile('.hidden.mkv'), isFalse);
+      expect(
+        FilenameParser.isSupportedMediaFile('._interstellar.mkv'),
+        isFalse,
+      );
+    });
+
+    test('identifies sample files', () {
+      expect(FilenameParser.isSampleFile('sample.mkv', 20000000), isTrue);
+      expect(FilenameParser.isSampleFile('movie-sample.mp4', 30000000), isTrue);
+      expect(
+        FilenameParser.isSampleFile('Interstellar.2014.mkv', 2000000000),
+        isFalse,
+      );
+      // Large file with sample in title shouldn't be dismissed as a small snippet
+      expect(
+        FilenameParser.isSampleFile('Sampling.The.World.mkv', 500000000),
+        isFalse,
+      );
+    });
+  });
+}

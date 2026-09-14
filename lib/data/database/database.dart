@@ -80,4 +80,88 @@ class AppDatabase extends _$AppDatabase {
     final query = selectOnly(tvShows)..addColumns([countExpr]);
     return query.map((row) => row.read(countExpr) ?? 0).watchSingle();
   }
+
+  // --- Milestone 2: Scanner & Availability Queries ---
+
+  /// Get all media sources registered for a given storage location.
+  Future<List<MediaSource>> getSourcesForStorage(String storageId) =>
+      (select(mediaSources)..where((s) => s.storageId.equals(storageId))).get();
+
+  /// Find an existing movie by title and optional year (case-insensitive title match).
+  Future<Movie?> findMovieByTitleAndYear(String title, int? year) {
+    final q = select(movies)
+      ..where((m) => m.title.collate(Collate.noCase).equals(title));
+    if (year != null) {
+      q.where((m) => m.year.equals(year));
+    }
+    return q.getSingleOrNull();
+  }
+
+  /// Find an existing TV show by title (case-insensitive match).
+  Future<TvShow?> findTvShowByTitle(String title) =>
+      (select(tvShows)
+            ..where((t) => t.title.collate(Collate.noCase).equals(title)))
+          .getSingleOrNull();
+
+  /// Find a season by show ID and season number.
+  Future<Season?> findSeason(String showId, int seasonNumber) =>
+      (select(seasons)..where(
+            (s) =>
+                s.showId.equals(showId) & s.seasonNumber.equals(seasonNumber),
+          ))
+          .getSingleOrNull();
+
+  /// Find an episode by season ID and episode number.
+  Future<Episode?> findEpisode(String seasonId, int episodeNumber) =>
+      (select(episodes)..where(
+            (e) =>
+                e.seasonId.equals(seasonId) &
+                e.episodeNumber.equals(episodeNumber),
+          ))
+          .getSingleOrNull();
+
+  /// Update availability status of a single media source.
+  Future<int> updateSourceAvailability(
+    String sourceId, {
+    required bool available,
+    DateTime? lastSeenAt,
+  }) {
+    return (update(mediaSources)..where((s) => s.id.equals(sourceId))).write(
+      MediaSourcesCompanion(
+        available: Value(available),
+        lastSeenAt: lastSeenAt != null
+            ? Value(lastSeenAt)
+            : const Value.absent(),
+      ),
+    );
+  }
+
+  /// Batch update availability for all media sources on a storage device.
+  Future<int> setAllSourcesAvailableForStorage(
+    String storageId,
+    bool available,
+  ) {
+    return (update(mediaSources)..where((s) => s.storageId.equals(storageId)))
+        .write(MediaSourcesCompanion(available: Value(available)));
+  }
+
+  /// Update storage availability and last seen timestamp.
+  Future<int> updateStorageStatus(
+    String storageId, {
+    required bool available,
+    required DateTime lastSeenAt,
+  }) {
+    return (update(storages)..where((s) => s.id.equals(storageId))).write(
+      StoragesCompanion(
+        available: Value(available),
+        lastSeenAt: Value(lastSeenAt),
+      ),
+    );
+  }
+
+  /// Get all movies.
+  Future<List<Movie>> getAllMovies() => select(movies).get();
+
+  /// Get all TV shows.
+  Future<List<TvShow>> getAllTvShows() => select(tvShows).get();
 }

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
+import '../../domain/scanner/library_scanner_service.dart';
 import '../../domain/services/local_storage_manager.dart';
 import '../../domain/services/storage_identity_service.dart';
+import '../../domain/services/storage_monitor_service.dart';
 import '../collections/collections_screen.dart';
 import '../home/home_screen.dart';
 import '../movies/movies_screen.dart';
@@ -15,12 +17,16 @@ class CinemaShell extends StatefulWidget {
   final AppDatabase database;
   final StorageIdentityService storageIdentityService;
   final LocalStorageManager localStorageManager;
+  final LibraryScannerService? libraryScannerService;
+  final StorageMonitorService? storageMonitorService;
 
   const CinemaShell({
     super.key,
     required this.database,
     required this.storageIdentityService,
     required this.localStorageManager,
+    this.libraryScannerService,
+    this.storageMonitorService,
   });
 
   @override
@@ -29,6 +35,18 @@ class CinemaShell extends StatefulWidget {
 
 class _CinemaShellState extends State<CinemaShell> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.storageMonitorService?.startMonitoring();
+  }
+
+  @override
+  void dispose() {
+    widget.storageMonitorService?.stopMonitoring();
+    super.dispose();
+  }
 
   void _onDestinationSelected(int index) {
     setState(() {
@@ -53,6 +71,7 @@ class _CinemaShellState extends State<CinemaShell> {
         database: widget.database,
         storageIdentityService: widget.storageIdentityService,
         localStorageManager: widget.localStorageManager,
+        libraryScannerService: widget.libraryScannerService,
       ),
     ];
 
