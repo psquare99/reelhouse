@@ -41,10 +41,18 @@ REELHOUSE is a personal digital cinema application designed to organize and pres
 - **M0 — Baseline Setup**: Git repository, project foundations, authoritative design document.
 - **M1 — Foundation & Core Architecture**: Cinematic design system, Drift SQLite database with physical `MediaSource` and transient `TransferJob` separation, platform storage adapters (`WindowsStorageAdapter`, `AndroidStorageAdapter`), shell navigation.
 - **M2 — Storage & Scanner**: Non-blocking media scanner, filename heuristic parser (movies, TV series, codecs, resolutions), incremental library synchronization engine (discovering new files, updating disconnected states without deleting catalogue items, restoring reconnected sources), live storage monitoring service (`StorageMonitorService`), and live scanning progress UX in Settings.
+- **M3 — Metadata Pipeline**: TMDB API client with rate limiting and exponential backoff, confidence matching engine ($\ge 0.85$ automatic threshold with remake ambiguity routing), local image cache for posters and backdrops (`metadata_cache/`), manual "Needs Verification" queue and search dialog, Settings TMDB configuration and connection testing, and TMDB attribution.
+
+---
+
+## Attribution
+
+This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 ---
 
 ## Documentation
 
 For full product architecture, data models, and specifications, refer to [REELHOUSE — Implementation Design Document v1.0.md](./REELHOUSE%20%E2%80%94%20Implementation%20Design%20Document%20v1.0.md).
+
 

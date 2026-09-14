@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
@@ -7,6 +10,39 @@ class TvShowsScreen extends StatelessWidget {
   final AppDatabase database;
 
   const TvShowsScreen({super.key, required this.database});
+
+  Widget _buildPoster(String? posterPath) {
+    if (posterPath != null && posterPath.isNotEmpty) {
+      if (kIsWeb || posterPath.startsWith('http')) {
+        return Image.network(
+          posterPath,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (_, _, _) => const Center(
+            child: Icon(Icons.tv, color: CinemaColors.textMuted, size: 40),
+          ),
+        );
+      } else {
+        final file = File(posterPath);
+        if (file.existsSync()) {
+          return Image.file(
+            file,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (_, _, _) => const Center(
+              child: Icon(Icons.tv, color: CinemaColors.textMuted, size: 40),
+            ),
+          );
+        }
+      }
+    }
+
+    return const Center(
+      child: Icon(Icons.tv, color: CinemaColors.textMuted, size: 40),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,19 +109,14 @@ class TvShowsScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: CinemaColors.surface,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(10),
-                          ),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(10),
                         ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.tv,
-                            color: CinemaColors.textMuted,
-                            size: 40,
-                          ),
+                        child: Container(
+                          color: CinemaColors.surface,
+                          width: double.infinity,
+                          child: _buildPoster(show.posterPath),
                         ),
                       ),
                     ),

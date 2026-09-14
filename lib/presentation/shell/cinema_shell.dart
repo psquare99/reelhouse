@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
+import '../../domain/metadata/metadata_service.dart';
 import '../../domain/scanner/library_scanner_service.dart';
 import '../../domain/services/local_storage_manager.dart';
+import '../../domain/services/settings_service.dart';
 import '../../domain/services/storage_identity_service.dart';
 import '../../domain/services/storage_monitor_service.dart';
 import '../collections/collections_screen.dart';
@@ -19,6 +21,8 @@ class CinemaShell extends StatefulWidget {
   final LocalStorageManager localStorageManager;
   final LibraryScannerService? libraryScannerService;
   final StorageMonitorService? storageMonitorService;
+  final MetadataService? metadataService;
+  final SettingsService? settingsService;
 
   const CinemaShell({
     super.key,
@@ -27,6 +31,8 @@ class CinemaShell extends StatefulWidget {
     required this.localStorageManager,
     this.libraryScannerService,
     this.storageMonitorService,
+    this.metadataService,
+    this.settingsService,
   });
 
   @override
@@ -72,6 +78,8 @@ class _CinemaShellState extends State<CinemaShell> {
         storageIdentityService: widget.storageIdentityService,
         localStorageManager: widget.localStorageManager,
         libraryScannerService: widget.libraryScannerService,
+        metadataService: widget.metadataService,
+        settingsService: widget.settingsService,
       ),
     ];
 

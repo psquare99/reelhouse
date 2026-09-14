@@ -164,4 +164,166 @@ class AppDatabase extends _$AppDatabase {
 
   /// Get all TV shows.
   Future<List<TvShow>> getAllTvShows() => select(tvShows).get();
+
+  // --- Milestone 3: Metadata Pipeline Queries ---
+
+  /// Get all movies currently lacking TMDB identification.
+  Future<List<Movie>> getUnmatchedMovies() =>
+      (select(movies)..where((m) => m.tmdbId.isNull())).get();
+
+  /// Get all TV shows currently lacking TMDB identification.
+  Future<List<TvShow>> getUnmatchedTvShows() =>
+      (select(tvShows)..where((t) => t.tmdbId.isNull())).get();
+
+  /// Watch count of movies currently in the Needs Verification / Unmatched queue.
+  Stream<int> watchUnmatchedMovieCount() {
+    final movieCount = countAll();
+    final mQuery = selectOnly(movies)
+      ..addColumns([movieCount])
+      ..where(movies.tmdbId.isNull());
+
+    return mQuery.map((row) => row.read(movieCount) ?? 0).watchSingle();
+  }
+
+  /// Watch count of TV shows currently in the Needs Verification / Unmatched queue.
+  Stream<int> watchUnmatchedTvShowCount() {
+    final tvCount = countAll();
+    final tvQuery = selectOnly(tvShows)
+      ..addColumns([tvCount])
+      ..where(tvShows.tmdbId.isNull());
+
+    return tvQuery.map((row) => row.read(tvCount) ?? 0).watchSingle();
+  }
+
+  /// Watch total count of media items (movies + tv shows) in the Needs Verification / Unmatched queue.
+  Stream<int> watchUnmatchedTotalCount() {
+    return customSelect(
+      'SELECT (SELECT COUNT(*) FROM movies WHERE tmdb_id IS NULL) + (SELECT COUNT(*) FROM tv_shows WHERE tmdb_id IS NULL) AS total',
+      readsFrom: {movies, tvShows},
+    ).map((row) => row.read<int>('total')).watchSingle();
+  }
+
+  /// Get all media sources registered for a TV show's episodes.
+  Future<List<MediaSource>> getSourcesForTvShow(String showId) {
+    final query = select(mediaSources).join([
+      innerJoin(episodes, episodes.id.equalsExp(mediaSources.episodeId)),
+      innerJoin(seasons, seasons.id.equalsExp(episodes.seasonId)),
+    ])..where(seasons.showId.equals(showId));
+
+    return query.map((row) => row.readTable(mediaSources)).get();
+  }
+
+  /// Update movie record with fetched TMDB metadata.
+  Future<int> updateMovieMetadata(
+    String movieId, {
+    required int tmdbId,
+    String? imdbId,
+    String? originalTitle,
+    String? overview,
+    int? runtime,
+    DateTime? releaseDate,
+    String? posterPath,
+    String? backdropPath,
+    double? rating,
+    int? voteCount,
+    String? metadataId,
+  }) {
+    return (update(movies)..where((m) => m.id.equals(movieId))).write(
+      MoviesCompanion(
+        tmdbId: Value(tmdbId),
+        imdbId: imdbId != null ? Value(imdbId) : const Value.absent(),
+        originalTitle: originalTitle != null
+            ? Value(originalTitle)
+            : const Value.absent(),
+        overview: overview != null ? Value(overview) : const Value.absent(),
+        runtime: runtime != null ? Value(runtime) : const Value.absent(),
+        releaseDate: releaseDate != null
+            ? Value(releaseDate)
+            : const Value.absent(),
+        posterPath: posterPath != null
+            ? Value(posterPath)
+            : const Value.absent(),
+        backdropPath: backdropPath != null
+            ? Value(backdropPath)
+            : const Value.absent(),
+        rating: rating != null ? Value(rating) : const Value.absent(),
+        voteCount: voteCount != null ? Value(voteCount) : const Value.absent(),
+        metadataId: metadataId != null
+            ? Value(metadataId)
+            : const Value.absent(),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Update TV show record with fetched TMDB metadata.
+  Future<int> updateTvShowMetadata(
+    String showId, {
+    required int tmdbId,
+    String? imdbId,
+    String? originalTitle,
+    String? overview,
+    DateTime? firstAirDate,
+    String? posterPath,
+    String? backdropPath,
+    double? rating,
+    String? metadataId,
+  }) {
+    return (update(tvShows)..where((t) => t.id.equals(showId))).write(
+      TvShowsCompanion(
+        tmdbId: Value(tmdbId),
+        imdbId: imdbId != null ? Value(imdbId) : const Value.absent(),
+        originalTitle: originalTitle != null
+            ? Value(originalTitle)
+            : const Value.absent(),
+        overview: overview != null ? Value(overview) : const Value.absent(),
+        firstAirDate: firstAirDate != null
+            ? Value(firstAirDate)
+            : const Value.absent(),
+        posterPath: posterPath != null
+            ? Value(posterPath)
+            : const Value.absent(),
+        backdropPath: backdropPath != null
+            ? Value(backdropPath)
+            : const Value.absent(),
+        rating: rating != null ? Value(rating) : const Value.absent(),
+        metadataId: metadataId != null
+            ? Value(metadataId)
+            : const Value.absent(),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Update episode record with fetched TMDB metadata.
+  Future<int> updateEpisodeMetadata(
+    String episodeId, {
+    required int tmdbId,
+    String? name,
+    String? overview,
+    int? runtime,
+    DateTime? airDate,
+    String? stillPath,
+    double? rating,
+  }) {
+    return (update(episodes)..where((e) => e.id.equals(episodeId))).write(
+      EpisodesCompanion(
+        tmdbId: Value(tmdbId),
+        name: name != null ? Value(name) : const Value.absent(),
+        overview: overview != null ? Value(overview) : const Value.absent(),
+        runtime: runtime != null ? Value(runtime) : const Value.absent(),
+        airDate: airDate != null ? Value(airDate) : const Value.absent(),
+        stillPath: stillPath != null ? Value(stillPath) : const Value.absent(),
+        rating: rating != null ? Value(rating) : const Value.absent(),
+      ),
+    );
+  }
+
+  /// Find movie by its internal ID.
+  Future<Movie?> findMovieById(String movieId) =>
+      (select(movies)..where((m) => m.id.equals(movieId))).getSingleOrNull();
+
+  /// Find TV show by its internal ID.
+  Future<TvShow?> findTvShowById(String showId) =>
+      (select(tvShows)..where((t) => t.id.equals(showId))).getSingleOrNull();
 }
