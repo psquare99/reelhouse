@@ -469,9 +469,6 @@ MediaSource
 - filename
 - extension
 - fileSize
-- transferStatus (NOT_DOWNLOADED | QUEUED | DOWNLOADING | PAUSED | COMPLETED | FAILED | CANCELLED)
-- transferredBytes
-- downloadedAt
 - duration
 - videoCodec
 - audioCodec
@@ -479,53 +476,104 @@ MediaSource
 - audioChannels
 - subtitleInformation
 - fingerprint
+- createdAt
 - firstSeenAt
 - lastSeenAt
 - available
 ```
 
-A removable-storage source references a registered external storage location (e.g. HDD, SD card, OTG drive). A local-device source references the application's managed local media storage directory. Do not hardcode the assumption that every media source belongs to an external HDD.
+A removable-storage source references a registered external storage location (e.g. HDD, SD card, OTG drive). A local-device source references the application's managed local media storage directory. A `MediaSource` strictly represents a valid, complete, playable physical media file. Do not hardcode the assumption that every media source belongs to an external HDD.
+
+## Transfer Job (Offline Copy Operation)
+
+Transient transfer state does not belong directly in `MediaSource`. Conceptually, a completed physical media source and a transfer operation are different things:
+- An external HDD media source is already a complete physical source; tagging it with transfer state is a semantic mismatch.
+- An incomplete, paused, or failed download is an operation, not a playable physical media source. It must never pollute the cinema catalogue until successfully completed.
+
+Transfer lifecycle is tracked separately:
+
+```text
+TransferJob
+- id
+- mediaType (movie | episode)
+- mediaId (movieId OR episodeId)
+- sourceMediaSourceId
+- destinationStorageId
+- destinationRelativePath
+- status (QUEUED | DOWNLOADING | PAUSED | COMPLETED | FAILED | CANCELLED)
+- bytesTransferred
+- totalBytes
+- error
+- startedAt
+- completedAt
+```
+
+Lifecycle flow:
+```text
+User initiates download
+        ↓
+Create TransferJob (status: QUEUED)
+        ↓
+Transfer starts (status: DOWNLOADING, bytesTransferred updates)
+        ↓
+Transfer completes & passes integrity validation (status: COMPLETED, completedAt set)
+        ↓
+Promote to new MediaSource (sourceType: localDevice, storageId: DEVICE_LOCAL_STORAGE)
+```
+
+If a transfer is paused, failed, or cancelled, the `TransferJob` reflects the state, and no incomplete `MediaSource` is created.
 
 ---
 
-# 8. Storage Model
+# 8. Storage Model & Platform Abstraction
 
 Every registered storage location gets a persistent identity.
+
+Crucially, **do not assume every external storage location is representable as an ordinary permanent filesystem path.**
+
+On desktop (Windows/macOS/Linux), storage locations have standard filesystem paths (e.g. `D:\Movies`). On Android, removable storage (USB-OTG drives, SD cards) is governed by Android's Storage Access Framework (SAF) and Scoped Storage, often represented as document-tree content URIs (`content://...`) with persisted URI permissions. Furthermore, Android 7+ prohibits raw `file:///` URIs for inter-app playback handoff (`FileUriExposedException`), requiring `content://` URIs via `FileProvider` or document providers.
+
+The `StorageIdentity`, `StorageLocation`, and `LocalStorageManager` abstractions hide these platform differences behind a uniform interface:
 
 ```text
 Storage
 - id
 - name
 - storageType (REMOVABLE_VOLUME | DEVICE_LOCAL_STORAGE | NETWORK_SHARE)
-- filesystemIdentifier (Volume Serial / GUID / UUID)
-- rootPath
+- filesystemIdentifier (Volume Serial on Windows, StorageVolume UUID on Android, "device-local")
+- rootUri (Windows filesystem path OR Android DocumentTree content URI)
 - lastSeenAt
 - available
 ```
 
-Each device automatically maintains a built-in `DEVICE_LOCAL_STORAGE` entry pointing to REELHOUSE's application-managed local media directory. Removable disks (such as external USB hard drives or SD cards) are tracked with their native platform filesystem identifiers.
+Each device automatically maintains a built-in `DEVICE_LOCAL_STORAGE` entry pointing to REELHOUSE's application-managed local media directory (`getExternalFilesDir` on Android; local AppData on Windows).
 
 Example:
 
 ```text
-Storage (External):
+Storage (External - Windows):
     id: abc123
     name: Movies HDD
     storageType: REMOVABLE_VOLUME
     filesystemIdentifier: 0x5484AB12
-    rootPath: D:\Movies
+    rootUri: D:\Movies
 
-Storage (Device Local):
+Storage (External - Android USB-OTG):
+    id: def456
+    name: SanDisk USB
+    storageType: REMOVABLE_VOLUME
+    filesystemIdentifier: 1234-5678
+    rootUri: content://com.android.externalstorage.documents/tree/1234-5678%3AMovies
+
+Storage (Device Local - Android):
     id: local-internal
     name: This Device
     storageType: DEVICE_LOCAL_STORAGE
     filesystemIdentifier: internal-app-storage
-    rootPath: C:\Users\...\AppData\Local\reelhouse\offline_media (or Android getExternalFilesDir)
+    rootUri: /storage/emulated/0/Android/data/com.reelhouse.app/files/offline_media
 ```
 
-The filesystem identifier should be used where the platform provides a stable identifier (Volume Serial Number or GUID on Windows; Volume UUID on Android).
-
-Do not rely solely on drive letters.
+The filesystem identifier provides a stable hardware identifier (Win32 Volume Serial Number or GUID on Windows; `StorageVolume` UUID on Android). Do not rely solely on drive letters or temporary mount paths.
 
 ---
 
@@ -2018,20 +2066,19 @@ Keep these boundaries clean without creating unnecessary abstractions.
 ### M1 — Foundation & Core Architecture
 - Flutter project setup with targets: Windows Desktop, Android, Web.
 - Cinematic design system (deep obsidian canvas, warm amber accents, typography).
-- Drift SQLite relational database with `MediaSource` model:
-  - `MediaSource` abstraction (separation between logical entities `Movie`, `TvShow`, `Episode` and physical `MediaSource` records).
+- Drift SQLite relational database with separated physical source & transfer job models:
+  - `MediaSource` abstraction (strictly valid, complete physical media files; separation between logical entities `Movie`, `TvShow`, `Episode` and physical `MediaSource` records).
   - Removable-storage source type (`removableStorage`).
   - Device-local source type (`localDevice`).
   - Source-aware availability model (`AVAILABLE_LOCALLY`, `AVAILABLE_ON_REMOVABLE_STORAGE`, `AVAILABLE_ON_MULTIPLE_SOURCES`, `UNAVAILABLE`).
-  - Local offline-copy schema (`transferStatus`, `transferredBytes`, `downloadedAt`).
-- Local storage manager interface (`LocalStorageManager` for application-managed offline media directory on Android and Desktop).
-- Platform Storage Identity service:
-  - Windows: Win32 Volume Serial Number and GUID path.
-  - Android: `StorageVolume` filesystem UUID.
-  - Optional secondary marker file fallback (`.reelhouse_source`).
+  - `TransferJob` schema for tracking offline transfers (`status`: `QUEUED`, `DOWNLOADING`, `PAUSED`, `COMPLETED`, `FAILED`, `CANCELLED`; `bytesTransferred`, `totalBytes`, `startedAt`, `completedAt`).
+- Platform Storage Abstraction & Identity service:
+  - Uniform storage abstraction (`StorageIdentity`, `StorageLocation`, `rootUri`) hiding platform differences between Windows filesystem paths and Android DocumentTree / SAF content URIs.
+  - Hardware identity: Win32 Volume Serial Number / GUID path on Windows; `StorageVolume` filesystem UUID on Android; optional secondary marker file fallback (`.reelhouse_source`).
+  - `LocalStorageManager` interface for application-managed offline media directory (`getExternalFilesDir` on Android; local AppData on Windows).
 - Application shell with adaptive navigation (rail on desktop, bottom bar on mobile).
 - Settings screen displaying storage locations and connection status.
-*(Note: Do not implement the complete transfer UX or transfer engine in M1; establish the required data/domain abstractions).*
+*(Note: Do not implement the complete transfer UX or streaming file copy engine in M1; establish the required data/domain abstractions).*
 
 ### M2 — Storage & Scanner
 - Removable-storage scanning (background isolate-based recursive media scanner for registered storage locations).
