@@ -1,0 +1,191 @@
+import 'package:flutter/material.dart';
+
+import '../../core/theme/cinema_colors.dart';
+import '../../data/database/database.dart';
+import '../../domain/services/local_storage_manager.dart';
+import '../../domain/services/storage_identity_service.dart';
+import '../collections/collections_screen.dart';
+import '../home/home_screen.dart';
+import '../movies/movies_screen.dart';
+import '../search/search_screen.dart';
+import '../settings/settings_screen.dart';
+import '../tv_shows/tv_shows_screen.dart';
+
+class CinemaShell extends StatefulWidget {
+  final AppDatabase database;
+  final StorageIdentityService storageIdentityService;
+  final LocalStorageManager localStorageManager;
+
+  const CinemaShell({
+    super.key,
+    required this.database,
+    required this.storageIdentityService,
+    required this.localStorageManager,
+  });
+
+  @override
+  State<CinemaShell> createState() => _CinemaShellState();
+}
+
+class _CinemaShellState extends State<CinemaShell> {
+  int _selectedIndex = 0;
+
+  void _onDestinationSelected(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screens = [
+      HomeScreen(
+        database: widget.database,
+        onNavigateToMovies: () => _onDestinationSelected(1),
+        onNavigateToTv: () => _onDestinationSelected(2),
+        onNavigateToSettings: () => _onDestinationSelected(5),
+      ),
+      MoviesScreen(database: widget.database),
+      TvShowsScreen(database: widget.database),
+      const CollectionsScreen(),
+      SearchScreen(database: widget.database),
+      SettingsScreen(
+        database: widget.database,
+        storageIdentityService: widget.storageIdentityService,
+        localStorageManager: widget.localStorageManager,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 720;
+
+        if (isWide) {
+          // Desktop / Tablet Landscape Navigation Rail
+          return Scaffold(
+            body: Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: _onDestinationSelected,
+                  labelType: NavigationRailLabelType.all,
+                  leading: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: CinemaColors.amberSubtle,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: CinemaColors.amber,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.movie_creation,
+                            color: CinemaColors.amber,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'REEL',
+                          style: TextStyle(
+                            color: CinemaColors.amber,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home),
+                      label: Text('Home'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.movie_outlined),
+                      selectedIcon: Icon(Icons.movie),
+                      label: Text('Movies'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.tv_outlined),
+                      selectedIcon: Icon(Icons.tv),
+                      label: Text('TV Shows'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.collections_bookmark_outlined),
+                      selectedIcon: Icon(Icons.collections_bookmark),
+                      label: Text('Collections'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.search_outlined),
+                      selectedIcon: Icon(Icons.search),
+                      label: Text('Search'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.settings_outlined),
+                      selectedIcon: Icon(Icons.settings),
+                      label: Text('Settings'),
+                    ),
+                  ],
+                ),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(
+                  child: IndexedStack(index: _selectedIndex, children: screens),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Mobile Bottom Navigation Bar
+        return Scaffold(
+          body: IndexedStack(index: _selectedIndex, children: screens),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: _onDestinationSelected,
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.movie_outlined),
+                selectedIcon: Icon(Icons.movie),
+                label: 'Movies',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.tv_outlined),
+                selectedIcon: Icon(Icons.tv),
+                label: 'TV',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.collections_bookmark_outlined),
+                selectedIcon: Icon(Icons.collections_bookmark),
+                label: 'Collections',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.search_outlined),
+                selectedIcon: Icon(Icons.search),
+                label: 'Search',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings),
+                label: 'Settings',
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
