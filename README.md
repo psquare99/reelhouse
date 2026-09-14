@@ -22,6 +22,8 @@ REELHOUSE is a personal digital cinema application designed to organize and pres
    REELHOUSE hands off playback to the user's preferred external media player (VLC, mpv, MPC-HC, or system default) without locking files or hosting streaming servers.
 6. **Designed, not Generated**  
    Warm, cinematic, artwork-first interface avoiding generic SaaS dashboards and AI clutter.
+7. **Media location is separate from media identity (Download to Device)**  
+   Logical media items exist independently of their physical copies. Users can copy selected media from removable HDDs to local device storage ("Download to Device") to enjoy untethered playback without keeping external drives connected.
 
 ---
 

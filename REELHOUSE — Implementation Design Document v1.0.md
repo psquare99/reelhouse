@@ -105,6 +105,36 @@ Avoid:
 
 REELHOUSE should feel like a **personal cinema**.
 
+### 2.7 Media location is separate from media identity
+
+REELHOUSE strictly distinguishes between:
+
+1. The logical media item in the user's cinema.
+2. The physical copies/locations of that media.
+
+A movie, TV episode, or other media item may have:
+
+- an original copy on removable storage
+- a device-local offline copy
+- multiple original copies on different storage devices
+- multiple local/device copies in the future
+
+The logical media entity remains completely independent of all physical copies.
+
+Example:
+
+```text
+Interstellar
+│
+├── Original Media
+│   └── Movies HDD
+│       └── D:\Movies\Interstellar.mkv
+│
+└── Local Offline Copy
+    └── Android Tablet / Local PC
+        └── REELHOUSE local storage
+```
+
 ---
 
 # 3. v1.0 Scope
@@ -122,6 +152,9 @@ REELHOUSE should feel like a **personal cinema**.
 - Incremental scanning
 - Disk availability tracking
 - Missing/disconnected media state
+- Device-local offline copies ("Download to Device")
+- Multi-copy tracking per logical media item
+- Offline copy management and device storage reclamation
 
 ### Metadata
 
@@ -391,14 +424,14 @@ Episode
 
 ## Media File
 
-A media file represents the user's physical copy.
+A media file represents a specific physical copy of a movie or episode.
 
 ```text
 MediaFile
 - id
 - movieId OR episodeId
 - storageId
-- path
+- relativePath
 - filename
 - extension
 - fileSize
@@ -409,12 +442,13 @@ MediaFile
 - audioChannels
 - subtitleInformation
 - fingerprint
+- copyType (ORIGINAL | DEVICE_LOCAL)
 - firstSeenAt
 - lastSeenAt
 - available
 ```
 
-A Movie can therefore have multiple MediaFiles.
+A logical Movie or Episode can therefore have multiple physical MediaFiles simultaneously (e.g. one on an external HDD and another as a device-local offline copy).
 
 ---
 
@@ -426,19 +460,32 @@ Every registered storage location gets a persistent identity.
 Storage
 - id
 - name
-- filesystemIdentifier
+- storageType (REMOVABLE_VOLUME | DEVICE_LOCAL_STORAGE | NETWORK_SHARE)
+- filesystemIdentifier (Volume Serial / GUID / UUID)
 - rootPath
 - lastSeenAt
 - available
 ```
 
+Each device automatically maintains a built-in `DEVICE_LOCAL_STORAGE` entry pointing to REELHOUSE's secure local app storage. Removable disks (such as external USB hard drives or SD cards) are tracked with their native platform filesystem identifiers.
+
 Example:
 
 ```text
-Storage:
+Storage (External):
     id: abc123
     name: Movies HDD
+    storageType: REMOVABLE_VOLUME
+    filesystemIdentifier: 0x5484AB12
     rootPath: D:\Movies
+
+Storage (Device Local):
+    id: local-internal
+    name: This Device
+    storageType: DEVICE_LOCAL_STORAGE
+    filesystemIdentifier: internal-app-storage
+    rootPath: C:\Users\...\AppData\Local\reelhouse\offline_media
+```
 ```
 
 The filesystem identifier should be used where the platform provides a stable identifier.
@@ -745,7 +792,7 @@ Information belongs on the detail page.
 
 This is a defining feature of REELHOUSE.
 
-### Available
+### Available (Removable Storage Connected)
 
 ```text
 [Poster]
@@ -756,7 +803,20 @@ Interstellar
 ▶ Play
 ```
 
-### Unavailable
+### Available (Device-Local Offline Copy Present)
+
+```text
+[Poster]
+
+Interstellar
+2014
+
+▶ Play (On Device)
+```
+
+Even when external hard drives are completely disconnected, media with a local offline copy remains playable!
+
+### Unavailable (Storage Disconnected, No Local Copy)
 
 ```text
 [Poster]
@@ -792,6 +852,7 @@ Interstellar
 Overview...
 
 [ PLAY ]
+[ ⬇ DOWNLOAD TO DEVICE ]
 [ + WATCHLIST ]
 [ ♥ FAVORITE ]
 
@@ -801,24 +862,44 @@ Cast
 Genres
 ...
 
-YOUR COPY
+YOUR COPIES
 
-Movies HDD
-D:\Movies\...
-14.2 GB
-1080p · HEVC · 5.1
+● Movies HDD (Original)
+  D:\Movies\Interstellar (2014)\Interstellar.mkv
+  14.2 GB · 1080p · HEVC · 5.1
+  Status: Connected
+
+○ On This Device (Offline Copy)
+  REELHOUSE Local Storage
+  14.2 GB · Ready to watch offline
+  [ DELETE LOCAL COPY ]
 ```
 
-If unavailable:
+If the original HDD is disconnected but a local offline copy exists:
 
 ```text
-Movies HDD
-Currently unavailable
+YOUR COPIES
+
+○ Movies HDD (Original)
+  Currently disconnected
+
+● On This Device (Offline Copy)
+  14.2 GB · Available
+  [ PLAY ]  [ DELETE LOCAL COPY ]
+```
+
+If all copies are unavailable:
+
+```text
+YOUR COPIES
+
+○ Movies HDD (Original)
+  Currently unavailable
 
 [ CONNECT DISK ]
 ```
 
-The metadata remains fully visible.
+The metadata, watchlist, favorite, and watch state remain fully visible and interactable regardless of disk availability.
 
 ---
 
@@ -860,8 +941,21 @@ Episode page/state should show:
 - overview
 - air date
 - rating
-- availability
+- availability (Available on Disk / Available on Device / Disconnected)
 - Play / Connect Disk
+- Download to Device (individual episode)
+
+At the Show and Season level, users can batch copy episodes to the device:
+
+```text
+Game of Thrones
+
+8 Seasons · 73 Episodes
+
+[ DOWNLOAD TO DEVICE ]
+```
+
+The user can choose to download the entire show, a single season, or specific episodes so they can travel or watch without keeping their external drive connected.
 
 ---
 
@@ -970,7 +1064,49 @@ Collections are **curated**, not automatically generated recommendation feeds.
 
 ---
 
-# 25. Playback
+# 25. Offline Copies / Download to Device
+
+REELHOUSE v1.0 must allow the user to copy selected media from removable storage to the local storage of the current device.
+
+### Primary Use Case
+
+> The user wants to watch media without keeping an external HDD connected because keeping the drive connected is inconvenient, unwieldy (e.g. laptop in bed, travel), or power-inefficient.
+
+### Scope of Download Actions
+
+- **Movies**: Single-click `[ ⬇ DOWNLOAD TO DEVICE ]` on the Movie Detail page.
+- **TV Shows**: 
+  - Entire show batch transfer: `[ ⬇ DOWNLOAD TO DEVICE ]`
+  - Season batch transfer: `[ ⬇ DOWNLOAD SEASON ]`
+  - Individual episode transfer on the Episode item.
+
+### Copying Engine & Architecture
+
+1. **Background File Copy**:
+   - File transfer occurs via a dedicated background task using streaming file I/O (`openRead` -> `openWrite`) with chunked progress reporting.
+   - UI displays clear progress percentage, transfer speed, and estimated time remaining.
+2. **Storage Allocation**:
+   - Files are stored in REELHOUSE's dedicated app data directory (`DEVICE_LOCAL_STORAGE`).
+   - File integrity is verified post-copy using file size and quick fingerprinting.
+3. **Database Representation**:
+   - When copying completes, a new `MediaFile` record is created with:
+     - `copyType: DEVICE_LOCAL`
+     - `storageId: local-internal`
+     - `relativePath: offline_media/<media-id>.<ext>`
+     - `available: true`
+   - The original `MediaFile` record on the external HDD remains completely untouched with `copyType: ORIGINAL`.
+4. **Playback Resolution Hierarchy**:
+   When the user taps `PLAY`:
+   1. **Device-Local Copy (Priority 1)**: If a `DEVICE_LOCAL` copy exists and is physically present on disk, launch playback from this local copy. No external drive is needed.
+   2. **Connected Removable Source (Priority 2)**: If no local copy exists but the original external disk is connected, launch playback from the external disk.
+   3. **Disconnected Drive (Fallback)**: If no local copy exists and the external drive is disconnected, display the state-aware `[ CONNECT DISK ]` prompt.
+5. **Space Management & Deletion**:
+   - Users can delete a local offline copy at any time from the Movie/Episode Detail page or via **Settings → Local Device Storage**.
+   - Deleting a device-local copy **never** deletes the original copy from the external drive and **never** deletes the logical movie/show record or its metadata and watch state from the cinema database.
+
+---
+
+# 26. Playback
 
 REELHOUSE v1.0 has **no built-in media player**.
 
@@ -991,7 +1127,7 @@ The preference should be configurable later.
 ```text
 Play
  ↓
-Check media availability
+Check media availability (Local Offline Copy -> Connected Removable Source)
  ↓
 Resolve local file
  ↓
@@ -1006,7 +1142,7 @@ The application must not attempt to implement its own video playback engine.
 
 ---
 
-# 26. Web Playback
+# 27. Web Playback
 
 Web playback is not a v1.0 priority.
 
@@ -1500,25 +1636,25 @@ This is preferable to blocking an entire library scan waiting for manual input.
 
 ---
 
-# 45. Duplicate Media
+# 45. Duplicate Media & Multiple Physical Copies
 
-If two physical files represent the same movie:
+Physical files and logical cinema items are strictly separated. A single movie or TV episode can have multiple physical copies:
 
 ```text
 Interstellar
-   ├── HDD 1 / 14 GB
-   └── HDD 2 / 38 GB
+   ├── Original Media (Removable HDD 1 / 14 GB)
+   ├── Original Media (Removable HDD 2 / 38 GB)
+   └── Local Offline Copy (This Device / 14 GB)
 ```
 
-REELHOUSE should represent one movie with multiple local copies.
+REELHOUSE represents this as one logical movie with multiple physical `MediaFile` copies.
 
-The UI can later expose:
+### Playback Resolution
 
-> **2 copies**
-
-The default Play action should use an available copy.
-
-If multiple copies are available, selection can be offered through a small media-copy chooser.
+- If a **device-local offline copy** exists on the current device, REELHOUSE defaults to playing this copy, allowing full offline viewing without requiring external drives to spin up or be plugged in.
+- If only **external storage copies** exist, REELHOUSE plays from whichever connected drive is available.
+- If multiple external copies are concurrently connected, REELHOUSE defaults to the primary or highest quality copy, while offering a copy-selector in the UI.
+- If all storage sources are disconnected and no local copy exists, the UI clearly displays `[ CONNECT DISK ]`.
 
 ---
 
@@ -1745,6 +1881,23 @@ v1.0 is considered successful when the following workflow works:
 3. Preferred external player opens the media.
 
 No internal video player is launched.
+
+### Offline copy & download test
+
+1. Connect external HDD containing media.
+2. Navigate to movie or TV episode detail page.
+3. Click `[ ⬇ DOWNLOAD TO DEVICE ]`.
+4. Observe transfer progress indicator until copy completes.
+5. Disconnect the external HDD.
+6. Observe library state:
+   - Movie/episode continues to show `▶ Play (On Device)`.
+   - External HDD copy is marked disconnected under "Your Copies".
+   - Local offline copy is marked available.
+7. Click `▶ Play`.
+8. External player launches using the local offline file without prompting to connect external disk.
+9. Click `[ DELETE LOCAL COPY ]` from the detail page or settings.
+10. Local file is removed; card and detail page revert to `Connect HDD` when the drive remains disconnected.
+11. The movie itself, its metadata, watchlist state, and watch history remain 100% intact.
 
 ---
 
