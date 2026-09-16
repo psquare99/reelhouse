@@ -149,6 +149,31 @@ class AppDatabase extends _$AppDatabase {
   Future<List<MediaSource>> getSourcesForStorage(String storageId) =>
       (select(mediaSources)..where((s) => s.storageId.equals(storageId))).get();
 
+  /// Find an existing movie by detected title and optional detected year (case-insensitive title match).
+  Future<Movie?> findMovieByDetectedTitleAndYear(
+    String detectedTitle,
+    int? detectedYear,
+  ) {
+    final q = select(movies)
+      ..where(
+        (m) => m.detectedTitle.collate(Collate.noCase).equals(detectedTitle),
+      );
+    if (detectedYear != null) {
+      q.where((m) => m.detectedYear.equals(detectedYear));
+    } else {
+      q.where((m) => m.detectedYear.isNull());
+    }
+    return q.getSingleOrNull();
+  }
+
+  /// Find an existing TV show by detected title (case-insensitive match).
+  Future<TvShow?> findTvShowByDetectedTitle(String detectedTitle) =>
+      (select(tvShows)..where(
+            (t) =>
+                t.detectedTitle.collate(Collate.noCase).equals(detectedTitle),
+          ))
+          .getSingleOrNull();
+
   /// Find an existing movie by title and optional year (case-insensitive title match).
   Future<Movie?> findMovieByTitleAndYear(String title, int? year) {
     final q = select(movies)

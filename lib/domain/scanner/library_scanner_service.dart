@@ -304,8 +304,8 @@ class LibraryScannerService {
   }) async {
     final parsed = item.parsedInfo;
 
-    // Check if logical Movie already exists (by title and year)
-    final existingMovie = await database.findMovieByTitleAndYear(
+    // Check if logical Movie already exists (by discovery identity: detectedTitle and detectedYear)
+    final existingMovie = await database.findMovieByDetectedTitleAndYear(
       parsed.title,
       parsed.year,
     );
@@ -314,7 +314,7 @@ class LibraryScannerService {
     if (existingMovie != null) {
       movieId = existingMovie.id;
     } else {
-      // Create new logical Movie record
+      // Create new logical Movie record with discovery hints (pending canonical identification)
       movieId = _uuid.v4();
       await database
           .into(database.movies)
@@ -322,13 +322,10 @@ class LibraryScannerService {
             MoviesCompanion.insert(
               id: movieId,
               detectedTitle: parsed.title,
-              title: Value(parsed.title),
               detectedYear: parsed.year != null
                   ? Value(parsed.year)
                   : const Value.absent(),
-              year: parsed.year != null
-                  ? Value(parsed.year)
-                  : const Value.absent(),
+              identificationStatus: const Value('PENDING'),
               createdAt: timestamp,
               updatedAt: timestamp,
             ),
@@ -380,12 +377,13 @@ class LibraryScannerService {
   }) async {
     final parsed = item.parsedInfo;
 
-    // 1. Find or create TvShow
-    final existingShow = await database.findTvShowByTitle(parsed.title);
+    // 1. Find or create TvShow (by discovery identity: detectedTitle)
+    final existingShow = await database.findTvShowByDetectedTitle(parsed.title);
     String showId;
     if (existingShow != null) {
       showId = existingShow.id;
     } else {
+      // Create new logical TvShow record with discovery hints (pending canonical identification)
       showId = _uuid.v4();
       await database
           .into(database.tvShows)
@@ -393,7 +391,7 @@ class LibraryScannerService {
             TvShowsCompanion.insert(
               id: showId,
               detectedTitle: parsed.title,
-              title: Value(parsed.title),
+              identificationStatus: const Value('PENDING'),
               createdAt: timestamp,
               updatedAt: timestamp,
             ),
