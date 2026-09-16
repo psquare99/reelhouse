@@ -515,9 +515,9 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
   late final GeneratedColumn<String> title = GeneratedColumn<String>(
     'title',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _originalTitleMeta = const VerificationMeta(
     'originalTitle',
@@ -539,6 +539,40 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _detectedTitleMeta = const VerificationMeta(
+    'detectedTitle',
+  );
+  @override
+  late final GeneratedColumn<String> detectedTitle = GeneratedColumn<String>(
+    'detected_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _detectedYearMeta = const VerificationMeta(
+    'detectedYear',
+  );
+  @override
+  late final GeneratedColumn<int> detectedYear = GeneratedColumn<int>(
+    'detected_year',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _identificationStatusMeta =
+      const VerificationMeta('identificationStatus');
+  @override
+  late final GeneratedColumn<String> identificationStatus =
+      GeneratedColumn<String>(
+        'identification_status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('PENDING'),
+      );
   static const VerificationMeta _overviewMeta = const VerificationMeta(
     'overview',
   );
@@ -749,6 +783,9 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
     title,
     originalTitle,
     year,
+    detectedTitle,
+    detectedYear,
+    identificationStatus,
     overview,
     runtime,
     releaseDate,
@@ -796,8 +833,6 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
         _titleMeta,
         title.isAcceptableOrUnknown(data['title']!, _titleMeta),
       );
-    } else if (isInserting) {
-      context.missing(_titleMeta);
     }
     if (data.containsKey('original_title')) {
       context.handle(
@@ -812,6 +847,35 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
       context.handle(
         _yearMeta,
         year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    }
+    if (data.containsKey('detected_title')) {
+      context.handle(
+        _detectedTitleMeta,
+        detectedTitle.isAcceptableOrUnknown(
+          data['detected_title']!,
+          _detectedTitleMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_detectedTitleMeta);
+    }
+    if (data.containsKey('detected_year')) {
+      context.handle(
+        _detectedYearMeta,
+        detectedYear.isAcceptableOrUnknown(
+          data['detected_year']!,
+          _detectedYearMeta,
+        ),
+      );
+    }
+    if (data.containsKey('identification_status')) {
+      context.handle(
+        _identificationStatusMeta,
+        identificationStatus.isAcceptableOrUnknown(
+          data['identification_status']!,
+          _identificationStatusMeta,
+        ),
       );
     }
     if (data.containsKey('overview')) {
@@ -967,7 +1031,7 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
       title: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}title'],
-      )!,
+      ),
       originalTitle: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}original_title'],
@@ -976,6 +1040,18 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
         DriftSqlType.int,
         data['${effectivePrefix}year'],
       ),
+      detectedTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}detected_title'],
+      )!,
+      detectedYear: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}detected_year'],
+      ),
+      identificationStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}identification_status'],
+      )!,
       overview: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}overview'],
@@ -1060,9 +1136,12 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
 class Movie extends DataClass implements Insertable<Movie> {
   final String id;
   final String? metadataId;
-  final String title;
+  final String? title;
   final String? originalTitle;
   final int? year;
+  final String detectedTitle;
+  final int? detectedYear;
+  final String identificationStatus;
   final String? overview;
   final int? runtime;
   final DateTime? releaseDate;
@@ -1084,9 +1163,12 @@ class Movie extends DataClass implements Insertable<Movie> {
   const Movie({
     required this.id,
     this.metadataId,
-    required this.title,
+    this.title,
     this.originalTitle,
     this.year,
+    required this.detectedTitle,
+    this.detectedYear,
+    required this.identificationStatus,
     this.overview,
     this.runtime,
     this.releaseDate,
@@ -1113,13 +1195,20 @@ class Movie extends DataClass implements Insertable<Movie> {
     if (!nullToAbsent || metadataId != null) {
       map['metadata_id'] = Variable<String>(metadataId);
     }
-    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || title != null) {
+      map['title'] = Variable<String>(title);
+    }
     if (!nullToAbsent || originalTitle != null) {
       map['original_title'] = Variable<String>(originalTitle);
     }
     if (!nullToAbsent || year != null) {
       map['year'] = Variable<int>(year);
     }
+    map['detected_title'] = Variable<String>(detectedTitle);
+    if (!nullToAbsent || detectedYear != null) {
+      map['detected_year'] = Variable<int>(detectedYear);
+    }
+    map['identification_status'] = Variable<String>(identificationStatus);
     if (!nullToAbsent || overview != null) {
       map['overview'] = Variable<String>(overview);
     }
@@ -1171,11 +1260,18 @@ class Movie extends DataClass implements Insertable<Movie> {
       metadataId: metadataId == null && nullToAbsent
           ? const Value.absent()
           : Value(metadataId),
-      title: Value(title),
+      title: title == null && nullToAbsent
+          ? const Value.absent()
+          : Value(title),
       originalTitle: originalTitle == null && nullToAbsent
           ? const Value.absent()
           : Value(originalTitle),
       year: year == null && nullToAbsent ? const Value.absent() : Value(year),
+      detectedTitle: Value(detectedTitle),
+      detectedYear: detectedYear == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detectedYear),
+      identificationStatus: Value(identificationStatus),
       overview: overview == null && nullToAbsent
           ? const Value.absent()
           : Value(overview),
@@ -1229,9 +1325,14 @@ class Movie extends DataClass implements Insertable<Movie> {
     return Movie(
       id: serializer.fromJson<String>(json['id']),
       metadataId: serializer.fromJson<String?>(json['metadataId']),
-      title: serializer.fromJson<String>(json['title']),
+      title: serializer.fromJson<String?>(json['title']),
       originalTitle: serializer.fromJson<String?>(json['originalTitle']),
       year: serializer.fromJson<int?>(json['year']),
+      detectedTitle: serializer.fromJson<String>(json['detectedTitle']),
+      detectedYear: serializer.fromJson<int?>(json['detectedYear']),
+      identificationStatus: serializer.fromJson<String>(
+        json['identificationStatus'],
+      ),
       overview: serializer.fromJson<String?>(json['overview']),
       runtime: serializer.fromJson<int?>(json['runtime']),
       releaseDate: serializer.fromJson<DateTime?>(json['releaseDate']),
@@ -1262,9 +1363,12 @@ class Movie extends DataClass implements Insertable<Movie> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'metadataId': serializer.toJson<String?>(metadataId),
-      'title': serializer.toJson<String>(title),
+      'title': serializer.toJson<String?>(title),
       'originalTitle': serializer.toJson<String?>(originalTitle),
       'year': serializer.toJson<int?>(year),
+      'detectedTitle': serializer.toJson<String>(detectedTitle),
+      'detectedYear': serializer.toJson<int?>(detectedYear),
+      'identificationStatus': serializer.toJson<String>(identificationStatus),
       'overview': serializer.toJson<String?>(overview),
       'runtime': serializer.toJson<int?>(runtime),
       'releaseDate': serializer.toJson<DateTime?>(releaseDate),
@@ -1291,9 +1395,12 @@ class Movie extends DataClass implements Insertable<Movie> {
   Movie copyWith({
     String? id,
     Value<String?> metadataId = const Value.absent(),
-    String? title,
+    Value<String?> title = const Value.absent(),
     Value<String?> originalTitle = const Value.absent(),
     Value<int?> year = const Value.absent(),
+    String? detectedTitle,
+    Value<int?> detectedYear = const Value.absent(),
+    String? identificationStatus,
     Value<String?> overview = const Value.absent(),
     Value<int?> runtime = const Value.absent(),
     Value<DateTime?> releaseDate = const Value.absent(),
@@ -1315,11 +1422,14 @@ class Movie extends DataClass implements Insertable<Movie> {
   }) => Movie(
     id: id ?? this.id,
     metadataId: metadataId.present ? metadataId.value : this.metadataId,
-    title: title ?? this.title,
+    title: title.present ? title.value : this.title,
     originalTitle: originalTitle.present
         ? originalTitle.value
         : this.originalTitle,
     year: year.present ? year.value : this.year,
+    detectedTitle: detectedTitle ?? this.detectedTitle,
+    detectedYear: detectedYear.present ? detectedYear.value : this.detectedYear,
+    identificationStatus: identificationStatus ?? this.identificationStatus,
     overview: overview.present ? overview.value : this.overview,
     runtime: runtime.present ? runtime.value : this.runtime,
     releaseDate: releaseDate.present ? releaseDate.value : this.releaseDate,
@@ -1357,6 +1467,15 @@ class Movie extends DataClass implements Insertable<Movie> {
           ? data.originalTitle.value
           : this.originalTitle,
       year: data.year.present ? data.year.value : this.year,
+      detectedTitle: data.detectedTitle.present
+          ? data.detectedTitle.value
+          : this.detectedTitle,
+      detectedYear: data.detectedYear.present
+          ? data.detectedYear.value
+          : this.detectedYear,
+      identificationStatus: data.identificationStatus.present
+          ? data.identificationStatus.value
+          : this.identificationStatus,
       overview: data.overview.present ? data.overview.value : this.overview,
       runtime: data.runtime.present ? data.runtime.value : this.runtime,
       releaseDate: data.releaseDate.present
@@ -1406,6 +1525,9 @@ class Movie extends DataClass implements Insertable<Movie> {
           ..write('title: $title, ')
           ..write('originalTitle: $originalTitle, ')
           ..write('year: $year, ')
+          ..write('detectedTitle: $detectedTitle, ')
+          ..write('detectedYear: $detectedYear, ')
+          ..write('identificationStatus: $identificationStatus, ')
           ..write('overview: $overview, ')
           ..write('runtime: $runtime, ')
           ..write('releaseDate: $releaseDate, ')
@@ -1435,6 +1557,9 @@ class Movie extends DataClass implements Insertable<Movie> {
     title,
     originalTitle,
     year,
+    detectedTitle,
+    detectedYear,
+    identificationStatus,
     overview,
     runtime,
     releaseDate,
@@ -1463,6 +1588,9 @@ class Movie extends DataClass implements Insertable<Movie> {
           other.title == this.title &&
           other.originalTitle == this.originalTitle &&
           other.year == this.year &&
+          other.detectedTitle == this.detectedTitle &&
+          other.detectedYear == this.detectedYear &&
+          other.identificationStatus == this.identificationStatus &&
           other.overview == this.overview &&
           other.runtime == this.runtime &&
           other.releaseDate == this.releaseDate &&
@@ -1486,9 +1614,12 @@ class Movie extends DataClass implements Insertable<Movie> {
 class MoviesCompanion extends UpdateCompanion<Movie> {
   final Value<String> id;
   final Value<String?> metadataId;
-  final Value<String> title;
+  final Value<String?> title;
   final Value<String?> originalTitle;
   final Value<int?> year;
+  final Value<String> detectedTitle;
+  final Value<int?> detectedYear;
+  final Value<String> identificationStatus;
   final Value<String?> overview;
   final Value<int?> runtime;
   final Value<DateTime?> releaseDate;
@@ -1514,6 +1645,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     this.title = const Value.absent(),
     this.originalTitle = const Value.absent(),
     this.year = const Value.absent(),
+    this.detectedTitle = const Value.absent(),
+    this.detectedYear = const Value.absent(),
+    this.identificationStatus = const Value.absent(),
     this.overview = const Value.absent(),
     this.runtime = const Value.absent(),
     this.releaseDate = const Value.absent(),
@@ -1537,9 +1671,12 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
   MoviesCompanion.insert({
     required String id,
     this.metadataId = const Value.absent(),
-    required String title,
+    this.title = const Value.absent(),
     this.originalTitle = const Value.absent(),
     this.year = const Value.absent(),
+    required String detectedTitle,
+    this.detectedYear = const Value.absent(),
+    this.identificationStatus = const Value.absent(),
     this.overview = const Value.absent(),
     this.runtime = const Value.absent(),
     this.releaseDate = const Value.absent(),
@@ -1560,7 +1697,7 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     this.playbackPositionSeconds = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
-       title = Value(title),
+       detectedTitle = Value(detectedTitle),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<Movie> custom({
@@ -1569,6 +1706,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     Expression<String>? title,
     Expression<String>? originalTitle,
     Expression<int>? year,
+    Expression<String>? detectedTitle,
+    Expression<int>? detectedYear,
+    Expression<String>? identificationStatus,
     Expression<String>? overview,
     Expression<int>? runtime,
     Expression<DateTime>? releaseDate,
@@ -1595,6 +1735,10 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
       if (title != null) 'title': title,
       if (originalTitle != null) 'original_title': originalTitle,
       if (year != null) 'year': year,
+      if (detectedTitle != null) 'detected_title': detectedTitle,
+      if (detectedYear != null) 'detected_year': detectedYear,
+      if (identificationStatus != null)
+        'identification_status': identificationStatus,
       if (overview != null) 'overview': overview,
       if (runtime != null) 'runtime': runtime,
       if (releaseDate != null) 'release_date': releaseDate,
@@ -1621,9 +1765,12 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
   MoviesCompanion copyWith({
     Value<String>? id,
     Value<String?>? metadataId,
-    Value<String>? title,
+    Value<String?>? title,
     Value<String?>? originalTitle,
     Value<int?>? year,
+    Value<String>? detectedTitle,
+    Value<int?>? detectedYear,
+    Value<String>? identificationStatus,
     Value<String?>? overview,
     Value<int?>? runtime,
     Value<DateTime?>? releaseDate,
@@ -1650,6 +1797,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
       title: title ?? this.title,
       originalTitle: originalTitle ?? this.originalTitle,
       year: year ?? this.year,
+      detectedTitle: detectedTitle ?? this.detectedTitle,
+      detectedYear: detectedYear ?? this.detectedYear,
+      identificationStatus: identificationStatus ?? this.identificationStatus,
       overview: overview ?? this.overview,
       runtime: runtime ?? this.runtime,
       releaseDate: releaseDate ?? this.releaseDate,
@@ -1690,6 +1840,17 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     }
     if (year.present) {
       map['year'] = Variable<int>(year.value);
+    }
+    if (detectedTitle.present) {
+      map['detected_title'] = Variable<String>(detectedTitle.value);
+    }
+    if (detectedYear.present) {
+      map['detected_year'] = Variable<int>(detectedYear.value);
+    }
+    if (identificationStatus.present) {
+      map['identification_status'] = Variable<String>(
+        identificationStatus.value,
+      );
     }
     if (overview.present) {
       map['overview'] = Variable<String>(overview.value);
@@ -1761,6 +1922,9 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
           ..write('title: $title, ')
           ..write('originalTitle: $originalTitle, ')
           ..write('year: $year, ')
+          ..write('detectedTitle: $detectedTitle, ')
+          ..write('detectedYear: $detectedYear, ')
+          ..write('identificationStatus: $identificationStatus, ')
           ..write('overview: $overview, ')
           ..write('runtime: $runtime, ')
           ..write('releaseDate: $releaseDate, ')
@@ -1815,9 +1979,9 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
   late final GeneratedColumn<String> title = GeneratedColumn<String>(
     'title',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _originalTitleMeta = const VerificationMeta(
     'originalTitle',
@@ -1830,6 +1994,29 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _detectedTitleMeta = const VerificationMeta(
+    'detectedTitle',
+  );
+  @override
+  late final GeneratedColumn<String> detectedTitle = GeneratedColumn<String>(
+    'detected_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _identificationStatusMeta =
+      const VerificationMeta('identificationStatus');
+  @override
+  late final GeneratedColumn<String> identificationStatus =
+      GeneratedColumn<String>(
+        'identification_status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('PENDING'),
+      );
   static const VerificationMeta _overviewMeta = const VerificationMeta(
     'overview',
   );
@@ -1993,6 +2180,8 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
     metadataId,
     title,
     originalTitle,
+    detectedTitle,
+    identificationStatus,
     overview,
     firstAirDate,
     posterPath,
@@ -2036,8 +2225,6 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
         _titleMeta,
         title.isAcceptableOrUnknown(data['title']!, _titleMeta),
       );
-    } else if (isInserting) {
-      context.missing(_titleMeta);
     }
     if (data.containsKey('original_title')) {
       context.handle(
@@ -2045,6 +2232,26 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
         originalTitle.isAcceptableOrUnknown(
           data['original_title']!,
           _originalTitleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('detected_title')) {
+      context.handle(
+        _detectedTitleMeta,
+        detectedTitle.isAcceptableOrUnknown(
+          data['detected_title']!,
+          _detectedTitleMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_detectedTitleMeta);
+    }
+    if (data.containsKey('identification_status')) {
+      context.handle(
+        _identificationStatusMeta,
+        identificationStatus.isAcceptableOrUnknown(
+          data['identification_status']!,
+          _identificationStatusMeta,
         ),
       );
     }
@@ -2174,11 +2381,19 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
       title: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}title'],
-      )!,
+      ),
       originalTitle: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}original_title'],
       ),
+      detectedTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}detected_title'],
+      )!,
+      identificationStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}identification_status'],
+      )!,
       overview: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}overview'],
@@ -2247,8 +2462,10 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
 class TvShow extends DataClass implements Insertable<TvShow> {
   final String id;
   final String? metadataId;
-  final String title;
+  final String? title;
   final String? originalTitle;
+  final String detectedTitle;
+  final String identificationStatus;
   final String? overview;
   final DateTime? firstAirDate;
   final String? posterPath;
@@ -2266,8 +2483,10 @@ class TvShow extends DataClass implements Insertable<TvShow> {
   const TvShow({
     required this.id,
     this.metadataId,
-    required this.title,
+    this.title,
     this.originalTitle,
+    required this.detectedTitle,
+    required this.identificationStatus,
     this.overview,
     this.firstAirDate,
     this.posterPath,
@@ -2290,10 +2509,14 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     if (!nullToAbsent || metadataId != null) {
       map['metadata_id'] = Variable<String>(metadataId);
     }
-    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || title != null) {
+      map['title'] = Variable<String>(title);
+    }
     if (!nullToAbsent || originalTitle != null) {
       map['original_title'] = Variable<String>(originalTitle);
     }
+    map['detected_title'] = Variable<String>(detectedTitle);
+    map['identification_status'] = Variable<String>(identificationStatus);
     if (!nullToAbsent || overview != null) {
       map['overview'] = Variable<String>(overview);
     }
@@ -2337,10 +2560,14 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       metadataId: metadataId == null && nullToAbsent
           ? const Value.absent()
           : Value(metadataId),
-      title: Value(title),
+      title: title == null && nullToAbsent
+          ? const Value.absent()
+          : Value(title),
       originalTitle: originalTitle == null && nullToAbsent
           ? const Value.absent()
           : Value(originalTitle),
+      detectedTitle: Value(detectedTitle),
+      identificationStatus: Value(identificationStatus),
       overview: overview == null && nullToAbsent
           ? const Value.absent()
           : Value(overview),
@@ -2386,8 +2613,12 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     return TvShow(
       id: serializer.fromJson<String>(json['id']),
       metadataId: serializer.fromJson<String?>(json['metadataId']),
-      title: serializer.fromJson<String>(json['title']),
+      title: serializer.fromJson<String?>(json['title']),
       originalTitle: serializer.fromJson<String?>(json['originalTitle']),
+      detectedTitle: serializer.fromJson<String>(json['detectedTitle']),
+      identificationStatus: serializer.fromJson<String>(
+        json['identificationStatus'],
+      ),
       overview: serializer.fromJson<String?>(json['overview']),
       firstAirDate: serializer.fromJson<DateTime?>(json['firstAirDate']),
       posterPath: serializer.fromJson<String?>(json['posterPath']),
@@ -2412,8 +2643,10 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'metadataId': serializer.toJson<String?>(metadataId),
-      'title': serializer.toJson<String>(title),
+      'title': serializer.toJson<String?>(title),
       'originalTitle': serializer.toJson<String?>(originalTitle),
+      'detectedTitle': serializer.toJson<String>(detectedTitle),
+      'identificationStatus': serializer.toJson<String>(identificationStatus),
       'overview': serializer.toJson<String?>(overview),
       'firstAirDate': serializer.toJson<DateTime?>(firstAirDate),
       'posterPath': serializer.toJson<String?>(posterPath),
@@ -2434,8 +2667,10 @@ class TvShow extends DataClass implements Insertable<TvShow> {
   TvShow copyWith({
     String? id,
     Value<String?> metadataId = const Value.absent(),
-    String? title,
+    Value<String?> title = const Value.absent(),
     Value<String?> originalTitle = const Value.absent(),
+    String? detectedTitle,
+    String? identificationStatus,
     Value<String?> overview = const Value.absent(),
     Value<DateTime?> firstAirDate = const Value.absent(),
     Value<String?> posterPath = const Value.absent(),
@@ -2453,10 +2688,12 @@ class TvShow extends DataClass implements Insertable<TvShow> {
   }) => TvShow(
     id: id ?? this.id,
     metadataId: metadataId.present ? metadataId.value : this.metadataId,
-    title: title ?? this.title,
+    title: title.present ? title.value : this.title,
     originalTitle: originalTitle.present
         ? originalTitle.value
         : this.originalTitle,
+    detectedTitle: detectedTitle ?? this.detectedTitle,
+    identificationStatus: identificationStatus ?? this.identificationStatus,
     overview: overview.present ? overview.value : this.overview,
     firstAirDate: firstAirDate.present ? firstAirDate.value : this.firstAirDate,
     posterPath: posterPath.present ? posterPath.value : this.posterPath,
@@ -2488,6 +2725,12 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       originalTitle: data.originalTitle.present
           ? data.originalTitle.value
           : this.originalTitle,
+      detectedTitle: data.detectedTitle.present
+          ? data.detectedTitle.value
+          : this.detectedTitle,
+      identificationStatus: data.identificationStatus.present
+          ? data.identificationStatus.value
+          : this.identificationStatus,
       overview: data.overview.present ? data.overview.value : this.overview,
       firstAirDate: data.firstAirDate.present
           ? data.firstAirDate.value
@@ -2528,6 +2771,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
           ..write('metadataId: $metadataId, ')
           ..write('title: $title, ')
           ..write('originalTitle: $originalTitle, ')
+          ..write('detectedTitle: $detectedTitle, ')
+          ..write('identificationStatus: $identificationStatus, ')
           ..write('overview: $overview, ')
           ..write('firstAirDate: $firstAirDate, ')
           ..write('posterPath: $posterPath, ')
@@ -2552,6 +2797,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     metadataId,
     title,
     originalTitle,
+    detectedTitle,
+    identificationStatus,
     overview,
     firstAirDate,
     posterPath,
@@ -2575,6 +2822,8 @@ class TvShow extends DataClass implements Insertable<TvShow> {
           other.metadataId == this.metadataId &&
           other.title == this.title &&
           other.originalTitle == this.originalTitle &&
+          other.detectedTitle == this.detectedTitle &&
+          other.identificationStatus == this.identificationStatus &&
           other.overview == this.overview &&
           other.firstAirDate == this.firstAirDate &&
           other.posterPath == this.posterPath &&
@@ -2594,8 +2843,10 @@ class TvShow extends DataClass implements Insertable<TvShow> {
 class TvShowsCompanion extends UpdateCompanion<TvShow> {
   final Value<String> id;
   final Value<String?> metadataId;
-  final Value<String> title;
+  final Value<String?> title;
   final Value<String?> originalTitle;
+  final Value<String> detectedTitle;
+  final Value<String> identificationStatus;
   final Value<String?> overview;
   final Value<DateTime?> firstAirDate;
   final Value<String?> posterPath;
@@ -2616,6 +2867,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     this.metadataId = const Value.absent(),
     this.title = const Value.absent(),
     this.originalTitle = const Value.absent(),
+    this.detectedTitle = const Value.absent(),
+    this.identificationStatus = const Value.absent(),
     this.overview = const Value.absent(),
     this.firstAirDate = const Value.absent(),
     this.posterPath = const Value.absent(),
@@ -2635,8 +2888,10 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
   TvShowsCompanion.insert({
     required String id,
     this.metadataId = const Value.absent(),
-    required String title,
+    this.title = const Value.absent(),
     this.originalTitle = const Value.absent(),
+    required String detectedTitle,
+    this.identificationStatus = const Value.absent(),
     this.overview = const Value.absent(),
     this.firstAirDate = const Value.absent(),
     this.posterPath = const Value.absent(),
@@ -2653,7 +2908,7 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
-       title = Value(title),
+       detectedTitle = Value(detectedTitle),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<TvShow> custom({
@@ -2661,6 +2916,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     Expression<String>? metadataId,
     Expression<String>? title,
     Expression<String>? originalTitle,
+    Expression<String>? detectedTitle,
+    Expression<String>? identificationStatus,
     Expression<String>? overview,
     Expression<DateTime>? firstAirDate,
     Expression<String>? posterPath,
@@ -2682,6 +2939,9 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
       if (metadataId != null) 'metadata_id': metadataId,
       if (title != null) 'title': title,
       if (originalTitle != null) 'original_title': originalTitle,
+      if (detectedTitle != null) 'detected_title': detectedTitle,
+      if (identificationStatus != null)
+        'identification_status': identificationStatus,
       if (overview != null) 'overview': overview,
       if (firstAirDate != null) 'first_air_date': firstAirDate,
       if (posterPath != null) 'poster_path': posterPath,
@@ -2703,8 +2963,10 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
   TvShowsCompanion copyWith({
     Value<String>? id,
     Value<String?>? metadataId,
-    Value<String>? title,
+    Value<String?>? title,
     Value<String?>? originalTitle,
+    Value<String>? detectedTitle,
+    Value<String>? identificationStatus,
     Value<String?>? overview,
     Value<DateTime?>? firstAirDate,
     Value<String?>? posterPath,
@@ -2726,6 +2988,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
       metadataId: metadataId ?? this.metadataId,
       title: title ?? this.title,
       originalTitle: originalTitle ?? this.originalTitle,
+      detectedTitle: detectedTitle ?? this.detectedTitle,
+      identificationStatus: identificationStatus ?? this.identificationStatus,
       overview: overview ?? this.overview,
       firstAirDate: firstAirDate ?? this.firstAirDate,
       posterPath: posterPath ?? this.posterPath,
@@ -2758,6 +3022,14 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     }
     if (originalTitle.present) {
       map['original_title'] = Variable<String>(originalTitle.value);
+    }
+    if (detectedTitle.present) {
+      map['detected_title'] = Variable<String>(detectedTitle.value);
+    }
+    if (identificationStatus.present) {
+      map['identification_status'] = Variable<String>(
+        identificationStatus.value,
+      );
     }
     if (overview.present) {
       map['overview'] = Variable<String>(overview.value);
@@ -2814,6 +3086,8 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
           ..write('metadataId: $metadataId, ')
           ..write('title: $title, ')
           ..write('originalTitle: $originalTitle, ')
+          ..write('detectedTitle: $detectedTitle, ')
+          ..write('identificationStatus: $identificationStatus, ')
           ..write('overview: $overview, ')
           ..write('firstAirDate: $firstAirDate, ')
           ..write('posterPath: $posterPath, ')
@@ -7294,9 +7568,12 @@ typedef $$StoragesTableProcessedTableManager =
 typedef $$MoviesTableCreateCompanionBuilder = MoviesCompanion Function({
   required String id,
   Value<String?> metadataId,
-  required String title,
+  Value<String?> title,
   Value<String?> originalTitle,
   Value<int?> year,
+  required String detectedTitle,
+  Value<int?> detectedYear,
+  Value<String> identificationStatus,
   Value<String?> overview,
   Value<int?> runtime,
   Value<DateTime?> releaseDate,
@@ -7320,9 +7597,12 @@ typedef $$MoviesTableCreateCompanionBuilder = MoviesCompanion Function({
 typedef $$MoviesTableUpdateCompanionBuilder = MoviesCompanion Function({
   Value<String> id,
   Value<String?> metadataId,
-  Value<String> title,
+  Value<String?> title,
   Value<String?> originalTitle,
   Value<int?> year,
+  Value<String> detectedTitle,
+  Value<int?> detectedYear,
+  Value<String> identificationStatus,
   Value<String?> overview,
   Value<int?> runtime,
   Value<DateTime?> releaseDate,
@@ -7418,6 +7698,21 @@ class $$MoviesTableFilterComposer
 
   ColumnFilters<int> get year => $composableBuilder(
     column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get detectedTitle => $composableBuilder(
+    column: $table.detectedTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get detectedYear => $composableBuilder(
+    column: $table.detectedYear,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get identificationStatus => $composableBuilder(
+    column: $table.identificationStatus,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7596,6 +7891,21 @@ class $$MoviesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get detectedTitle => $composableBuilder(
+    column: $table.detectedTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get detectedYear => $composableBuilder(
+    column: $table.detectedYear,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get identificationStatus => $composableBuilder(
+    column: $table.identificationStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get overview => $composableBuilder(
     column: $table.overview,
     builder: (column) => ColumnOrderings(column),
@@ -7714,6 +8024,21 @@ class $$MoviesTableAnnotationComposer
 
   GeneratedColumn<int> get year =>
       $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<String> get detectedTitle => $composableBuilder(
+    column: $table.detectedTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get detectedYear => $composableBuilder(
+    column: $table.detectedYear,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get identificationStatus => $composableBuilder(
+    column: $table.identificationStatus,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get overview =>
       $composableBuilder(column: $table.overview, builder: (column) => column);
@@ -7873,9 +8198,12 @@ class $$MoviesTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String?> metadataId = const Value.absent(),
-                Value<String> title = const Value.absent(),
+                Value<String?> title = const Value.absent(),
                 Value<String?> originalTitle = const Value.absent(),
                 Value<int?> year = const Value.absent(),
+                Value<String> detectedTitle = const Value.absent(),
+                Value<int?> detectedYear = const Value.absent(),
+                Value<String> identificationStatus = const Value.absent(),
                 Value<String?> overview = const Value.absent(),
                 Value<int?> runtime = const Value.absent(),
                 Value<DateTime?> releaseDate = const Value.absent(),
@@ -7901,6 +8229,9 @@ class $$MoviesTableTableManager
                 title: title,
                 originalTitle: originalTitle,
                 year: year,
+                detectedTitle: detectedTitle,
+                detectedYear: detectedYear,
+                identificationStatus: identificationStatus,
                 overview: overview,
                 runtime: runtime,
                 releaseDate: releaseDate,
@@ -7925,9 +8256,12 @@ class $$MoviesTableTableManager
               ({
                 required String id,
                 Value<String?> metadataId = const Value.absent(),
-                required String title,
+                Value<String?> title = const Value.absent(),
                 Value<String?> originalTitle = const Value.absent(),
                 Value<int?> year = const Value.absent(),
+                required String detectedTitle,
+                Value<int?> detectedYear = const Value.absent(),
+                Value<String> identificationStatus = const Value.absent(),
                 Value<String?> overview = const Value.absent(),
                 Value<int?> runtime = const Value.absent(),
                 Value<DateTime?> releaseDate = const Value.absent(),
@@ -7953,6 +8287,9 @@ class $$MoviesTableTableManager
                 title: title,
                 originalTitle: originalTitle,
                 year: year,
+                detectedTitle: detectedTitle,
+                detectedYear: detectedYear,
+                identificationStatus: identificationStatus,
                 overview: overview,
                 runtime: runtime,
                 releaseDate: releaseDate,
@@ -8059,8 +8396,10 @@ typedef $$MoviesTableProcessedTableManager =
 typedef $$TvShowsTableCreateCompanionBuilder = TvShowsCompanion Function({
   required String id,
   Value<String?> metadataId,
-  required String title,
+  Value<String?> title,
   Value<String?> originalTitle,
+  required String detectedTitle,
+  Value<String> identificationStatus,
   Value<String?> overview,
   Value<DateTime?> firstAirDate,
   Value<String?> posterPath,
@@ -8080,8 +8419,10 @@ typedef $$TvShowsTableCreateCompanionBuilder = TvShowsCompanion Function({
 typedef $$TvShowsTableUpdateCompanionBuilder = TvShowsCompanion Function({
   Value<String> id,
   Value<String?> metadataId,
-  Value<String> title,
+  Value<String?> title,
   Value<String?> originalTitle,
+  Value<String> detectedTitle,
+  Value<String> identificationStatus,
   Value<String?> overview,
   Value<DateTime?> firstAirDate,
   Value<String?> posterPath,
@@ -8169,6 +8510,16 @@ class $$TvShowsTableFilterComposer
 
   ColumnFilters<String> get originalTitle => $composableBuilder(
     column: $table.originalTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get detectedTitle => $composableBuilder(
+    column: $table.detectedTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get identificationStatus => $composableBuilder(
+    column: $table.identificationStatus,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8322,6 +8673,16 @@ class $$TvShowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get detectedTitle => $composableBuilder(
+    column: $table.detectedTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get identificationStatus => $composableBuilder(
+    column: $table.identificationStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get overview => $composableBuilder(
     column: $table.overview,
     builder: (column) => ColumnOrderings(column),
@@ -8415,6 +8776,16 @@ class $$TvShowsTableAnnotationComposer
 
   GeneratedColumn<String> get originalTitle => $composableBuilder(
     column: $table.originalTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get detectedTitle => $composableBuilder(
+    column: $table.detectedTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get identificationStatus => $composableBuilder(
+    column: $table.identificationStatus,
     builder: (column) => column,
   );
 
@@ -8557,8 +8928,10 @@ class $$TvShowsTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String?> metadataId = const Value.absent(),
-                Value<String> title = const Value.absent(),
+                Value<String?> title = const Value.absent(),
                 Value<String?> originalTitle = const Value.absent(),
+                Value<String> detectedTitle = const Value.absent(),
+                Value<String> identificationStatus = const Value.absent(),
                 Value<String?> overview = const Value.absent(),
                 Value<DateTime?> firstAirDate = const Value.absent(),
                 Value<String?> posterPath = const Value.absent(),
@@ -8579,6 +8952,8 @@ class $$TvShowsTableTableManager
                 metadataId: metadataId,
                 title: title,
                 originalTitle: originalTitle,
+                detectedTitle: detectedTitle,
+                identificationStatus: identificationStatus,
                 overview: overview,
                 firstAirDate: firstAirDate,
                 posterPath: posterPath,
@@ -8599,8 +8974,10 @@ class $$TvShowsTableTableManager
               ({
                 required String id,
                 Value<String?> metadataId = const Value.absent(),
-                required String title,
+                Value<String?> title = const Value.absent(),
                 Value<String?> originalTitle = const Value.absent(),
+                required String detectedTitle,
+                Value<String> identificationStatus = const Value.absent(),
                 Value<String?> overview = const Value.absent(),
                 Value<DateTime?> firstAirDate = const Value.absent(),
                 Value<String?> posterPath = const Value.absent(),
@@ -8621,6 +8998,8 @@ class $$TvShowsTableTableManager
                 metadataId: metadataId,
                 title: title,
                 originalTitle: originalTitle,
+                detectedTitle: detectedTitle,
+                identificationStatus: identificationStatus,
                 overview: overview,
                 firstAirDate: firstAirDate,
                 posterPath: posterPath,

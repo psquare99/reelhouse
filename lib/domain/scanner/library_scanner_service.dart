@@ -321,7 +321,11 @@ class LibraryScannerService {
           .insert(
             MoviesCompanion.insert(
               id: movieId,
-              title: parsed.title,
+              detectedTitle: parsed.title,
+              title: Value(parsed.title),
+              detectedYear: parsed.year != null
+                  ? Value(parsed.year)
+                  : const Value.absent(),
               year: parsed.year != null
                   ? Value(parsed.year)
                   : const Value.absent(),
@@ -388,7 +392,8 @@ class LibraryScannerService {
           .insert(
             TvShowsCompanion.insert(
               id: showId,
-              title: parsed.title,
+              detectedTitle: parsed.title,
+              title: Value(parsed.title),
               createdAt: timestamp,
               updatedAt: timestamp,
             ),

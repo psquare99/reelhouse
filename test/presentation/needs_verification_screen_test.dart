@@ -91,7 +91,8 @@ void main() {
           .insert(
             MoviesCompanion.insert(
               id: 'm-unmatched',
-              title: 'The Thing',
+              detectedTitle: 'The Thing',
+              title: const drift.Value('The Thing'),
               year: const drift.Value(1982),
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),

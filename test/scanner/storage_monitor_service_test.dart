@@ -75,7 +75,8 @@ void main() {
           .insert(
             MoviesCompanion.insert(
               id: 'movie-1',
-              title: 'Interstellar',
+              detectedTitle: 'Interstellar',
+              title: const drift.Value('Interstellar'),
               createdAt: now,
               updatedAt: now,
             ),

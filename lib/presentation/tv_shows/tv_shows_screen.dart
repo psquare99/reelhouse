@@ -129,7 +129,7 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
                         itemBuilder: (context, index) {
                           final show = filteredShows[index];
                           return CinemaPosterCard(
-                            title: show.title,
+                            title: show.title ?? show.detectedTitle,
                             year: show.firstAirDate?.year,
                             posterPath: show.posterPath,
                             isFavorite: show.isFavorite,

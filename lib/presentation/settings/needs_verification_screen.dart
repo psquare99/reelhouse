@@ -118,15 +118,15 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
                     builder: (context, sourceSnap) {
                       final source = sourceSnap.data?.firstOrNull;
                       return _buildItemCard(
-                        title: movie.title,
-                        year: movie.year,
+                        title: movie.title ?? movie.detectedTitle,
+                        year: movie.year ?? movie.detectedYear,
                         filename: source?.filename,
                         relativePath: source?.relativePath,
                         isMovie: true,
                         onResolve: () => _openManualMatchDialog(
                           id: movie.id,
-                          detectedTitle: movie.title,
-                          detectedYear: movie.year,
+                          detectedTitle: movie.detectedTitle,
+                          detectedYear: movie.detectedYear ?? movie.year,
                           isMovie: true,
                           filename: source?.filename,
                           relativePath: source?.relativePath,
@@ -164,14 +164,14 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
                     builder: (context, sourceSnap) {
                       final source = sourceSnap.data?.firstOrNull;
                       return _buildItemCard(
-                        title: show.title,
+                        title: show.title ?? show.detectedTitle,
                         year: null,
                         filename: source?.filename,
                         relativePath: source?.relativePath,
                         isMovie: false,
                         onResolve: () => _openManualMatchDialog(
                           id: show.id,
-                          detectedTitle: show.title,
+                          detectedTitle: show.detectedTitle,
                           detectedYear: null,
                           isMovie: false,
                           filename: source?.filename,

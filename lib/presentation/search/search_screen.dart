@@ -204,8 +204,8 @@ class _SearchScreenState extends State<SearchScreen> {
                     itemBuilder: (context, index) {
                       final movie = _movieResults[index];
                       return CinemaPosterCard(
-                        title: movie.title,
-                        year: movie.year,
+                        title: movie.title ?? movie.detectedTitle,
+                        year: movie.year ?? movie.detectedYear,
                         posterPath: movie.posterPath,
                         isFavorite: movie.isFavorite,
                         watchState: movie.watchState,
@@ -251,7 +251,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     itemBuilder: (context, index) {
                       final show = _showResults[index];
                       return CinemaPosterCard(
-                        title: show.title,
+                        title: show.title ?? show.detectedTitle,
                         posterPath: show.posterPath,
                         isFavorite: show.isFavorite,
                         fallbackIcon: Icons.tv,

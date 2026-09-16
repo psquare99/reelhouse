@@ -48,7 +48,8 @@ void main() {
           .insert(
             TvShowsCompanion.insert(
               id: 'show-severance',
-              title: 'Severance',
+              detectedTitle: 'Severance',
+              title: const drift.Value('Severance'),
               overview: const drift.Value(
                 'Mark leads a team of office workers whose memories have been surgically divided.',
               ),

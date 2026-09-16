@@ -22,7 +22,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? connect());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -66,6 +66,32 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(tvShows, tvShows.metadataProvider);
         await m.addColumn(tvShows, tvShows.providerItemId);
         await m.addColumn(tvShows, tvShows.metadataUpdatedAt);
+      }
+      if (from < 4) {
+        await m.alterTable(
+          TableMigration(
+            movies,
+            columnTransformer: {
+              movies.detectedTitle: movies.title,
+              movies.detectedYear: movies.year,
+              movies.identificationStatus: const CustomExpression<String>(
+                "CASE WHEN tmdb_id IS NOT NULL THEN 'IDENTIFIED' ELSE 'PENDING' END",
+              ),
+            },
+          ),
+        );
+
+        await m.alterTable(
+          TableMigration(
+            tvShows,
+            columnTransformer: {
+              tvShows.detectedTitle: tvShows.title,
+              tvShows.identificationStatus: const CustomExpression<String>(
+                "CASE WHEN tmdb_id IS NOT NULL THEN 'IDENTIFIED' ELSE 'PENDING' END",
+              ),
+            },
+          ),
+        );
       }
     },
   );

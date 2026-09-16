@@ -90,13 +90,15 @@ class CollectionDetailScreen extends StatelessWidget {
                             );
                             return ListTile(
                               title: Text(
-                                m.title,
+                                m.title ?? m.detectedTitle,
                                 style: const TextStyle(
                                   color: CinemaColors.textPrimary,
                                 ),
                               ),
                               subtitle: Text(
-                                m.year != null ? '${m.year}' : '',
+                                (m.year ?? m.detectedYear) != null
+                                    ? '${m.year ?? m.detectedYear}'
+                                    : '',
                                 style: const TextStyle(
                                   color: CinemaColors.textSecondary,
                                 ),
@@ -143,7 +145,7 @@ class CollectionDetailScreen extends StatelessWidget {
                             final alreadyAdded = existingShowIds.contains(s.id);
                             return ListTile(
                               title: Text(
-                                s.title,
+                                s.title ?? s.detectedTitle,
                                 style: const TextStyle(
                                   color: CinemaColors.textPrimary,
                                 ),
@@ -359,8 +361,8 @@ class CollectionDetailScreen extends StatelessWidget {
                         final movie = movieMap[item.movieId];
                         if (movie == null) return const SizedBox.shrink();
                         return CinemaPosterCard(
-                          title: movie.title,
-                          year: movie.year,
+                          title: movie.title ?? movie.detectedTitle,
+                          year: movie.year ?? movie.detectedYear,
                           posterPath: movie.posterPath,
                           isFavorite: movie.isFavorite,
                           watchState: movie.watchState,
@@ -379,7 +381,7 @@ class CollectionDetailScreen extends StatelessWidget {
                         final show = showMap[item.tvShowId];
                         if (show == null) return const SizedBox.shrink();
                         return CinemaPosterCard(
-                          title: show.title,
+                          title: show.title ?? show.detectedTitle,
                           posterPath: show.posterPath,
                           isFavorite: show.isFavorite,
                           fallbackIcon: Icons.tv,

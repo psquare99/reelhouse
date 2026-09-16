@@ -56,7 +56,8 @@ void main() {
           .insert(
             MoviesCompanion.insert(
               id: 'm-batman',
-              title: 'The Dark Knight',
+              detectedTitle: 'The Dark Knight',
+              title: const drift.Value('The Dark Knight'),
               year: const drift.Value(2008),
               createdAt: now,
               updatedAt: now,

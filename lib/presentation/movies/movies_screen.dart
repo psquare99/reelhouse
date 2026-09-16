@@ -168,8 +168,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
                                       .resolve(checkSources);
 
                                   return CinemaPosterCard(
-                                    title: movie.title,
-                                    year: movie.year,
+                                    title: movie.title ?? movie.detectedTitle,
+                                    year: movie.year ?? movie.detectedYear,
                                     posterPath: movie.posterPath,
                                     availabilityStatus: availability,
                                     isFavorite: movie.isFavorite,

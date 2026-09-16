@@ -524,7 +524,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                 children: [
                                   // Title & Original Title
                                   Text(
-                                    movie.title,
+                                    movie.title ?? movie.detectedTitle,
                                     style: const TextStyle(
                                       color: CinemaColors.textPrimary,
                                       fontSize: 28,
@@ -533,7 +533,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                     ),
                                   ),
                                   if (movie.originalTitle != null &&
-                                      movie.originalTitle != movie.title) ...[
+                                      movie.originalTitle != (movie.title ?? movie.detectedTitle)) ...[
                                     const SizedBox(height: 4),
                                     Text(
                                       movie.originalTitle!,
@@ -625,7 +625,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                         downloadProgress: downloadProgress,
                                         onPlay: () => _handlePlay(
                                           resolution,
-                                          movie.title,
+                                          movie.title ?? movie.detectedTitle,
                                         ),
                                         onConnectDisk: () =>
                                             _showConnectDiskDialog(
@@ -640,7 +640,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                         OutlinedButton.icon(
                                           onPressed: () =>
                                               _showM5DownloadDialog(
-                                                movie.title,
+                                                movie.title ?? movie.detectedTitle,
                                                 primaryRemovable.filename,
                                               ),
                                           icon: const Icon(

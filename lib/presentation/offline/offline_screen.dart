@@ -199,8 +199,8 @@ class _OfflineScreenState extends State<OfflineScreen> {
                           ) {
                             final movie = offlineMovies[index];
                             return CinemaPosterCard(
-                              title: movie.title,
-                              year: movie.year,
+                              title: movie.title ?? movie.detectedTitle,
+                              year: movie.year ?? movie.detectedYear,
                               posterPath: movie.posterPath,
                               availabilityStatus:
                                   AvailabilityStatus.availableLocally,
@@ -258,7 +258,7 @@ class _OfflineScreenState extends State<OfflineScreen> {
                           ) {
                             final show = offlineShows[index];
                             return CinemaPosterCard(
-                              title: show.title,
+                              title: show.title ?? show.detectedTitle,
                               year: show.firstAirDate?.year,
                               posterPath: show.posterPath,
                               availabilityStatus:

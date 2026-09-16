@@ -56,14 +56,16 @@ class MetadataService {
     }
 
     try {
+      final searchTitle = movie.title ?? movie.detectedTitle;
+      final searchYear = movie.year ?? movie.detectedYear;
       final candidates = await tmdbClient.searchMovies(
-        movie.title,
-        year: movie.year,
+        searchTitle,
+        year: searchYear,
       );
 
       final decision = matcher.evaluateMovieCandidates(
-        detectedTitle: movie.title,
-        detectedYear: movie.year,
+        detectedTitle: movie.detectedTitle,
+        detectedYear: movie.detectedYear ?? movie.year,
         candidates: candidates,
       );
 
@@ -154,10 +156,11 @@ class MetadataService {
     }
 
     try {
-      final candidates = await tmdbClient.searchTvShows(show.title);
+      final searchTitle = show.title ?? show.detectedTitle;
+      final candidates = await tmdbClient.searchTvShows(searchTitle);
 
       final decision = matcher.evaluateTvCandidates(
-        detectedTitle: show.title,
+        detectedTitle: show.detectedTitle,
         candidates: candidates,
       );
 
@@ -296,7 +299,7 @@ class MetadataService {
 
     for (final movie in unmatchedMovies) {
       processed++;
-      onProgress?.call(processed, total, movie.title);
+      onProgress?.call(processed, total, movie.title ?? movie.detectedTitle);
 
       try {
         final decision = await identifyMovie(movie);
@@ -312,7 +315,7 @@ class MetadataService {
 
     for (final show in unmatchedShows) {
       processed++;
-      onProgress?.call(processed, total, show.title);
+      onProgress?.call(processed, total, show.title ?? show.detectedTitle);
 
       try {
         final decision = await identifyTvShow(show);

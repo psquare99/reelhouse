@@ -131,8 +131,10 @@ void main() {
         .insert(
           MoviesCompanion.insert(
             id: 'movie-interstellar',
-            title: 'Interstellar',
+            detectedTitle: 'Interstellar',
+            title: const drift.Value('Interstellar'),
             year: const drift.Value(2014),
+            detectedYear: const drift.Value(2014),
             createdAt: now,
             updatedAt: now,
           ),
@@ -230,7 +232,8 @@ void main() {
         .insert(
           MoviesCompanion.insert(
             id: 'movie-the-thing',
-            title: 'The Thing',
+            detectedTitle: 'The Thing',
+            title: const drift.Value('The Thing'),
             createdAt: now,
             updatedAt: now,
           ),

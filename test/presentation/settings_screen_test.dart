@@ -130,7 +130,8 @@ void main() {
           .insert(
             MoviesCompanion.insert(
               id: 'm-unverified',
-              title: 'Inception',
+              detectedTitle: 'Inception',
+              title: const drift.Value('Inception'),
               year: const drift.Value(2010),
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),

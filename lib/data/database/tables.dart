@@ -21,9 +21,14 @@ class Storages extends Table {
 class Movies extends Table {
   TextColumn get id => text()();
   TextColumn get metadataId => text().nullable()();
-  TextColumn get title => text()();
+  TextColumn get title => text().nullable()(); // Canonical/provider title
   TextColumn get originalTitle => text().nullable()();
-  IntColumn get year => integer().nullable()();
+  IntColumn get year => integer().nullable()(); // Canonical/provider year
+  TextColumn get detectedTitle => text()(); // Discovered filesystem title
+  IntColumn get detectedYear => integer().nullable()(); // Discovered filesystem year
+  TextColumn get identificationStatus => text().withDefault(
+    const Constant('PENDING'),
+  )(); // PENDING, IDENTIFIED, NEEDS_VERIFICATION
   TextColumn get overview => text().nullable()();
   IntColumn get runtime => integer().nullable()();
   DateTimeColumn get releaseDate => dateTime().nullable()();
@@ -56,8 +61,12 @@ class Movies extends Table {
 class TvShows extends Table {
   TextColumn get id => text()();
   TextColumn get metadataId => text().nullable()();
-  TextColumn get title => text()();
+  TextColumn get title => text().nullable()(); // Canonical/provider title
   TextColumn get originalTitle => text().nullable()();
+  TextColumn get detectedTitle => text()(); // Discovered filesystem title
+  TextColumn get identificationStatus => text().withDefault(
+    const Constant('PENDING'),
+  )(); // PENDING, IDENTIFIED, NEEDS_VERIFICATION
   TextColumn get overview => text().nullable()();
   DateTimeColumn get firstAirDate => dateTime().nullable()();
   TextColumn get posterPath => text().nullable()();

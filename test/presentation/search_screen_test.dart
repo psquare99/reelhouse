@@ -27,7 +27,8 @@ void main() {
         .insert(
           MoviesCompanion.insert(
             id: 'm-blade-runner',
-            title: 'Blade Runner 2049',
+            detectedTitle: 'Blade Runner 2049',
+            title: const drift.Value('Blade Runner 2049'),
             year: const drift.Value(2017),
             createdAt: now,
             updatedAt: now,
@@ -39,7 +40,8 @@ void main() {
         .insert(
           TvShowsCompanion.insert(
             id: 'tv-westworld',
-            title: 'Westworld',
+            detectedTitle: 'Westworld',
+            title: const drift.Value('Westworld'),
             createdAt: now,
             updatedAt: now,
           ),

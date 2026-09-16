@@ -343,7 +343,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                show.title,
+                                show.title ?? show.detectedTitle,
                                 style: const TextStyle(
                                   color: CinemaColors.textPrimary,
                                   fontSize: 28,
@@ -352,7 +352,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                 ),
                               ),
                               if (show.originalTitle != null &&
-                                  show.originalTitle != show.title) ...[
+                                  show.originalTitle != (show.title ?? show.detectedTitle)) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   show.originalTitle!,

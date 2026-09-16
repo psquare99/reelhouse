@@ -43,7 +43,8 @@ void main() {
         .insert(
           MoviesCompanion.insert(
             id: 'movie-oppenheimer',
-            title: 'Oppenheimer',
+            detectedTitle: 'Oppenheimer',
+            title: const drift.Value('Oppenheimer'),
             originalTitle: const drift.Value('Oppenheimer'),
             year: const drift.Value(2023),
             overview: const drift.Value(
@@ -147,7 +148,8 @@ void main() {
           .insert(
             MoviesCompanion.insert(
               id: 'movie-dune',
-              title: 'Dune: Part Two',
+              detectedTitle: 'Dune: Part Two',
+              title: const drift.Value('Dune: Part Two'),
               year: const drift.Value(2024),
               createdAt: now,
               updatedAt: now,

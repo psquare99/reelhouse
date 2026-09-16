@@ -75,7 +75,8 @@ void main() {
         .insert(
           MoviesCompanion.insert(
             id: 'movie-1',
-            title: 'Test Movie',
+            detectedTitle: 'Test Movie',
+            title: const drift.Value('Test Movie'),
             createdAt: now,
             updatedAt: now,
           ),
@@ -123,7 +124,8 @@ void main() {
             .insert(
               MoviesCompanion.insert(
                 id: 'orphan-movie',
-                title: 'Orphan Movie',
+                detectedTitle: 'Orphan Movie',
+                title: const drift.Value('Orphan Movie'),
                 createdAt: now,
                 updatedAt: now,
               ),

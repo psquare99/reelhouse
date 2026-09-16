@@ -206,8 +206,8 @@ class HomeScreen extends StatelessWidget {
                             return SizedBox(
                               width: 170,
                               child: CinemaPosterCard(
-                                title: movie.title,
-                                year: movie.year,
+                                title: movie.title ?? movie.detectedTitle,
+                                year: movie.year ?? movie.detectedYear,
                                 posterPath: movie.posterPath,
                                 isFavorite: movie.isFavorite,
                                 watchState: movie.watchState,
@@ -259,8 +259,8 @@ class HomeScreen extends StatelessWidget {
                             return SizedBox(
                               width: 170,
                               child: CinemaPosterCard(
-                                title: movie.title,
-                                year: movie.year,
+                                title: movie.title ?? movie.detectedTitle,
+                                year: movie.year ?? movie.detectedYear,
                                 posterPath: movie.posterPath,
                                 isFavorite: movie.isFavorite,
                                 watchState: movie.watchState,
@@ -311,8 +311,8 @@ class HomeScreen extends StatelessWidget {
                             return SizedBox(
                               width: 170,
                               child: CinemaPosterCard(
-                                title: movie.title,
-                                year: movie.year,
+                                title: movie.title ?? movie.detectedTitle,
+                                year: movie.year ?? movie.detectedYear,
                                 posterPath: movie.posterPath,
                                 isFavorite: true,
                                 watchState: movie.watchState,
@@ -363,8 +363,8 @@ class HomeScreen extends StatelessWidget {
                             return SizedBox(
                               width: 170,
                               child: CinemaPosterCard(
-                                title: movie.title,
-                                year: movie.year,
+                                title: movie.title ?? movie.detectedTitle,
+                                year: movie.year ?? movie.detectedYear,
                                 posterPath: movie.posterPath,
                                 isFavorite: movie.isFavorite,
                                 watchState: movie.watchState,
