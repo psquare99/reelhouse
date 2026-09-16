@@ -262,6 +262,21 @@ class AppDatabase extends _$AppDatabase {
   Future<List<TvShow>> getUnmatchedTvShows() =>
       (select(tvShows)..where((t) => t.tmdbId.isNull())).get();
 
+  /// Get all identified TV shows that have unenriched episodes (missing TMDB ID or still).
+  Future<List<TvShow>> getIdentifiedTvShowsNeedingEpisodeEnrichment() {
+    final query = select(tvShows).join([
+      innerJoin(seasons, seasons.showId.equalsExp(tvShows.id)),
+      innerJoin(
+        episodes,
+        episodes.seasonId.equalsExp(seasons.id) &
+            (episodes.tmdbId.isNull() | episodes.stillPath.isNull()),
+      ),
+    ])..where(tvShows.tmdbId.isNotNull());
+
+    query.groupBy([tvShows.id]);
+    return query.map((row) => row.readTable(tvShows)).get();
+  }
+
   /// Watch count of movies currently in the Needs Verification / Unmatched queue.
   Stream<int> watchUnmatchedMovieCount() {
     final movieCount = countAll();

@@ -78,8 +78,8 @@ class AvailabilityActionButton extends StatelessWidget {
             ),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: CinemaColors.amber,
-            foregroundColor: CinemaColors.canvas,
+            backgroundColor: CinemaColors.terracotta,
+            foregroundColor: Colors.white,
             padding: EdgeInsets.symmetric(
               horizontal: isCompact ? 10 : 18,
               vertical: isCompact ? 8 : 14,
@@ -103,8 +103,8 @@ class AvailabilityActionButton extends StatelessWidget {
             ),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: CinemaColors.amber,
-            foregroundColor: CinemaColors.canvas,
+            backgroundColor: CinemaColors.terracotta,
+            foregroundColor: Colors.white,
             padding: EdgeInsets.symmetric(
               horizontal: isCompact ? 10 : 18,
               vertical: isCompact ? 8 : 14,
@@ -131,8 +131,8 @@ class AvailabilityActionButton extends StatelessWidget {
             ),
           ),
           style: OutlinedButton.styleFrom(
-            foregroundColor: CinemaColors.textSecondary,
-            side: const BorderSide(color: CinemaColors.borderSubtle),
+            foregroundColor: CinemaColors.ofTextSecondary(context),
+            side: BorderSide(color: CinemaColors.ofBorderSubtle(context)),
             padding: EdgeInsets.symmetric(
               horizontal: isCompact ? 8 : 14,
               vertical: isCompact ? 8 : 14,

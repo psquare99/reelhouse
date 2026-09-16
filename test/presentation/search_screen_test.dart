@@ -76,4 +76,33 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
   });
+
+  testWidgets('SearchScreen text styles adapt properly in Light Mode', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: CinemaTheme.lightTheme,
+        home: SearchScreen(database: db),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final textFieldFinder = find.byType(TextField);
+    expect(textFieldFinder, findsOneWidget);
+    final textField = tester.widget<TextField>(textFieldFinder);
+
+    // Verify text color is dark/readable in light mode
+    expect(textField.style?.color, isNotNull);
+    expect(textField.style!.color!.computeLuminance(), lessThan(0.5));
+
+    await tester.enterText(textFieldFinder, 'Testing Light Mode Query');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Testing Light Mode Query'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+  });
 }

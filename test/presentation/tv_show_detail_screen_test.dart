@@ -71,7 +71,7 @@ void main() {
             ),
           );
 
-      // 4. Add Episode
+      // 4. Add Episodes (Episode 1 without still, Episode 2 with still)
       await db
           .into(db.episodes)
           .insert(
@@ -84,6 +84,22 @@ void main() {
                 'Mark Scout leads a team at Lumon Industries.',
               ),
               runtime: const drift.Value(57),
+            ),
+          );
+
+      await db
+          .into(db.episodes)
+          .insert(
+            EpisodesCompanion.insert(
+              id: 'ep-sev-s1e2',
+              seasonId: 'season-sev-1',
+              episodeNumber: 2,
+              name: const drift.Value('Half Loop'),
+              overview: const drift.Value(
+                'The macrodata refinement team welcomes Helly.',
+              ),
+              stillPath: const drift.Value('https://example.com/stills/ep2.jpg'),
+              runtime: const drift.Value(53),
             ),
           );
 
@@ -121,13 +137,18 @@ void main() {
       expect(find.text('Season 1'), findsOneWidget); // Choice chip
       expect(find.text('Good News About Hell'), findsOneWidget);
       expect(find.text('Episode 1'), findsOneWidget);
+      expect(find.text('Half Loop'), findsOneWidget);
+      expect(find.text('Episode 2'), findsOneWidget);
+
+      // Slate watermark for episode lacking still
+      expect(find.text('EP 1'), findsOneWidget);
 
       // Verify Play button for episode
       expect(find.text('PLAY'), findsOneWidget);
       expect(find.text('DOWNLOAD'), findsOneWidget);
 
       // Test Episode watched toggle
-      final watchToggle = find.byIcon(Icons.check_circle_outline);
+      final watchToggle = find.byIcon(Icons.check_circle_outline).first;
       expect(watchToggle, findsOneWidget);
       await tester.tap(watchToggle);
       await tester.pumpAndSettle();

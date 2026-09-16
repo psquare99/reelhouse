@@ -159,4 +159,42 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     },
   );
+
+  testWidgets(
+    'SettingsScreen renders Appearance & Theme and allows switching theme mode',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsScreen(
+            database: db,
+            storageIdentityService: FakeStorageIdentityService(),
+            localStorageManager: FakeLocalStorageManager(),
+            metadataService: metadataService,
+            settingsService: settingsService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Drag ListView down to reveal Appearance & Theme section
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+
+      expect(find.text('APPEARANCE & THEME'), findsOneWidget);
+      expect(find.text('Visual Theme'), findsOneWidget);
+      expect(find.text('Dark (Screening Room)'), findsOneWidget);
+      expect(find.text('Light (Gallery Linen)'), findsOneWidget);
+      expect(find.text('System Default'), findsOneWidget);
+
+      // Tap Light Mode chip
+      await tester.tap(find.text('Light (Gallery Linen)'));
+      await tester.pumpAndSettle();
+
+      expect(settingsService.themeMode, equals(ThemeMode.light));
+
+      // Unmount and flush
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
+    },
+  );
 }

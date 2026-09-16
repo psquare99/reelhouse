@@ -905,6 +905,112 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 32),
 
+          // Section: Appearance & Theme
+          const Text(
+            'APPEARANCE & THEME',
+            style: TextStyle(
+              color: CinemaColors.amber,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.palette_outlined,
+                        color: CinemaColors.amber,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Visual Theme',
+                              style: TextStyle(
+                                color: CinemaColors.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _settingsService?.themeMode == ThemeMode.light
+                                  ? 'Light Mode (The Exhibition / Gallery Linen)'
+                                  : _settingsService?.themeMode ==
+                                          ThemeMode.system
+                                      ? 'System Default'
+                                      : 'Dark Mode (The Screening Room)',
+                              style: const TextStyle(
+                                color: CinemaColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        avatar: const Icon(Icons.dark_mode_outlined, size: 16),
+                        label: const Text('Dark (Screening Room)'),
+                        selected:
+                            (_settingsService?.themeMode ?? ThemeMode.dark) ==
+                            ThemeMode.dark,
+                        onSelected: (selected) async {
+                          if (selected && _settingsService != null) {
+                            await _settingsService!.setThemeMode(ThemeMode.dark);
+                            setState(() {});
+                          }
+                        },
+                      ),
+                      ChoiceChip(
+                        avatar: const Icon(Icons.light_mode_outlined, size: 16),
+                        label: const Text('Light (Gallery Linen)'),
+                        selected:
+                            _settingsService?.themeMode == ThemeMode.light,
+                        onSelected: (selected) async {
+                          if (selected && _settingsService != null) {
+                            await _settingsService!.setThemeMode(ThemeMode.light);
+                            setState(() {});
+                          }
+                        },
+                      ),
+                      ChoiceChip(
+                        avatar: const Icon(Icons.settings_brightness, size: 16),
+                        label: const Text('System Default'),
+                        selected:
+                            _settingsService?.themeMode == ThemeMode.system,
+                        onSelected: (selected) async {
+                          if (selected && _settingsService != null) {
+                            await _settingsService!.setThemeMode(ThemeMode.system);
+                            setState(() {});
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+
           // Section: Playback Player Preference
           const Text(
             'PLAYBACK HANDOFF',
@@ -966,44 +1072,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Section: About & Attribution (Section 40)
           Column(
             children: [
-              const Text(
+              Text(
                 'REELHOUSE v1.0 • Personal Digital Cinema',
                 style: TextStyle(
-                  color: CinemaColors.textPrimary,
+                  color: CinemaColors.ofTextPrimary(context),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'Build the cinema layer. Do not build Plex.',
-                style: TextStyle(color: CinemaColors.textMuted, fontSize: 12),
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: CinemaColors.surface,
+                  color: CinemaColors.ofSurface(context),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: CinemaColors.borderSubtle),
+                  border: Border.all(
+                    color: CinemaColors.ofBorderSubtle(context),
+                  ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.info_outline,
                       size: 16,
-                      color: CinemaColors.textMuted,
+                      color: CinemaColors.ofTextMuted(context),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Flexible(
                       child: Text(
                         'This product uses the TMDB API but is not endorsed or certified by TMDB.',
                         style: TextStyle(
-                          color: CinemaColors.textMuted,
+                          color: CinemaColors.ofTextMuted(context),
                           fontSize: 11,
                         ),
                         textAlign: TextAlign.center,

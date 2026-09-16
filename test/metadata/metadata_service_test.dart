@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
@@ -618,5 +619,216 @@ void main() {
     final ep2Sources = await db.getSourcesForEpisode(ep2!.id);
     expect(ep1Sources.length, 1);
     expect(ep2Sources.length, 1);
+  });
+
+  test('applyTvShowMatch downloads, caches, and persists distinct episode stills', () async {
+    final mockClient = MockClient((request) async {
+      final path = request.url.path;
+
+      if (path == '/3/tv/1100') {
+        return http.Response(
+          jsonEncode({
+            'id': 1100,
+            'name': 'How I Met Your Mother',
+            'first_air_date': '2005-09-19',
+          }),
+          200,
+        );
+      }
+
+      if (path == '/3/tv/1100/season/1') {
+        return http.Response(
+          jsonEncode({
+            'id': 9901,
+            'season_number': 1,
+            'name': 'Season 1',
+            'episodes': [
+              {
+                'id': 1001,
+                'episode_number': 1,
+                'name': 'Pilot',
+                'overview': 'Ted falls for Robin.',
+                'still_path': '/pilot_still.jpg',
+                'vote_average': 8.0,
+                'runtime': 22,
+              },
+              {
+                'id': 1002,
+                'episode_number': 2,
+                'name': 'Purple Giraffe',
+                'overview': 'Ted throws three parties.',
+                'still_path': '/giraffe_still.jpg',
+                'vote_average': 7.8,
+                'runtime': 22,
+              },
+            ],
+          }),
+          200,
+        );
+      }
+
+      // Image download handler
+      if (path.contains('/t/p/')) {
+        return http.Response.bytes(Uint8List.fromList([10, 20, 30, 40]), 200);
+      }
+
+      return http.Response.bytes([1, 2], 200);
+    });
+
+    final tmdbClient = TmdbApiClient(
+      apiKey: 'test-api-key',
+      httpClient: mockClient,
+      minRequestInterval: Duration.zero,
+    );
+    final imageCache = ImageCacheService(
+      localStorageManager: storageManager,
+      httpClient: mockClient,
+    );
+    final service = MetadataService(
+      database: db,
+      tmdbClient: tmdbClient,
+      imageCacheService: imageCache,
+    );
+
+    final now = DateTime.now();
+    await db.into(db.tvShows).insert(
+      TvShowsCompanion.insert(
+        id: 'show-himym-stills',
+        detectedTitle: 'How I Met Your Mother',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await db.into(db.seasons).insert(
+      SeasonsCompanion.insert(
+        id: 'season-himym-1',
+        showId: 'show-himym-stills',
+        seasonNumber: 1,
+      ),
+    );
+    await db.into(db.episodes).insert(
+      EpisodesCompanion.insert(
+        id: 'ep-himym-1',
+        seasonId: 'season-himym-1',
+        episodeNumber: 1,
+      ),
+    );
+    await db.into(db.episodes).insert(
+      EpisodesCompanion.insert(
+        id: 'ep-himym-2',
+        seasonId: 'season-himym-1',
+        episodeNumber: 2,
+      ),
+    );
+
+    await service.applyTvShowMatch(
+      'show-himym-stills',
+      const TmdbTvSearchResult(id: 1100, name: 'How I Met Your Mother'),
+    );
+
+    final ep1 = await (db.select(db.episodes)..where((e) => e.id.equals('ep-himym-1'))).getSingle();
+    final ep2 = await (db.select(db.episodes)..where((e) => e.id.equals('ep-himym-2'))).getSingle();
+
+    expect(ep1.name, 'Pilot');
+    expect(ep1.stillPath, isNotNull);
+    expect(ep1.stillPath, contains('ep_ep-himym-1'));
+    expect(File(ep1.stillPath!).existsSync(), isTrue);
+
+    expect(ep2.name, 'Purple Giraffe');
+    expect(ep2.stillPath, isNotNull);
+    expect(ep2.stillPath, contains('ep_ep-himym-2'));
+    expect(File(ep2.stillPath!).existsSync(), isTrue);
+
+    // Stills are distinct
+    expect(ep1.stillPath, isNot(equals(ep2.stillPath)));
+  });
+
+  test('identifyAllUnmatched enriches already-identified TV show when its episodes have null stillPath', () async {
+    final mockClient = MockClient((request) async {
+      final path = request.url.path;
+
+      if (path == '/3/tv/1399/season/1') {
+        return http.Response(
+          jsonEncode({
+            'id': 3624,
+            'season_number': 1,
+            'name': 'Season 1',
+            'episodes': [
+              {
+                'id': 63056,
+                'episode_number': 1,
+                'name': 'Winter Is Coming',
+                'overview': 'Lord Eddard Stark is torn...',
+                'still_path': '/winter_is_coming.jpg',
+                'vote_average': 7.9,
+                'runtime': 62,
+              },
+            ],
+          }),
+          200,
+        );
+      }
+
+      if (path.contains('/t/p/')) {
+        return http.Response.bytes(Uint8List.fromList([1, 2, 3, 4]), 200);
+      }
+
+      return http.Response('Not found', 404);
+    });
+
+    final tmdbClient = TmdbApiClient(
+      apiKey: 'test-api-key',
+      httpClient: mockClient,
+      minRequestInterval: Duration.zero,
+    );
+    final imageCache = ImageCacheService(
+      localStorageManager: storageManager,
+      httpClient: mockClient,
+    );
+    final service = MetadataService(
+      database: db,
+      tmdbClient: tmdbClient,
+      imageCacheService: imageCache,
+    );
+
+    final now = DateTime.now();
+    // Insert an ALREADY IDENTIFIED TV show (tmdbId is set, but episode stillPath is null)
+    await db.into(db.tvShows).insert(
+      TvShowsCompanion.insert(
+        id: 'show-got',
+        detectedTitle: 'Game of Thrones',
+        title: const drift.Value('Game of Thrones'),
+        tmdbId: const drift.Value(1399),
+        identificationStatus: const drift.Value('IDENTIFIED'),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await db.into(db.seasons).insert(
+      SeasonsCompanion.insert(
+        id: 'season-got-1',
+        showId: 'show-got',
+        seasonNumber: 1,
+      ),
+    );
+    await db.into(db.episodes).insert(
+      EpisodesCompanion.insert(
+        id: 'ep-got-s1e1',
+        seasonId: 'season-got-1',
+        episodeNumber: 1,
+        name: const drift.Value('S01E01'),
+        // stillPath is null
+      ),
+    );
+
+    // Run batch identification pass
+    final summary = await service.identifyAllUnmatched();
+    expect(summary.totalProcessed, 1);
+    expect(summary.automaticallyMatched, 1);
+
+    final ep = await (db.select(db.episodes)..where((e) => e.id.equals('ep-got-s1e1'))).getSingle();
+    expect(ep.name, 'Winter Is Coming');
+    expect(ep.stillPath, isNotNull);
+    expect(File(ep.stillPath!).existsSync(), isTrue);
   });
 }

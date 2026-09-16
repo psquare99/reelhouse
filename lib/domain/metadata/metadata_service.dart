@@ -111,19 +111,21 @@ class MetadataService {
 
     // Cache poster and backdrop locally on disk
     String? localPoster;
+    String? remotePosterUrl;
     if (tmdbItem.posterPath != null) {
-      final remoteUrl = tmdbClient.getPosterUrl(tmdbItem.posterPath);
+      remotePosterUrl = tmdbClient.getPosterUrl(tmdbItem.posterPath);
       localPoster = await imageCacheService.cachePoster(
-        remoteUrl,
+        remotePosterUrl,
         'movie_$movieId',
       );
     }
 
     String? localBackdrop;
+    String? remoteBackdropUrl;
     if (tmdbItem.backdropPath != null) {
-      final remoteUrl = tmdbClient.getBackdropUrl(tmdbItem.backdropPath);
+      remoteBackdropUrl = tmdbClient.getBackdropUrl(tmdbItem.backdropPath);
       localBackdrop = await imageCacheService.cacheBackdrop(
-        remoteUrl,
+        remoteBackdropUrl,
         'movie_$movieId',
       );
     }
@@ -144,8 +146,8 @@ class MetadataService {
       overview: tmdbItem.overview,
       runtime: tmdbItem.runtime,
       releaseDate: parsedRelDate,
-      posterPath: localPoster ?? tmdbItem.posterPath,
-      backdropPath: localBackdrop ?? tmdbItem.backdropPath,
+      posterPath: localPoster ?? remotePosterUrl ?? tmdbItem.posterPath,
+      backdropPath: localBackdrop ?? remoteBackdropUrl ?? tmdbItem.backdropPath,
       rating: tmdbItem.voteAverage,
       voteCount: tmdbItem.voteCount,
       metadataId: isManual
@@ -216,19 +218,21 @@ class MetadataService {
         );
 
     String? localPoster;
+    String? remotePosterUrl;
     if (tmdbItem.posterPath != null) {
-      final remoteUrl = tmdbClient.getPosterUrl(tmdbItem.posterPath);
+      remotePosterUrl = tmdbClient.getPosterUrl(tmdbItem.posterPath);
       localPoster = await imageCacheService.cachePoster(
-        remoteUrl,
+        remotePosterUrl,
         'tv_$showId',
       );
     }
 
     String? localBackdrop;
+    String? remoteBackdropUrl;
     if (tmdbItem.backdropPath != null) {
-      final remoteUrl = tmdbClient.getBackdropUrl(tmdbItem.backdropPath);
+      remoteBackdropUrl = tmdbClient.getBackdropUrl(tmdbItem.backdropPath);
       localBackdrop = await imageCacheService.cacheBackdrop(
-        remoteUrl,
+        remoteBackdropUrl,
         'tv_$showId',
       );
     }
@@ -247,8 +251,8 @@ class MetadataService {
       originalTitle: tmdbItem.originalName,
       overview: tmdbItem.overview,
       firstAirDate: firstAirDate,
-      posterPath: localPoster ?? tmdbItem.posterPath,
-      backdropPath: localBackdrop ?? tmdbItem.backdropPath,
+      posterPath: localPoster ?? remotePosterUrl ?? tmdbItem.posterPath,
+      backdropPath: localBackdrop ?? remoteBackdropUrl ?? tmdbItem.backdropPath,
       rating: tmdbItem.voteAverage,
       metadataId: isManual
           ? 'manual:tmdb:${tmdbItem.id}'
@@ -259,14 +263,26 @@ class MetadataService {
     );
 
     // Enrich existing seasons and episodes
+    final updatedShow = await database.findTvShowById(showId);
+    if (updatedShow != null) {
+      await enrichTvShowEpisodes(updatedShow);
+    }
+  }
+
+  /// Enriches seasons and episodes for an identified [TvShow] with TMDB metadata & stills.
+  Future<int> enrichTvShowEpisodes(TvShow show) async {
+    if (show.tmdbId == null) return 0;
+    final tmdbId = show.tmdbId!;
+    var enrichedCount = 0;
+
     final seasons = await (database.select(
       database.seasons,
-    )..where((s) => s.showId.equals(showId))).get();
+    )..where((s) => s.showId.equals(show.id))).get();
 
     for (final season in seasons) {
       try {
         final seasonDetails = await tmdbClient.getSeasonDetails(
-          tmdbItem.id,
+          tmdbId,
           season.seasonNumber,
         );
         if (seasonDetails != null) {
@@ -287,6 +303,19 @@ class MetadataService {
                 epAirDate = DateTime.tryParse(tmdbEp.airDate!);
               }
 
+              String? localStill;
+              String? remoteStillUrl;
+              if (tmdbEp.stillPath != null && tmdbEp.stillPath!.isNotEmpty) {
+                remoteStillUrl = tmdbClient.getBackdropUrl(
+                  tmdbEp.stillPath,
+                  size: 'w780',
+                );
+                localStill = await imageCacheService.cacheBackdrop(
+                  remoteStillUrl,
+                  'ep_${ep.id}',
+                );
+              }
+
               await database.updateEpisodeMetadata(
                 ep.id,
                 tmdbId: tmdbEp.id,
@@ -294,8 +323,10 @@ class MetadataService {
                 overview: tmdbEp.overview,
                 runtime: tmdbEp.runtime,
                 airDate: epAirDate,
+                stillPath: localStill ?? remoteStillUrl ?? tmdbEp.stillPath,
                 rating: tmdbEp.voteAverage,
               );
+              enrichedCount++;
             }
           }
         }
@@ -303,15 +334,22 @@ class MetadataService {
         // Continue gracefully if a season fetch fails
       }
     }
+
+    return enrichedCount;
   }
 
-  /// Runs identification on all currently unmatched movies and shows in the database.
+  /// Runs identification on all currently unmatched movies and shows,
+  /// as well as enriching any identified TV shows with missing episode metadata.
   Future<MetadataPipelineSummary> identifyAllUnmatched({
     void Function(int current, int total, String currentTitle)? onProgress,
   }) async {
     final unmatchedMovies = await database.getUnmatchedMovies();
     final unmatchedShows = await database.getUnmatchedTvShows();
-    final total = unmatchedMovies.length + unmatchedShows.length;
+    final showsNeedingEpisodeEnrichment =
+        await database.getIdentifiedTvShowsNeedingEpisodeEnrichment();
+    final total = unmatchedMovies.length +
+        unmatchedShows.length +
+        showsNeedingEpisodeEnrichment.length;
 
     var processed = 0;
     var matched = 0;
@@ -344,6 +382,20 @@ class MetadataService {
           matched++;
         } else {
           routedToVerification++;
+        }
+      } catch (_) {
+        errors++;
+      }
+    }
+
+    for (final show in showsNeedingEpisodeEnrichment) {
+      processed++;
+      onProgress?.call(processed, total, show.title ?? show.detectedTitle);
+
+      try {
+        final count = await enrichTvShowEpisodes(show);
+        if (count > 0) {
+          matched++;
         }
       } catch (_) {
         errors++;

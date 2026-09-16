@@ -74,17 +74,20 @@ class _SearchScreenState extends State<SearchScreen> {
         title: TextField(
           controller: _controller,
           autofocus: false,
-          style: const TextStyle(color: CinemaColors.textPrimary, fontSize: 16),
+          style: TextStyle(
+            color: CinemaColors.ofTextPrimary(context),
+            fontSize: 16,
+          ),
           cursorColor: CinemaColors.amber,
           decoration: InputDecoration(
             hintText: 'Search movies, TV shows, episodes...',
-            hintStyle: const TextStyle(color: CinemaColors.textMuted),
+            hintStyle: TextStyle(color: CinemaColors.ofTextMuted(context)),
             border: InputBorder.none,
             suffixIcon: _query.isNotEmpty
                 ? IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.clear,
-                      color: CinemaColors.textSecondary,
+                      color: CinemaColors.ofTextSecondary(context),
                       size: 20,
                     ),
                     onPressed: () {
@@ -104,26 +107,26 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.search,
                       size: 56,
-                      color: CinemaColors.textMuted,
+                      color: CinemaColors.ofTextMuted(context),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'Fast Local Cinema Search',
                       style: TextStyle(
-                        color: CinemaColors.textPrimary,
+                        color: CinemaColors.ofTextPrimary(context),
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Search operates instantly against your local library index without external network calls.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: CinemaColors.textSecondary,
+                        color: CinemaColors.ofTextSecondary(context),
                         fontSize: 14,
                       ),
                     ),
@@ -149,25 +152,25 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.search_off,
                       size: 48,
-                      color: CinemaColors.textMuted,
+                      color: CinemaColors.ofTextMuted(context),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'No matches for "$_query"',
-                      style: const TextStyle(
-                        color: CinemaColors.textPrimary,
+                      style: TextStyle(
+                        color: CinemaColors.ofTextPrimary(context),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Try searching for a different title, year, or keyword.',
                       style: TextStyle(
-                        color: CinemaColors.textSecondary,
+                        color: CinemaColors.ofTextSecondary(context),
                         fontSize: 13,
                       ),
                     ),
@@ -292,8 +295,8 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                       title: Text(
                         ep.name ?? 'Episode ${ep.episodeNumber}',
-                        style: const TextStyle(
-                          color: CinemaColors.textPrimary,
+                        style: TextStyle(
+                          color: CinemaColors.ofTextPrimary(context),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -302,8 +305,8 @@ class _SearchScreenState extends State<SearchScreen> {
                               ep.overview!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: CinemaColors.textSecondary,
+                              style: TextStyle(
+                                color: CinemaColors.ofTextSecondary(context),
                                 fontSize: 12,
                               ),
                             )

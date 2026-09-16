@@ -87,19 +87,28 @@ class ReelhouseApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'REELHOUSE',
-      debugShowCheckedModeBanner: false,
-      theme: CinemaTheme.darkTheme,
-      home: CinemaShell(
-        database: database,
-        storageIdentityService: storageIdentityService,
-        localStorageManager: localStorageManager,
-        libraryScannerService: libraryScannerService,
-        storageMonitorService: storageMonitorService,
-        metadataService: metadataService,
-        settingsService: settingsService,
-      ),
+    final themeNotifier = settingsService ?? ChangeNotifier();
+    return ListenableBuilder(
+      listenable: themeNotifier,
+      builder: (context, _) {
+        final currentMode = settingsService?.themeMode ?? ThemeMode.dark;
+        return MaterialApp(
+          title: 'REELHOUSE',
+          debugShowCheckedModeBanner: false,
+          theme: CinemaTheme.lightTheme,
+          darkTheme: CinemaTheme.darkTheme,
+          themeMode: currentMode,
+          home: CinemaShell(
+            database: database,
+            storageIdentityService: storageIdentityService,
+            localStorageManager: localStorageManager,
+            libraryScannerService: libraryScannerService,
+            storageMonitorService: storageMonitorService,
+            metadataService: metadataService,
+            settingsService: settingsService,
+          ),
+        );
+      },
     );
   }
 }
