@@ -1,7 +1,9 @@
 import 'package:drift/drift.dart';
 
 import 'connection/connection.dart';
+import 'query_engine/database_query_engine.dart';
 import 'tables.dart';
+import '../../domain/query/query.dart';
 
 part 'database.g.dart';
 
@@ -1034,4 +1036,49 @@ class AppDatabase extends _$AppDatabase {
           ..orderBy([(e) => OrderingTerm.asc(e.name)]))
         .get();
   }
+
+  // --- Phase 1E: Domain Query Engine ---
+
+  late final DatabaseQueryEngine _queryEngine = DatabaseQueryEngine(this);
+  DatabaseQueryEngine get queryEngine => _queryEngine;
+
+  /// Executes a [MovieQuery] returning a paginated [LibraryResult] of [MovieLibraryItem].
+  Future<LibraryResult<MovieLibraryItem>> queryMovies(MovieQuery query) =>
+      _queryEngine.queryMovies(query);
+
+  /// Streams [MovieQuery] results reactively.
+  Stream<LibraryResult<MovieLibraryItem>> watchMovies(MovieQuery query) =>
+      _queryEngine.watchMovies(query);
+
+  /// Executes a [TvShowQuery] returning a paginated [LibraryResult] of [TvShowLibraryItem].
+  Future<LibraryResult<TvShowLibraryItem>> queryTvShows(TvShowQuery query) =>
+      _queryEngine.queryTvShows(query);
+
+  /// Streams [TvShowQuery] results reactively.
+  Stream<LibraryResult<TvShowLibraryItem>> watchTvShows(TvShowQuery query) =>
+      _queryEngine.watchTvShows(query);
+
+  /// Executes a [SeasonQuery] returning a [LibraryResult] of [Season].
+  Future<LibraryResult<Season>> querySeasons(SeasonQuery query) =>
+      _queryEngine.querySeasons(query);
+
+  /// Streams [SeasonQuery] results reactively.
+  Stream<LibraryResult<Season>> watchSeasons(SeasonQuery query) =>
+      _queryEngine.watchSeasons(query);
+
+  /// Executes an [EpisodeQuery] returning a paginated [LibraryResult] of [EpisodeLibraryItem].
+  Future<LibraryResult<EpisodeLibraryItem>> queryEpisodes(EpisodeQuery query) =>
+      _queryEngine.queryEpisodes(query);
+
+  /// Streams [EpisodeQuery] results reactively.
+  Stream<LibraryResult<EpisodeLibraryItem>> watchEpisodes(EpisodeQuery query) =>
+      _queryEngine.watchEpisodes(query);
+
+  /// Executes a [CollectionQuery] returning a paginated [LibraryResult] of [Collection].
+  Future<LibraryResult<Collection>> queryCollections(CollectionQuery query) =>
+      _queryEngine.queryCollections(query);
+
+  /// Streams [CollectionQuery] results reactively.
+  Stream<LibraryResult<Collection>> watchCollections(CollectionQuery query) =>
+      _queryEngine.watchCollections(query);
 }
