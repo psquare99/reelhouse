@@ -71,6 +71,11 @@ class MetadataService {
 
       if (decision.isAutomatic && decision.bestMatch != null) {
         await applyMovieMatch(movie.id, decision.bestMatch!);
+      } else if (decision.needsVerification) {
+        await database.updateMovieIdentificationStatus(
+          movie.id,
+          'NEEDS_VERIFICATION',
+        );
       }
 
       return decision;
@@ -130,6 +135,9 @@ class MetadataService {
 
     await database.updateMovieMetadata(
       movieId,
+      title: tmdbItem.title,
+      year: tmdbItem.releaseYear,
+      identificationStatus: 'IDENTIFIED',
       tmdbId: tmdbItem.id,
       imdbId: tmdbItem.imdbId,
       originalTitle: tmdbItem.originalTitle,
@@ -143,6 +151,9 @@ class MetadataService {
       metadataId: isManual
           ? 'manual:tmdb:${tmdbItem.id}'
           : 'tmdb:movie:${tmdbItem.id}',
+      metadataProvider: 'TMDB',
+      providerItemId: tmdbItem.id.toString(),
+      metadataUpdatedAt: DateTime.now(),
     );
   }
 
@@ -166,6 +177,11 @@ class MetadataService {
 
       if (decision.isAutomatic && decision.bestMatch != null) {
         await applyTvShowMatch(show.id, decision.bestMatch!);
+      } else if (decision.needsVerification) {
+        await database.updateTvShowIdentificationStatus(
+          show.id,
+          'NEEDS_VERIFICATION',
+        );
       }
 
       return decision;
@@ -224,6 +240,8 @@ class MetadataService {
 
     await database.updateTvShowMetadata(
       showId,
+      title: tmdbItem.name,
+      identificationStatus: 'IDENTIFIED',
       tmdbId: tmdbItem.id,
       imdbId: tmdbItem.imdbId,
       originalTitle: tmdbItem.originalName,
@@ -235,6 +253,9 @@ class MetadataService {
       metadataId: isManual
           ? 'manual:tmdb:${tmdbItem.id}'
           : 'tmdb:tv:${tmdbItem.id}',
+      metadataProvider: 'TMDB',
+      providerItemId: tmdbItem.id.toString(),
+      metadataUpdatedAt: DateTime.now(),
     );
 
     // Enrich existing seasons and episodes

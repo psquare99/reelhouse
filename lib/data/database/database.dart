@@ -304,6 +304,9 @@ class AppDatabase extends _$AppDatabase {
   Future<int> updateMovieMetadata(
     String movieId, {
     required int tmdbId,
+    String? title,
+    int? year,
+    String identificationStatus = 'IDENTIFIED',
     String? imdbId,
     String? originalTitle,
     String? overview,
@@ -314,12 +317,15 @@ class AppDatabase extends _$AppDatabase {
     double? rating,
     int? voteCount,
     String? metadataId,
-    String? metadataProvider,
+    String? metadataProvider = 'TMDB',
     String? providerItemId,
     DateTime? metadataUpdatedAt,
   }) {
     return (update(movies)..where((m) => m.id.equals(movieId))).write(
       MoviesCompanion(
+        title: title != null ? Value(title) : const Value.absent(),
+        year: year != null ? Value(year) : const Value.absent(),
+        identificationStatus: Value(identificationStatus),
         tmdbId: Value(tmdbId),
         imdbId: imdbId != null ? Value(imdbId) : const Value.absent(),
         originalTitle: originalTitle != null
@@ -349,7 +355,7 @@ class AppDatabase extends _$AppDatabase {
             : const Value.absent(),
         metadataUpdatedAt: metadataUpdatedAt != null
             ? Value(metadataUpdatedAt)
-            : const Value.absent(),
+            : Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -359,6 +365,8 @@ class AppDatabase extends _$AppDatabase {
   Future<int> updateTvShowMetadata(
     String showId, {
     required int tmdbId,
+    String? title,
+    String identificationStatus = 'IDENTIFIED',
     String? imdbId,
     String? originalTitle,
     String? overview,
@@ -367,12 +375,14 @@ class AppDatabase extends _$AppDatabase {
     String? backdropPath,
     double? rating,
     String? metadataId,
-    String? metadataProvider,
+    String? metadataProvider = 'TMDB',
     String? providerItemId,
     DateTime? metadataUpdatedAt,
   }) {
     return (update(tvShows)..where((t) => t.id.equals(showId))).write(
       TvShowsCompanion(
+        title: title != null ? Value(title) : const Value.absent(),
+        identificationStatus: Value(identificationStatus),
         tmdbId: Value(tmdbId),
         imdbId: imdbId != null ? Value(imdbId) : const Value.absent(),
         originalTitle: originalTitle != null
@@ -400,7 +410,33 @@ class AppDatabase extends _$AppDatabase {
             : const Value.absent(),
         metadataUpdatedAt: metadataUpdatedAt != null
             ? Value(metadataUpdatedAt)
-            : const Value.absent(),
+            : Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Update identification status of a movie.
+  Future<int> updateMovieIdentificationStatus(
+    String movieId,
+    String status,
+  ) {
+    return (update(movies)..where((m) => m.id.equals(movieId))).write(
+      MoviesCompanion(
+        identificationStatus: Value(status),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Update identification status of a TV show.
+  Future<int> updateTvShowIdentificationStatus(
+    String showId,
+    String status,
+  ) {
+    return (update(tvShows)..where((t) => t.id.equals(showId))).write(
+      TvShowsCompanion(
+        identificationStatus: Value(status),
         updatedAt: Value(DateTime.now()),
       ),
     );
