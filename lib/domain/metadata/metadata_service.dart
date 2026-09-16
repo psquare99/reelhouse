@@ -93,6 +93,16 @@ class MetadataService {
     TmdbMovieSearchResult candidate, {
     bool isManual = false,
   }) async {
+    // Check if another Movie is already matched to this TMDB ID (Canonical Identity Convergence)
+    final existingMovie = await database.findMovieByTmdbId(candidate.id);
+    if (existingMovie != null && existingMovie.id != movieId) {
+      await database.mergeMovies(
+        sourceMovieId: movieId,
+        targetMovieId: existingMovie.id,
+      );
+      return;
+    }
+
     final details = await tmdbClient.getMovieDetails(candidate.id);
     final tmdbItem =
         details ??
@@ -201,6 +211,21 @@ class MetadataService {
     TmdbTvSearchResult candidate, {
     bool isManual = false,
   }) async {
+    // Check if another TvShow is already matched to this TMDB ID (Canonical Identity Convergence)
+    final existingShow = await database.findTvShowByTmdbId(candidate.id);
+    if (existingShow != null && existingShow.id != showId) {
+      await database.mergeTvShows(
+        sourceShowId: showId,
+        targetShowId: existingShow.id,
+      );
+
+      final targetShow = await database.findTvShowById(existingShow.id);
+      if (targetShow != null) {
+        await enrichTvShowEpisodes(targetShow);
+      }
+      return;
+    }
+
     final details = await tmdbClient.getTvShowDetails(candidate.id);
     final tmdbItem =
         details ??

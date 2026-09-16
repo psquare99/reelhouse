@@ -485,6 +485,10 @@ class AppDatabase extends _$AppDatabase {
   Future<Movie?> findMovieById(String movieId) =>
       (select(movies)..where((m) => m.id.equals(movieId))).getSingleOrNull();
 
+  /// Find movie by TMDB ID.
+  Future<Movie?> findMovieByTmdbId(int tmdbId) =>
+      (select(movies)..where((m) => m.tmdbId.equals(tmdbId))).getSingleOrNull();
+
   /// Watch movie by its internal ID.
   Stream<Movie?> watchMovieById(String movieId) =>
       (select(movies)..where((m) => m.id.equals(movieId))).watchSingleOrNull();
@@ -493,9 +497,217 @@ class AppDatabase extends _$AppDatabase {
   Future<TvShow?> findTvShowById(String showId) =>
       (select(tvShows)..where((t) => t.id.equals(showId))).getSingleOrNull();
 
+  /// Find TV show by TMDB ID.
+  Future<TvShow?> findTvShowByTmdbId(int tmdbId) =>
+      (select(tvShows)..where((t) => t.tmdbId.equals(tmdbId))).getSingleOrNull();
+
   /// Watch TV show by its internal ID.
   Stream<TvShow?> watchTvShowById(String showId) =>
       (select(tvShows)..where((t) => t.id.equals(showId))).watchSingleOrNull();
+
+  /// Merges a duplicate TV show ([sourceShowId]) into a canonical TV show ([targetShowId]).
+  ///
+  /// This performs a lossless transactional merge:
+  /// 1. Re-parents or merges all seasons and episodes.
+  /// 2. Re-points all media sources so no physical files are lost.
+  /// 3. Re-points active transfer jobs.
+  /// 4. Re-points or deduplicates collection items.
+  /// 5. Merges favorite/watchlist flags and episode watch states.
+  /// 6. Deletes the empty source TV show record.
+  Future<void> mergeTvShows({
+    required String sourceShowId,
+    required String targetShowId,
+  }) async {
+    if (sourceShowId == targetShowId) return;
+
+    await transaction(() async {
+      final sourceShow = await (select(tvShows)..where((t) => t.id.equals(sourceShowId))).getSingleOrNull();
+      final targetShow = await (select(tvShows)..where((t) => t.id.equals(targetShowId))).getSingleOrNull();
+
+      if (sourceShow == null || targetShow == null) return;
+
+      // 1. Merge show-level user flags (favorite, watchlist)
+      final newFavorite = targetShow.isFavorite || sourceShow.isFavorite;
+      final newWatchlist = targetShow.isWatchlist || sourceShow.isWatchlist;
+      if (newFavorite != targetShow.isFavorite || newWatchlist != targetShow.isWatchlist) {
+        await (update(tvShows)..where((t) => t.id.equals(targetShowId))).write(
+          TvShowsCompanion(
+            isFavorite: Value(newFavorite),
+            isWatchlist: Value(newWatchlist),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+      }
+
+      // 2. Re-parent / deduplicate collection items
+      final sourceColItems = await (select(collectionItems)..where((ci) => ci.tvShowId.equals(sourceShowId))).get();
+      for (final sci in sourceColItems) {
+        final existingInCol = await (select(collectionItems)..where((ci) => ci.collectionId.equals(sci.collectionId) & ci.tvShowId.equals(targetShowId))).getSingleOrNull();
+        if (existingInCol != null) {
+          await (delete(collectionItems)..where((ci) => ci.id.equals(sci.id))).go();
+        } else {
+          await (update(collectionItems)..where((ci) => ci.id.equals(sci.id))).write(
+            CollectionItemsCompanion(tvShowId: Value(targetShowId)),
+          );
+        }
+      }
+
+      // 3. Merge Seasons & Episodes
+      final sourceSeasons = await (select(seasons)..where((s) => s.showId.equals(sourceShowId))).get();
+      for (final sourceSeason in sourceSeasons) {
+        final targetSeason = await (select(seasons)..where((s) => s.showId.equals(targetShowId) & s.seasonNumber.equals(sourceSeason.seasonNumber))).getSingleOrNull();
+
+        if (targetSeason == null) {
+          // Disjoint season: re-parent entire season to target show
+          await (update(seasons)..where((s) => s.id.equals(sourceSeason.id))).write(
+            SeasonsCompanion(showId: Value(targetShowId)),
+          );
+        } else {
+          // Overlapping season: merge episodes from source season into target season
+          final sourceEpisodes = await (select(episodes)..where((e) => e.seasonId.equals(sourceSeason.id))).get();
+          for (final sourceEp in sourceEpisodes) {
+            final targetEp = await (select(episodes)..where((e) => e.seasonId.equals(targetSeason.id) & e.episodeNumber.equals(sourceEp.episodeNumber))).getSingleOrNull();
+
+            if (targetEp == null) {
+              // Disjoint episode: re-parent episode to target season
+              await (update(episodes)..where((e) => e.id.equals(sourceEp.id))).write(
+                EpisodesCompanion(seasonId: Value(targetSeason.id)),
+              );
+            } else {
+              // Overlapping episode: re-point media sources, transfer jobs, merge watch state, then delete source episode
+              await (update(mediaSources)..where((ms) => ms.episodeId.equals(sourceEp.id))).write(
+                MediaSourcesCompanion(episodeId: Value(targetEp.id)),
+              );
+
+              await (update(transferJobs)..where((tj) => tj.mediaType.equals('episode') & tj.mediaId.equals(sourceEp.id))).write(
+                TransferJobsCompanion(mediaId: Value(targetEp.id)),
+              );
+
+              // Merge watch state: WATCHED > IN_PROGRESS > UNWATCHED
+              var mergedWatchState = targetEp.watchState;
+              var mergedPosition = targetEp.playbackPositionSeconds;
+
+              if (sourceEp.watchState == 'WATCHED') {
+                mergedWatchState = 'WATCHED';
+                mergedPosition = 0;
+              } else if (sourceEp.watchState == 'IN_PROGRESS') {
+                if (mergedWatchState == 'UNWATCHED') {
+                  mergedWatchState = 'IN_PROGRESS';
+                  mergedPosition = sourceEp.playbackPositionSeconds;
+                } else if (mergedWatchState == 'IN_PROGRESS') {
+                  if (sourceEp.playbackPositionSeconds > mergedPosition) {
+                    mergedPosition = sourceEp.playbackPositionSeconds;
+                  }
+                }
+              }
+
+              if (mergedWatchState != targetEp.watchState || mergedPosition != targetEp.playbackPositionSeconds) {
+                await (update(episodes)..where((e) => e.id.equals(targetEp.id))).write(
+                  EpisodesCompanion(
+                    watchState: Value(mergedWatchState),
+                    playbackPositionSeconds: Value(mergedPosition),
+                  ),
+                );
+              }
+
+              // Delete redundant source episode
+              await (delete(episodes)..where((e) => e.id.equals(sourceEp.id))).go();
+            }
+          }
+
+          // Delete now-empty source season
+          await (delete(seasons)..where((s) => s.id.equals(sourceSeason.id))).go();
+        }
+      }
+
+      // 4. Delete source show record
+      await (delete(tvShows)..where((t) => t.id.equals(sourceShowId))).go();
+
+      // 5. Update target show timestamp
+      await (update(tvShows)..where((t) => t.id.equals(targetShowId))).write(
+        TvShowsCompanion(updatedAt: Value(DateTime.now())),
+      );
+    });
+  }
+
+  /// Merges a duplicate movie ([sourceMovieId]) into a canonical movie ([targetMovieId]).
+  ///
+  /// This performs a lossless transactional merge:
+  /// 1. Re-points all media sources to the target movie.
+  /// 2. Re-points active transfer jobs.
+  /// 3. Re-points or deduplicates collection items.
+  /// 4. Merges favorite/watchlist flags and movie watch states.
+  /// 5. Deletes the empty source movie record.
+  Future<void> mergeMovies({
+    required String sourceMovieId,
+    required String targetMovieId,
+  }) async {
+    if (sourceMovieId == targetMovieId) return;
+
+    await transaction(() async {
+      final sourceMovie = await (select(movies)..where((m) => m.id.equals(sourceMovieId))).getSingleOrNull();
+      final targetMovie = await (select(movies)..where((m) => m.id.equals(targetMovieId))).getSingleOrNull();
+
+      if (sourceMovie == null || targetMovie == null) return;
+
+      // 1. Merge movie-level flags
+      final newFavorite = targetMovie.isFavorite || sourceMovie.isFavorite;
+      final newWatchlist = targetMovie.isWatchlist || sourceMovie.isWatchlist;
+
+      var mergedWatchState = targetMovie.watchState;
+      var mergedPosition = targetMovie.playbackPositionSeconds;
+
+      if (sourceMovie.watchState == 'WATCHED') {
+        mergedWatchState = 'WATCHED';
+        mergedPosition = 0;
+      } else if (sourceMovie.watchState == 'IN_PROGRESS') {
+        if (mergedWatchState == 'UNWATCHED') {
+          mergedWatchState = 'IN_PROGRESS';
+          mergedPosition = sourceMovie.playbackPositionSeconds;
+        } else if (mergedWatchState == 'IN_PROGRESS') {
+          if (sourceMovie.playbackPositionSeconds > mergedPosition) {
+            mergedPosition = sourceMovie.playbackPositionSeconds;
+          }
+        }
+      }
+
+      await (update(movies)..where((m) => m.id.equals(targetMovieId))).write(
+        MoviesCompanion(
+          isFavorite: Value(newFavorite),
+          isWatchlist: Value(newWatchlist),
+          watchState: Value(mergedWatchState),
+          playbackPositionSeconds: Value(mergedPosition),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+      // 2. Re-parent / deduplicate collection items
+      final sourceColItems = await (select(collectionItems)..where((ci) => ci.movieId.equals(sourceMovieId))).get();
+      for (final sci in sourceColItems) {
+        final existingInCol = await (select(collectionItems)..where((ci) => ci.collectionId.equals(sci.collectionId) & ci.movieId.equals(targetMovieId))).getSingleOrNull();
+        if (existingInCol != null) {
+          await (delete(collectionItems)..where((ci) => ci.id.equals(sci.id))).go();
+        } else {
+          await (update(collectionItems)..where((ci) => ci.id.equals(sci.id))).write(
+            CollectionItemsCompanion(movieId: Value(targetMovieId)),
+          );
+        }
+      }
+
+      // 3. Re-point media sources
+      await (update(mediaSources)..where((ms) => ms.movieId.equals(sourceMovieId))).write(
+        MediaSourcesCompanion(movieId: Value(targetMovieId)),
+      );
+
+      // 4. Re-point transfer jobs
+      await (update(transferJobs)..where((tj) => tj.mediaType.equals('movie') & tj.mediaId.equals(sourceMovieId))).write(
+        TransferJobsCompanion(mediaId: Value(targetMovieId)),
+      );
+
+      // 5. Delete source movie
+      await (delete(movies)..where((m) => m.id.equals(sourceMovieId))).go();
+    });
+  }
 
   // --- Milestone 4: Cinema Experience UI Queries ---
 
