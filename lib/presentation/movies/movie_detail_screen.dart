@@ -1,10 +1,14 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/database/database.dart';
+import '../../data/repository/drift_library_repository.dart';
 import '../../domain/models/playback_resolution.dart';
+import '../../domain/models/watch_state.dart';
+import '../../domain/query/collection_query.dart';
+import '../../domain/query/query_projections.dart';
+import '../../domain/repository/library_repository.dart';
 import '../../domain/services/availability_resolver.dart';
 import '../../domain/services/playback_launcher_service.dart';
 import '../../domain/services/playback_source_resolver.dart';
@@ -15,13 +19,22 @@ import '../widgets/cinema_poster_image.dart';
 /// playback controls, user-owned library states, and physical media copies.
 class MovieDetailScreen extends StatefulWidget {
   final String movieId;
-  final AppDatabase database;
+  final LibraryRepository repository;
+  final AppDatabase? database;
 
-  const MovieDetailScreen({
+  MovieDetailScreen({
     super.key,
     required this.movieId,
-    required this.database,
-  });
+    LibraryRepository? repository,
+    AppDatabase? database,
+  }) : repository =
+           repository ??
+           (database != null
+               ? DriftLibraryRepository(database)
+               : throw ArgumentError(
+                   'Either repository or database must be provided',
+                 )),
+       database = database;
 
   @override
   State<MovieDetailScreen> createState() => _MovieDetailScreenState();
@@ -29,8 +42,8 @@ class MovieDetailScreen extends StatefulWidget {
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
   final PlaybackSourceResolver _resolver = const PlaybackSourceResolver();
-  late final PlaybackLauncherService _playbackLauncher;
-  late Stream<Movie?> _movieStream;
+  PlaybackLauncherService? _playbackLauncher;
+  late Stream<MovieLibraryItem?> _movieStream;
   late Stream<List<Storage>> _storageStream;
   late Stream<List<MediaSource>> _sourcesStream;
   late Stream<List<TransferJob>> _transferStream;
@@ -38,7 +51,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _playbackLauncher = PlaybackLauncherService(database: widget.database);
+    if (widget.database != null) {
+      _playbackLauncher = PlaybackLauncherService(database: widget.database!);
+    }
     _initStreams();
   }
 
@@ -46,18 +61,23 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   void didUpdateWidget(covariant MovieDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.movieId != widget.movieId ||
+        oldWidget.repository != widget.repository ||
         oldWidget.database != widget.database) {
       _initStreams();
     }
   }
 
   void _initStreams() {
-    _movieStream = widget.database.watchMovieById(widget.movieId);
-    _storageStream = widget.database.watchAllStorages();
-    _sourcesStream = widget.database.watchSourcesForMovie(widget.movieId);
-    _transferStream = widget.database.watchActiveTransferJobsForMovie(
-      widget.movieId,
-    );
+    _movieStream = widget.repository.watchMovieById(widget.movieId);
+    _storageStream = widget.database != null
+        ? widget.database!.watchAllStorages()
+        : Stream.value([]);
+    _sourcesStream = widget.database != null
+        ? widget.database!.watchSourcesForMovie(widget.movieId)
+        : Stream.value([]);
+    _transferStream = widget.database != null
+        ? widget.database!.watchActiveTransferJobsForMovie(widget.movieId)
+        : Stream.value([]);
   }
 
   void _showConnectDiskDialog(String? storageName) {
@@ -131,7 +151,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
-              await widget.database.deleteMediaSource(source.id);
+              if (widget.database != null) {
+                await widget.database!.deleteMediaSource(source.id);
+              }
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -167,13 +189,15 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       ),
     );
 
-    final result = await _playbackLauncher.launchPlayback(
-      mediaSourceId: sourceId,
-    );
-    if (!mounted) return;
+    if (_playbackLauncher != null) {
+      final result = await _playbackLauncher!.launchPlayback(
+        mediaSourceId: sourceId,
+      );
+      if (!mounted) return;
 
-    if (!result.isSuccess) {
-      _showPlaybackDiagnosticDialog(result);
+      if (!result.isSuccess) {
+        _showPlaybackDiagnosticDialog(result);
+      }
     }
   }
 
@@ -301,7 +325,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   }
 
   void _showAddToCollectionDialog() async {
-    final collections = await widget.database.getAllCollections();
+    final collections = await widget.repository.getCollections(
+      CollectionQuery.all(),
+    );
     if (!mounted) return;
 
     if (collections.isEmpty) {
@@ -369,13 +395,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                 onTap: () async {
                   final messenger = ScaffoldMessenger.of(context);
                   Navigator.of(ctx).pop();
-                  await widget.database.addItemToCollection(
-                    CollectionItemsCompanion.insert(
-                      id: 'ci-${DateTime.now().millisecondsSinceEpoch}',
-                      collectionId: col.id,
-                      movieId: Value(widget.movieId),
-                      addedAt: DateTime.now(),
-                    ),
+                  await widget.repository.addMovieToCollection(
+                    col.id,
+                    widget.movieId,
                   );
                   if (mounted) {
                     messenger.showSnackBar(
@@ -405,7 +427,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<Movie?>(
+    return StreamBuilder<MovieLibraryItem?>(
       stream: _movieStream,
       builder: (context, movieSnapshot) {
         final movie = movieSnapshot.data;
@@ -533,7 +555,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                     ),
                                   ),
                                   if (movie.originalTitle != null &&
-                                      movie.originalTitle != (movie.title ?? movie.detectedTitle)) ...[
+                                      movie.originalTitle !=
+                                          (movie.title ??
+                                              movie.detectedTitle)) ...[
                                     const SizedBox(height: 4),
                                     Text(
                                       movie.originalTitle!,
@@ -640,7 +664,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                         OutlinedButton.icon(
                                           onPressed: () =>
                                               _showM5DownloadDialog(
-                                                movie.title ?? movie.detectedTitle,
+                                                movie.title ??
+                                                    movie.detectedTitle,
                                                 primaryRemovable.filename,
                                               ),
                                           icon: const Icon(
@@ -714,7 +739,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                         tooltip: movie.isWatchlist
                                             ? 'In Watchlist'
                                             : 'Add to Watchlist',
-                                        onPressed: () => widget.database
+                                        onPressed: () => widget.repository
                                             .toggleMovieWatchlist(
                                               movie.id,
                                               !movie.isWatchlist,
@@ -734,8 +759,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                         tooltip: movie.isFavorite
                                             ? 'Favorited'
                                             : 'Add to Favorites',
-                                        onPressed: () =>
-                                            widget.database.toggleMovieFavorite(
+                                        onPressed: () => widget.repository
+                                            .toggleMovieFavorite(
                                               movie.id,
                                               !movie.isFavorite,
                                             ),
@@ -766,24 +791,24 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      SegmentedButton<String>(
+                                      SegmentedButton<WatchState>(
                                         segments: const [
                                           ButtonSegment(
-                                            value: 'UNWATCHED',
+                                            value: WatchState.unwatched,
                                             label: Text(
                                               'Unwatched',
                                               style: TextStyle(fontSize: 12),
                                             ),
                                           ),
                                           ButtonSegment(
-                                            value: 'IN_PROGRESS',
+                                            value: WatchState.inProgress,
                                             label: Text(
                                               'In Progress',
                                               style: TextStyle(fontSize: 12),
                                             ),
                                           ),
                                           ButtonSegment(
-                                            value: 'WATCHED',
+                                            value: WatchState.watched,
                                             label: Text(
                                               'Watched',
                                               style: TextStyle(fontSize: 12),
@@ -792,7 +817,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                         ],
                                         selected: {movie.watchState},
                                         onSelectionChanged: (newSelection) {
-                                          widget.database.setMovieWatchState(
+                                          widget.repository.setMovieWatchState(
                                             movie.id,
                                             newSelection.first,
                                           );

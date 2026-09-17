@@ -21,11 +21,8 @@ class LibraryResult<T> {
   });
 
   /// Factory for an empty result set.
-  static LibraryResult<T> empty<T>() => const LibraryResult(
-        items: [],
-        totalCount: 0,
-        hasMore: false,
-      );
+  static LibraryResult<T> empty<T>() =>
+      const LibraryResult(items: [], totalCount: 0, hasMore: false);
 
   bool get isEmpty => items.isEmpty;
   bool get isNotEmpty => items.isNotEmpty;
@@ -54,12 +51,8 @@ class LibraryResult<T> {
           _listEquals(items, other.items);
 
   @override
-  int get hashCode => Object.hash(
-        Object.hashAll(items),
-        totalCount,
-        hasMore,
-        pagination,
-      );
+  int get hashCode =>
+      Object.hash(Object.hashAll(items), totalCount, hasMore, pagination);
 
   @override
   String toString() =>

@@ -9,11 +9,13 @@ import '../models/watch_state.dart';
 class MovieLibraryItem {
   final String id;
   final String? title;
+  final String? originalTitle;
   final String detectedTitle;
   final int? year;
   final int? detectedYear;
   final String? posterPath;
   final String? backdropPath;
+  final String? overview;
   final double? rating;
   final int? runtime;
   final bool isFavorite;
@@ -29,11 +31,13 @@ class MovieLibraryItem {
   const MovieLibraryItem({
     required this.id,
     this.title,
+    this.originalTitle,
     required this.detectedTitle,
     this.year,
     this.detectedYear,
     this.posterPath,
     this.backdropPath,
+    this.overview,
     this.rating,
     this.runtime,
     this.isFavorite = false,
@@ -48,7 +52,8 @@ class MovieLibraryItem {
   });
 
   /// Display title: prefers canonical [title], falls back to [detectedTitle].
-  String get displayTitle => (title != null && title!.isNotEmpty) ? title! : detectedTitle;
+  String get displayTitle =>
+      (title != null && title!.isNotEmpty) ? title! : detectedTitle;
 
   /// Display year: prefers canonical [year], falls back to [detectedYear].
   int? get displayYear => year ?? detectedYear;
@@ -62,11 +67,13 @@ class MovieLibraryItem {
           runtimeType == other.runtimeType &&
           id == other.id &&
           title == other.title &&
+          originalTitle == other.originalTitle &&
           detectedTitle == other.detectedTitle &&
           year == other.year &&
           detectedYear == other.detectedYear &&
           posterPath == other.posterPath &&
           backdropPath == other.backdropPath &&
+          overview == other.overview &&
           rating == other.rating &&
           runtime == other.runtime &&
           isFavorite == other.isFavorite &&
@@ -81,28 +88,31 @@ class MovieLibraryItem {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        title,
-        detectedTitle,
-        year,
-        detectedYear,
-        posterPath,
-        backdropPath,
-        rating,
-        runtime,
-        isFavorite,
-        isWatchlist,
-        watchState,
-        playbackPositionSeconds,
-        identificationStatus,
-        availability,
-        availableSourceCount,
-        createdAt,
-        updatedAt,
-      );
+    id,
+    title,
+    originalTitle,
+    detectedTitle,
+    year,
+    detectedYear,
+    posterPath,
+    backdropPath,
+    overview,
+    rating,
+    runtime,
+    isFavorite,
+    isWatchlist,
+    watchState,
+    playbackPositionSeconds,
+    identificationStatus,
+    availability,
+    availableSourceCount,
+    createdAt,
+    updatedAt,
+  );
 
   @override
-  String toString() => 'MovieLibraryItem($id, "$displayTitle", year: $displayYear, avail: $availability)';
+  String toString() =>
+      'MovieLibraryItem($id, "$displayTitle", year: $displayYear, avail: $availability)';
 }
 
 /// Lightweight read projection of a TV Show optimized for cinema catalogues and grid surfaces.
@@ -112,10 +122,12 @@ class MovieLibraryItem {
 class TvShowLibraryItem {
   final String id;
   final String? title;
+  final String? originalTitle;
   final String detectedTitle;
   final DateTime? firstAirDate;
   final String? posterPath;
   final String? backdropPath;
+  final String? overview;
   final double? rating;
   final bool isFavorite;
   final bool isWatchlist;
@@ -131,10 +143,12 @@ class TvShowLibraryItem {
   const TvShowLibraryItem({
     required this.id,
     this.title,
+    this.originalTitle,
     required this.detectedTitle,
     this.firstAirDate,
     this.posterPath,
     this.backdropPath,
+    this.overview,
     this.rating,
     this.isFavorite = false,
     this.isWatchlist = false,
@@ -149,7 +163,8 @@ class TvShowLibraryItem {
   });
 
   /// Display title: prefers canonical [title], falls back to [detectedTitle].
-  String get displayTitle => (title != null && title!.isNotEmpty) ? title! : detectedTitle;
+  String get displayTitle =>
+      (title != null && title!.isNotEmpty) ? title! : detectedTitle;
 
   /// Display premiere year.
   int? get displayYear => firstAirDate?.year;
@@ -163,10 +178,12 @@ class TvShowLibraryItem {
           runtimeType == other.runtimeType &&
           id == other.id &&
           title == other.title &&
+          originalTitle == other.originalTitle &&
           detectedTitle == other.detectedTitle &&
           firstAirDate == other.firstAirDate &&
           posterPath == other.posterPath &&
           backdropPath == other.backdropPath &&
+          overview == other.overview &&
           rating == other.rating &&
           isFavorite == other.isFavorite &&
           isWatchlist == other.isWatchlist &&
@@ -181,24 +198,26 @@ class TvShowLibraryItem {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        title,
-        detectedTitle,
-        firstAirDate,
-        posterPath,
-        backdropPath,
-        rating,
-        isFavorite,
-        isWatchlist,
-        identificationStatus,
-        derivedWatchState,
-        availability,
-        totalSeasons,
-        totalEpisodes,
-        availableEpisodes,
-        createdAt,
-        updatedAt,
-      );
+    id,
+    title,
+    originalTitle,
+    detectedTitle,
+    firstAirDate,
+    posterPath,
+    backdropPath,
+    overview,
+    rating,
+    isFavorite,
+    isWatchlist,
+    identificationStatus,
+    derivedWatchState,
+    availability,
+    totalSeasons,
+    totalEpisodes,
+    availableEpisodes,
+    createdAt,
+    updatedAt,
+  );
 
   @override
   String toString() =>
@@ -247,7 +266,8 @@ class EpisodeLibraryItem {
       'S${seasonNumber.toString().padLeft(2, '0')}E${episodeNumber.toString().padLeft(2, '0')}';
 
   /// Display name: fallback to episode designation if title is null.
-  String get displayName => (name != null && name!.isNotEmpty) ? name! : 'Episode $episodeNumber';
+  String get displayName =>
+      (name != null && name!.isNotEmpty) ? name! : 'Episode $episodeNumber';
 
   bool get isPlayable => availability.isPlayable;
 
@@ -273,22 +293,128 @@ class EpisodeLibraryItem {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        seasonId,
-        showId,
-        seasonNumber,
-        episodeNumber,
-        name,
-        overview,
-        stillPath,
-        runtime,
-        airDate,
-        rating,
-        watchState,
-        playbackPositionSeconds,
-        availability,
-      );
+    id,
+    seasonId,
+    showId,
+    seasonNumber,
+    episodeNumber,
+    name,
+    overview,
+    stillPath,
+    runtime,
+    airDate,
+    rating,
+    watchState,
+    playbackPositionSeconds,
+    availability,
+  );
 
   @override
-  String toString() => 'EpisodeLibraryItem($episodeCode - "$displayName", avail: $availability)';
+  String toString() =>
+      'EpisodeLibraryItem($episodeCode - "$displayName", avail: $availability)';
+}
+
+/// Lightweight read projection of a Season for show detail season tabs and lists.
+class SeasonLibraryItem {
+  final String id;
+  final String showId;
+  final int seasonNumber;
+  final String? name;
+  final String? overview;
+  final String? posterPath;
+  final int episodeCount;
+  final DateTime? airDate;
+
+  const SeasonLibraryItem({
+    required this.id,
+    required this.showId,
+    required this.seasonNumber,
+    this.name,
+    this.overview,
+    this.posterPath,
+    this.episodeCount = 0,
+    this.airDate,
+  });
+
+  /// Display name: fallback to "Season X" if name is null or empty.
+  String get displayName =>
+      (name != null && name!.isNotEmpty) ? name! : 'Season $seasonNumber';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SeasonLibraryItem &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          showId == other.showId &&
+          seasonNumber == other.seasonNumber &&
+          name == other.name &&
+          overview == other.overview &&
+          posterPath == other.posterPath &&
+          episodeCount == other.episodeCount &&
+          airDate == other.airDate;
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    showId,
+    seasonNumber,
+    name,
+    overview,
+    posterPath,
+    episodeCount,
+    airDate,
+  );
+
+  @override
+  String toString() =>
+      'SeasonLibraryItem($id, S$seasonNumber "$displayName", eps: $episodeCount)';
+}
+
+/// Lightweight read projection of a Collection with precomputed item counts.
+class CollectionLibraryItem {
+  final String id;
+  final String name;
+  final String? overview;
+  final String? posterPath;
+  final int itemCount;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const CollectionLibraryItem({
+    required this.id,
+    required this.name,
+    this.overview,
+    this.posterPath,
+    this.itemCount = 0,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CollectionLibraryItem &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          overview == other.overview &&
+          posterPath == other.posterPath &&
+          itemCount == other.itemCount &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt;
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    overview,
+    posterPath,
+    itemCount,
+    createdAt,
+    updatedAt,
+  );
+
+  @override
+  String toString() => 'CollectionLibraryItem($id, "$name", items: $itemCount)';
 }

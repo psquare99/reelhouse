@@ -2,14 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
+import '../../domain/query/query.dart';
+import '../../domain/repository/library_repository.dart';
 import '../widgets/cinema_poster_card.dart';
 import 'tv_show_detail_screen.dart';
 
 /// Poster-first TV series catalogue grid with user library state filters.
 class TvShowsScreen extends StatefulWidget {
+  final LibraryRepository repository;
   final AppDatabase database;
 
-  const TvShowsScreen({super.key, required this.database});
+  const TvShowsScreen({
+    super.key,
+    required this.repository,
+    required this.database,
+  });
 
   @override
   State<TvShowsScreen> createState() => _TvShowsScreenState();
@@ -22,10 +29,10 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('TV Shows')),
-      body: StreamBuilder<List<TvShow>>(
-        stream: widget.database.select(widget.database.tvShows).watch(),
+      body: StreamBuilder<LibraryResult<TvShowLibraryItem>>(
+        stream: widget.repository.watchTvShows(TvShowQuery.all()),
         builder: (context, snapshot) {
-          final allShows = snapshot.data ?? [];
+          final allShows = snapshot.data?.items ?? [];
 
           final filteredShows = allShows.where((s) {
             switch (_filter) {
@@ -107,7 +114,7 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
               // Poster Grid
               Expanded(
                 child: filteredShows.isEmpty
-                    ? Center(
+                    ? const Center(
                         child: Text(
                           'No TV shows matching this filter.',
                           style: TextStyle(color: CinemaColors.textMuted),
@@ -129,16 +136,18 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
                         itemBuilder: (context, index) {
                           final show = filteredShows[index];
                           return CinemaPosterCard(
-                            title: show.title ?? show.detectedTitle,
-                            year: show.firstAirDate?.year,
+                            title: show.displayTitle,
+                            year: show.displayYear,
                             posterPath: show.posterPath,
                             isFavorite: show.isFavorite,
+                            availabilityStatus: show.availability,
                             fallbackIcon: Icons.tv,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) => TvShowDetailScreen(
                                     showId: show.id,
+                                    repository: widget.repository,
                                     database: widget.database,
                                   ),
                                 ),

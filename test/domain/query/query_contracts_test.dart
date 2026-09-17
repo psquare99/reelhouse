@@ -11,9 +11,15 @@ void main() {
       expect(WatchState.watched.isWatched, isTrue);
 
       expect(WatchState.fromString('unwatched'), equals(WatchState.unwatched));
-      expect(WatchState.fromString('IN_PROGRESS'), equals(WatchState.inProgress));
+      expect(
+        WatchState.fromString('IN_PROGRESS'),
+        equals(WatchState.inProgress),
+      );
       expect(WatchState.fromString('WATCHED'), equals(WatchState.watched));
-      expect(WatchState.fromString('unknown_val'), equals(WatchState.unwatched));
+      expect(
+        WatchState.fromString('unknown_val'),
+        equals(WatchState.unwatched),
+      );
 
       expect(WatchState.unwatched.toDbString(), equals('UNWATCHED'));
       expect(WatchState.inProgress.toDbString(), equals('IN_PROGRESS'));
@@ -115,7 +121,10 @@ void main() {
       expect(range.contains(2011), isFalse);
       expect(range.contains(null), isFalse);
 
-      expect(() => YearRange(startYear: 2020, endYear: 2010), throwsAssertionError);
+      expect(
+        () => YearRange(startYear: 2020, endYear: 2010),
+        throwsAssertionError,
+      );
     });
 
     test('DateRange bounds and contains logic', () {
@@ -129,10 +138,7 @@ void main() {
       expect(range.contains(DateTime(2027, 1, 1)), isFalse);
       expect(range.contains(null), isFalse);
 
-      expect(
-        () => DateRange(start: future, end: past),
-        throwsAssertionError,
-      );
+      expect(() => DateRange(start: future, end: past), throwsAssertionError);
     });
   });
 
@@ -169,7 +175,10 @@ void main() {
       expect(filter.isEmpty, isFalse);
       expect(filter.watchStates, contains(WatchState.inProgress));
       expect(filter.isWatchlist, isTrue);
-      expect(filter.metadataStatuses, contains(IdentificationStatus.identified));
+      expect(
+        filter.metadataStatuses,
+        contains(IdentificationStatus.identified),
+      );
 
       final copy = filter.copyWith(collectionId: 'col-123');
       expect(copy.collectionId, equals('col-123'));
@@ -237,10 +246,19 @@ void main() {
     test('constants and factories', () {
       expect(QueryScope.all.type, equals(QueryScopeType.all));
       expect(QueryScope.favorites.type, equals(QueryScopeType.favorites));
-      expect(QueryScope.recentlyAdded.type, equals(QueryScopeType.recentlyAdded));
-      expect(QueryScope.continueWatching.type, equals(QueryScopeType.continueWatching));
+      expect(
+        QueryScope.recentlyAdded.type,
+        equals(QueryScopeType.recentlyAdded),
+      );
+      expect(
+        QueryScope.continueWatching.type,
+        equals(QueryScopeType.continueWatching),
+      );
       expect(QueryScope.unwatched.type, equals(QueryScopeType.unwatched));
-      expect(QueryScope.needsVerification.type, equals(QueryScopeType.needsVerification));
+      expect(
+        QueryScope.needsVerification.type,
+        equals(QueryScopeType.needsVerification),
+      );
       expect(QueryScope.offline.type, equals(QueryScopeType.offline));
 
       final colScope = QueryScope.collection('marvel-id', label: 'MCU');
@@ -397,7 +415,10 @@ void main() {
       expect(verify.scope.type, equals(QueryScopeType.needsVerification));
       expect(
         verify.filter.metadataStatuses,
-        containsAll([IdentificationStatus.pending, IdentificationStatus.needsVerification]),
+        containsAll([
+          IdentificationStatus.pending,
+          IdentificationStatus.needsVerification,
+        ]),
       );
 
       final offline = MovieQuery.offline();
@@ -477,7 +498,11 @@ void main() {
     });
 
     test('EpisodeQuery forSeason and continueWatching factories', () {
-      final seasonQ = EpisodeQuery.forSeason('season-123', showId: 'show-123', seasonNumber: 2);
+      final seasonQ = EpisodeQuery.forSeason(
+        'season-123',
+        showId: 'show-123',
+        seasonNumber: 2,
+      );
       expect(seasonQ.seasonId, equals('season-123'));
       expect(seasonQ.showId, equals('show-123'));
       expect(seasonQ.filter.seasonNumber, equals(2));
@@ -494,7 +519,9 @@ void main() {
 
   group('CollectionQuery', () {
     test('all and search factories', () {
-      final all = CollectionQuery.all(pagination: const PaginationSpec(limit: 50));
+      final all = CollectionQuery.all(
+        pagination: const PaginationSpec(limit: 50),
+      );
       expect(all.pagination?.limit, equals(50));
       expect(all.sort.first.field, equals(CollectionSortField.name));
 

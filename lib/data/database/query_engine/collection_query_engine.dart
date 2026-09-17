@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' hide NullsOrder;
 
 import '../../../domain/query/collection_query.dart';
 import '../../../domain/query/library_result.dart';
+import '../../../domain/query/query_projections.dart';
 import '../../../domain/query/sort_fields.dart';
 import '../../../domain/query/sort_spec.dart';
 import '../database.dart';
@@ -12,15 +13,17 @@ class CollectionQueryEngine {
 
   const CollectionQueryEngine(this.db);
 
-  /// Executes a one-shot query for collections returning a [LibraryResult] of [Collection].
-  Future<LibraryResult<Collection>> query(CollectionQuery query) async {
+  /// Executes a one-shot query for collections returning a [LibraryResult] of [CollectionLibraryItem].
+  Future<LibraryResult<CollectionLibraryItem>> query(
+    CollectionQuery query,
+  ) async {
     final queryPlan = _buildQueryPlan(query);
 
     final dataRows = await db
         .customSelect(
           queryPlan.dataSql,
           variables: queryPlan.dataVariables,
-          readsFrom: {db.collections},
+          readsFrom: {db.collections, db.collectionItems},
         )
         .get();
 
@@ -28,14 +31,14 @@ class CollectionQueryEngine {
         .customSelect(
           queryPlan.countSql,
           variables: queryPlan.countVariables,
-          readsFrom: {db.collections},
+          readsFrom: {db.collections, db.collectionItems},
         )
         .getSingle();
 
     final totalCount = countRow.read<int>('total');
-    final items = dataRows.map(_mapRowToCollection).toList();
+    final items = dataRows.map(_mapRowToCollectionItem).toList();
 
-    return LibraryResult<Collection>(
+    return LibraryResult<CollectionLibraryItem>(
       items: items,
       totalCount: totalCount,
       hasMore: query.pagination != null
@@ -46,14 +49,14 @@ class CollectionQueryEngine {
   }
 
   /// Returns a reactive stream of [LibraryResult] for collections.
-  Stream<LibraryResult<Collection>> watch(CollectionQuery query) {
+  Stream<LibraryResult<CollectionLibraryItem>> watch(CollectionQuery query) {
     final queryPlan = _buildQueryPlan(query);
 
     return db
         .customSelect(
           queryPlan.dataSql,
           variables: queryPlan.dataVariables,
-          readsFrom: {db.collections},
+          readsFrom: {db.collections, db.collectionItems},
         )
         .watch()
         .asyncMap((dataRows) async {
@@ -61,14 +64,14 @@ class CollectionQueryEngine {
               .customSelect(
                 queryPlan.countSql,
                 variables: queryPlan.countVariables,
-                readsFrom: {db.collections},
+                readsFrom: {db.collections, db.collectionItems},
               )
               .getSingle();
 
           final totalCount = countRow.read<int>('total');
-          final items = dataRows.map(_mapRowToCollection).toList();
+          final items = dataRows.map(_mapRowToCollectionItem).toList();
 
-          return LibraryResult<Collection>(
+          return LibraryResult<CollectionLibraryItem>(
             items: items,
             totalCount: totalCount,
             hasMore: query.pagination != null
@@ -83,22 +86,33 @@ class CollectionQueryEngine {
     final whereClauses = <String>[];
     final whereVariables = <Variable>[];
 
+    // 0. ID filter
+    if (query.filter.id != null && query.filter.id!.isNotEmpty) {
+      whereClauses.add('c.id = ?');
+      whereVariables.add(Variable<String>(query.filter.id!));
+    }
+
     // 1. Search spec
     if (query.search != null && query.search!.isNotEmpty) {
       final term = '%${query.search!.trimmedQuery.toLowerCase()}%';
-      whereClauses.add('(LOWER(c.name) LIKE ? OR LOWER(COALESCE(c.overview, \'\')) LIKE ?)');
+      whereClauses.add(
+        '(LOWER(c.name) LIKE ? OR LOWER(COALESCE(c.overview, \'\')) LIKE ?)',
+      );
       whereVariables.add(Variable<String>(term));
       whereVariables.add(Variable<String>(term));
     }
 
     // 2. Filter nameQuery
-    if (query.filter.nameQuery != null && query.filter.nameQuery!.trim().isNotEmpty) {
+    if (query.filter.nameQuery != null &&
+        query.filter.nameQuery!.trim().isNotEmpty) {
       final term = '%${query.filter.nameQuery!.trim().toLowerCase()}%';
       whereClauses.add('LOWER(c.name) LIKE ?');
       whereVariables.add(Variable<String>(term));
     }
 
-    final whereSql = whereClauses.isNotEmpty ? 'WHERE ${whereClauses.join(' AND ')}' : '';
+    final whereSql = whereClauses.isNotEmpty
+        ? 'WHERE ${whereClauses.join(' AND ')}'
+        : '';
 
     final countSql = 'SELECT COUNT(*) AS total FROM collections c $whereSql';
     final countVariables = List<Variable>.from(whereVariables);
@@ -107,7 +121,9 @@ class CollectionQueryEngine {
     for (final sortClause in query.sort) {
       final colExpr = _mapSortFieldToSql(sortClause.field);
       final dir = sortClause.direction == SortDirection.asc ? 'ASC' : 'DESC';
-      final nulls = sortClause.nullsOrder == NullsOrder.first ? 'NULLS FIRST' : 'NULLS LAST';
+      final nulls = sortClause.nullsOrder == NullsOrder.first
+          ? 'NULLS FIRST'
+          : 'NULLS LAST';
       orderTerms.add('$colExpr $dir $nulls');
     }
     orderTerms.add('c.id ASC');
@@ -121,16 +137,20 @@ class CollectionQueryEngine {
       dataVariables.add(Variable<int>(query.pagination!.offset));
     }
 
-    final dataSql = '''
+    final dataSql =
+        '''
 SELECT 
   c.id,
   c.name,
   c.overview,
   c.poster_path,
   c.created_at,
-  c.updated_at
+  c.updated_at,
+  COUNT(ci.id) AS item_count
 FROM collections c
+LEFT JOIN collection_items ci ON ci.collection_id = c.id
 $whereSql
+GROUP BY c.id
 $orderSql
 $paginationSql
 ''';
@@ -154,12 +174,13 @@ $paginationSql
     }
   }
 
-  Collection _mapRowToCollection(QueryRow row) {
-    return Collection(
+  CollectionLibraryItem _mapRowToCollectionItem(QueryRow row) {
+    return CollectionLibraryItem(
       id: row.read<String>('id'),
       name: row.read<String>('name'),
       overview: row.readNullable<String>('overview'),
       posterPath: row.readNullable<String>('poster_path'),
+      itemCount: row.read<int?>('item_count') ?? 0,
       createdAt: row.read<DateTime>('created_at'),
       updatedAt: row.read<DateTime>('updated_at'),
     );

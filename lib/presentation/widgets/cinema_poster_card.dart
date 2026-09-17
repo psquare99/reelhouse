@@ -65,9 +65,8 @@ class CinemaPosterCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: CinemaColors.ofCanvas(
-                            context,
-                          ).withValues(alpha: 0.75),
+                          color: CinemaColors.ofCanvas(context)
+                              .withValues(alpha: 0.75),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -98,9 +97,8 @@ class CinemaPosterCard extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: watchProgress ?? 0.4,
                         minHeight: 2.5,
-                        backgroundColor: CinemaColors.ofCanvas(
-                          context,
-                        ).withValues(alpha: 0.7),
+                        backgroundColor: CinemaColors.ofCanvas(context)
+                            .withValues(alpha: 0.7),
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           CinemaColors.amber,
                         ),
@@ -113,9 +111,8 @@ class CinemaPosterCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: CinemaColors.ofCanvas(
-                            context,
-                          ).withValues(alpha: 0.75),
+                          color: CinemaColors.ofCanvas(context)
+                              .withValues(alpha: 0.75),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(

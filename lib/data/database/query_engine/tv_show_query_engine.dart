@@ -117,6 +117,14 @@ class TvShowQueryEngine {
     final whereClauses = <String>[];
     final whereVariables = <Variable>[];
 
+    final filter = query.filter;
+
+    // 0. ID filter
+    if (filter.id != null && filter.id!.isNotEmpty) {
+      whereClauses.add('t.id = ?');
+      whereVariables.add(Variable<String>(filter.id!));
+    }
+
     // 1. Search filter
     if (query.search != null && query.search!.isNotEmpty) {
       final term = '%${query.search!.trimmedQuery.toLowerCase()}%';
@@ -137,8 +145,6 @@ class TvShowQueryEngine {
       }
     }
 
-    final filter = query.filter;
-
     // 2. Derived WatchState filter
     if (filter.watchStates != null && filter.watchStates!.isNotEmpty) {
       final stateBranches = <String>[];
@@ -146,7 +152,7 @@ class TvShowQueryEngine {
         switch (state) {
           case WatchState.unwatched:
             stateBranches.add(
-              'NOT EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND (e2.watch_state = \'WATCHED\' OR e2.watch_state = \'IN_PROGRESS\'))',
+              '(NOT EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id) OR NOT EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND (e2.watch_state = \'WATCHED\' OR e2.watch_state = \'IN_PROGRESS\')))',
             );
             break;
           case WatchState.watched:
@@ -179,8 +185,12 @@ class TvShowQueryEngine {
     }
 
     // 5. Metadata status filter
-    if (filter.metadataStatuses != null && filter.metadataStatuses!.isNotEmpty) {
-      final placeholders = List.filled(filter.metadataStatuses!.length, '?').join(', ');
+    if (filter.metadataStatuses != null &&
+        filter.metadataStatuses!.isNotEmpty) {
+      final placeholders = List.filled(
+        filter.metadataStatuses!.length,
+        '?',
+      ).join(', ');
       whereClauses.add('t.identification_status IN ($placeholders)');
       for (final status in filter.metadataStatuses!) {
         whereVariables.add(Variable<String>(status.toDbString()));
@@ -191,12 +201,16 @@ class TvShowQueryEngine {
     if (filter.yearRange != null) {
       if (filter.yearRange!.startYear != null) {
         whereClauses.add('t.first_air_date >= ?');
-        whereVariables.add(Variable<DateTime>(DateTime(filter.yearRange!.startYear!, 1, 1)));
+        whereVariables.add(
+          Variable<DateTime>(DateTime(filter.yearRange!.startYear!, 1, 1)),
+        );
       }
       if (filter.yearRange!.endYear != null) {
         whereClauses.add('t.first_air_date <= ?');
         whereVariables.add(
-          Variable<DateTime>(DateTime(filter.yearRange!.endYear!, 12, 31, 23, 59, 59, 999)),
+          Variable<DateTime>(
+            DateTime(filter.yearRange!.endYear!, 12, 31, 23, 59, 59, 999),
+          ),
         );
       }
     }
@@ -238,7 +252,9 @@ class TvShowQueryEngine {
       }
     }
 
-    final whereSql = whereClauses.isNotEmpty ? 'WHERE ${whereClauses.join(' AND ')}' : '';
+    final whereSql = whereClauses.isNotEmpty
+        ? 'WHERE ${whereClauses.join(' AND ')}'
+        : '';
 
     // Count SQL
     final countSql = 'SELECT COUNT(*) AS total FROM tv_shows t $whereSql';
@@ -249,7 +265,9 @@ class TvShowQueryEngine {
     for (final sortClause in query.sort) {
       final colExpr = _mapSortFieldToSql(sortClause.field);
       final dir = sortClause.direction == SortDirection.asc ? 'ASC' : 'DESC';
-      final nulls = sortClause.nullsOrder == NullsOrder.first ? 'NULLS FIRST' : 'NULLS LAST';
+      final nulls = sortClause.nullsOrder == NullsOrder.first
+          ? 'NULLS FIRST'
+          : 'NULLS LAST';
       orderTerms.add('$colExpr $dir $nulls');
     }
     // Deterministic tie-breaker
@@ -265,14 +283,17 @@ class TvShowQueryEngine {
       dataVariables.add(Variable<int>(query.pagination!.offset));
     }
 
-    final dataSql = '''
+    final dataSql =
+        '''
 SELECT 
   t.id,
   t.title,
+  t.original_title,
   t.detected_title,
   t.first_air_date,
   t.poster_path,
   t.backdrop_path,
+  t.overview,
   t.rating,
   t.is_favorite,
   t.is_watchlist,
@@ -363,10 +384,12 @@ END''';
     return TvShowLibraryItem(
       id: row.read<String>('id'),
       title: row.readNullable<String>('title'),
+      originalTitle: row.readNullable<String>('original_title'),
       detectedTitle: row.read<String>('detected_title'),
       firstAirDate: row.readNullable<DateTime>('first_air_date'),
       posterPath: row.readNullable<String>('poster_path'),
       backdropPath: row.readNullable<String>('backdrop_path'),
+      overview: row.readNullable<String>('overview'),
       rating: row.readNullable<double>('rating'),
       isFavorite: row.read<bool>('is_favorite'),
       isWatchlist: row.read<bool>('is_watchlist'),

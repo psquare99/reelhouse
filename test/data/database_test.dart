@@ -478,76 +478,86 @@ void main() {
       expect(db.schemaVersion, 4);
     });
 
-    test(
-      'supports movie and TV show with NULL canonical title (unidentified item)',
-      () async {
-        final now = DateTime.now();
+    test('supports movie and TV show with NULL canonical title (unidentified item)', () async {
+      final now = DateTime.now();
 
-        // Movie with NULL canonical title, valid detectedTitle & detectedYear, PENDING status
-        await db
-            .into(db.movies)
-            .insert(
-              MoviesCompanion.insert(
-                id: 'm-unidentified',
-                detectedTitle: 'Alien (1979) [1080p Remux]',
-                detectedYear: const drift.Value(1979),
-                title: const drift.Value(null),
-                year: const drift.Value(null),
-                identificationStatus: const drift.Value('PENDING'),
-                createdAt: now,
-                updatedAt: now,
-              ),
-            );
+      // Movie with NULL canonical title, valid detectedTitle & detectedYear, PENDING status
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-unidentified',
+              detectedTitle: 'Alien (1979) [1080p Remux]',
+              detectedYear: const drift.Value(1979),
+              title: const drift.Value(null),
+              year: const drift.Value(null),
+              identificationStatus: const drift.Value('PENDING'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
 
-        // TV show with NULL canonical title, valid detectedTitle, PENDING status
-        await db
-            .into(db.tvShows)
-            .insert(
-              TvShowsCompanion.insert(
-                id: 'tv-unidentified',
-                detectedTitle: 'Breaking Bad Season 1',
-                title: const drift.Value(null),
-                identificationStatus: const drift.Value('PENDING'),
-                createdAt: now,
-                updatedAt: now,
-              ),
-            );
+      // TV show with NULL canonical title, valid detectedTitle, PENDING status
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-unidentified',
+              detectedTitle: 'Breaking Bad Season 1',
+              title: const drift.Value(null),
+              identificationStatus: const drift.Value('PENDING'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
 
-        final movie = await db.findMovieById('m-unidentified');
-        expect(movie, isNotNull);
-        expect(movie!.title, isNull);
-        expect(movie.year, isNull);
-        expect(movie.detectedTitle, 'Alien (1979) [1080p Remux]');
-        expect(movie.detectedYear, 1979);
-        expect(movie.identificationStatus, 'PENDING');
+      final movie = await db.findMovieById('m-unidentified');
+      expect(movie, isNotNull);
+      expect(movie!.title, isNull);
+      expect(movie.year, isNull);
+      expect(movie.detectedTitle, 'Alien (1979) [1080p Remux]');
+      expect(movie.detectedYear, 1979);
+      expect(movie.identificationStatus, 'PENDING');
 
-        final show = await db.findTvShowById('tv-unidentified');
-        expect(show, isNotNull);
-        expect(show!.title, isNull);
-        expect(show.detectedTitle, 'Breaking Bad Season 1');
-        expect(show.identificationStatus, 'PENDING');
-      },
-    );
+      final show = await db.findTvShowById('tv-unidentified');
+      expect(show, isNotNull);
+      expect(show!.title, isNull);
+      expect(show.detectedTitle, 'Breaking Bad Season 1');
+      expect(show.identificationStatus, 'PENDING');
+    });
 
     test('IdentificationStatus domain enum serialization and parsing', () {
-      expect(IdentificationStatus.fromString('PENDING'), IdentificationStatus.pending);
-      expect(IdentificationStatus.fromString('IDENTIFIED'), IdentificationStatus.identified);
-      expect(IdentificationStatus.fromString('NEEDS_VERIFICATION'), IdentificationStatus.needsVerification);
-      expect(IdentificationStatus.fromString('UNKNOWN_FALLBACK'), IdentificationStatus.pending);
+      expect(
+        IdentificationStatus.fromString('PENDING'),
+        IdentificationStatus.pending,
+      );
+      expect(
+        IdentificationStatus.fromString('IDENTIFIED'),
+        IdentificationStatus.identified,
+      );
+      expect(
+        IdentificationStatus.fromString('NEEDS_VERIFICATION'),
+        IdentificationStatus.needsVerification,
+      );
+      expect(
+        IdentificationStatus.fromString('UNKNOWN_FALLBACK'),
+        IdentificationStatus.pending,
+      );
 
       expect(IdentificationStatus.pending.toDbString(), 'PENDING');
       expect(IdentificationStatus.identified.toDbString(), 'IDENTIFIED');
-      expect(IdentificationStatus.needsVerification.toDbString(), 'NEEDS_VERIFICATION');
+      expect(
+        IdentificationStatus.needsVerification.toDbString(),
+        'NEEDS_VERIFICATION',
+      );
     });
 
-    test(
-      'migrates schema version 3 database to version 4 with legacy identity preservation',
-      () async {
-        final nowMs = DateTime.now().millisecondsSinceEpoch;
-        final executor = NativeDatabase.memory(
-          setup: (rawDb) {
-            rawDb.execute('PRAGMA user_version = 3;');
-            rawDb.execute('''
+    test('migrates schema version 3 database to version 4 with legacy identity preservation', () async {
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      final executor = NativeDatabase.memory(
+        setup: (rawDb) {
+          rawDb.execute('PRAGMA user_version = 3;');
+          rawDb.execute('''
               CREATE TABLE storages (
                 id TEXT NOT NULL PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -680,8 +690,8 @@ void main() {
               );
             ''');
 
-            // Insert legacy test rows
-            rawDb.execute('''
+          // Insert legacy test rows
+          rawDb.execute('''
               INSERT INTO storages (id, name, storage_type, filesystem_identifier, root_uri, last_seen_at, available)
               VALUES ('storage-ext', 'USB Drive', 'REMOVABLE_VOLUME', 'USB-999', 'D:\\\\Movies', $nowMs, 1);
 
@@ -700,52 +710,55 @@ void main() {
               INSERT INTO media_sources (id, movie_id, storage_id, source_type, relative_path, filename, extension, file_size, created_at, first_seen_at, last_seen_at, available)
               VALUES ('src-legacy-1', 'm-matched-legacy', 'storage-ext', 'removableStorage', 'Inception (2010).mkv', 'Inception (2010).mkv', 'mkv', 5000000000, $nowMs, $nowMs, $nowMs, 1);
             ''');
-          },
-        );
+        },
+      );
 
-        // Open via Drift AppDatabase — this triggers onUpgrade(from: 3, to: 4)
-        final migratedDb = AppDatabase(executor);
+      // Open via Drift AppDatabase — this triggers onUpgrade(from: 3, to: 4)
+      final migratedDb = AppDatabase(executor);
 
-        // 1. Verify legacy movie with tmdbId -> IDENTIFIED
-        final matchedMovie = await migratedDb.findMovieById('m-matched-legacy');
-        expect(matchedMovie, isNotNull);
-        expect(matchedMovie!.title, 'Inception');
-        expect(matchedMovie.year, 2010);
-        expect(matchedMovie.detectedTitle, 'Inception');
-        expect(matchedMovie.detectedYear, 2010);
-        expect(matchedMovie.identificationStatus, 'IDENTIFIED');
+      // 1. Verify legacy movie with tmdbId -> IDENTIFIED
+      final matchedMovie = await migratedDb.findMovieById('m-matched-legacy');
+      expect(matchedMovie, isNotNull);
+      expect(matchedMovie!.title, 'Inception');
+      expect(matchedMovie.year, 2010);
+      expect(matchedMovie.detectedTitle, 'Inception');
+      expect(matchedMovie.detectedYear, 2010);
+      expect(matchedMovie.identificationStatus, 'IDENTIFIED');
 
-        // 2. Verify legacy movie without tmdbId -> PENDING
-        final unmatchedMovie = await migratedDb.findMovieById('m-unmatched-legacy');
-        expect(unmatchedMovie, isNotNull);
-        expect(unmatchedMovie!.title, 'Some.Raw.Rip.2021');
-        expect(unmatchedMovie.year, 2021);
-        expect(unmatchedMovie.detectedTitle, 'Some.Raw.Rip.2021');
-        expect(unmatchedMovie.detectedYear, 2021);
-        expect(unmatchedMovie.identificationStatus, 'PENDING');
+      // 2. Verify legacy movie without tmdbId -> PENDING
+      final unmatchedMovie = await migratedDb.findMovieById(
+        'm-unmatched-legacy',
+      );
+      expect(unmatchedMovie, isNotNull);
+      expect(unmatchedMovie!.title, 'Some.Raw.Rip.2021');
+      expect(unmatchedMovie.year, 2021);
+      expect(unmatchedMovie.detectedTitle, 'Some.Raw.Rip.2021');
+      expect(unmatchedMovie.detectedYear, 2021);
+      expect(unmatchedMovie.identificationStatus, 'PENDING');
 
-        // 3. Verify legacy TV show with tmdbId -> IDENTIFIED
-        final matchedShow = await migratedDb.findTvShowById('tv-matched-legacy');
-        expect(matchedShow, isNotNull);
-        expect(matchedShow!.title, 'Breaking Bad');
-        expect(matchedShow.detectedTitle, 'Breaking Bad');
-        expect(matchedShow.identificationStatus, 'IDENTIFIED');
+      // 3. Verify legacy TV show with tmdbId -> IDENTIFIED
+      final matchedShow = await migratedDb.findTvShowById('tv-matched-legacy');
+      expect(matchedShow, isNotNull);
+      expect(matchedShow!.title, 'Breaking Bad');
+      expect(matchedShow.detectedTitle, 'Breaking Bad');
+      expect(matchedShow.identificationStatus, 'IDENTIFIED');
 
-        // 4. Verify legacy TV show without tmdbId -> PENDING
-        final unmatchedShow = await migratedDb.findTvShowById('tv-unmatched-legacy');
-        expect(unmatchedShow, isNotNull);
-        expect(unmatchedShow!.title, 'Unknown.Series.S01');
-        expect(unmatchedShow.detectedTitle, 'Unknown.Series.S01');
-        expect(unmatchedShow.identificationStatus, 'PENDING');
+      // 4. Verify legacy TV show without tmdbId -> PENDING
+      final unmatchedShow = await migratedDb.findTvShowById(
+        'tv-unmatched-legacy',
+      );
+      expect(unmatchedShow, isNotNull);
+      expect(unmatchedShow!.title, 'Unknown.Series.S01');
+      expect(unmatchedShow.detectedTitle, 'Unknown.Series.S01');
+      expect(unmatchedShow.identificationStatus, 'PENDING');
 
-        // 5. Verify media source relationship preserved
-        final sources = await migratedDb.getSourcesForMovie('m-matched-legacy');
-        expect(sources.length, 1);
-        expect(sources.first.id, 'src-legacy-1');
-        expect(sources.first.storageId, 'storage-ext');
+      // 5. Verify media source relationship preserved
+      final sources = await migratedDb.getSourcesForMovie('m-matched-legacy');
+      expect(sources.length, 1);
+      expect(sources.first.id, 'src-legacy-1');
+      expect(sources.first.storageId, 'storage-ext');
 
-        await migratedDb.close();
-      },
-    );
+      await migratedDb.close();
+    });
   });
 }

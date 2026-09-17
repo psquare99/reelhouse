@@ -26,7 +26,12 @@ class MovieQueryEngine {
         .customSelect(
           queryPlan.dataSql,
           variables: queryPlan.dataVariables,
-          readsFrom: {db.movies, db.mediaSources, db.storages, db.collectionItems},
+          readsFrom: {
+            db.movies,
+            db.mediaSources,
+            db.storages,
+            db.collectionItems,
+          },
         )
         .get();
 
@@ -34,7 +39,12 @@ class MovieQueryEngine {
         .customSelect(
           queryPlan.countSql,
           variables: queryPlan.countVariables,
-          readsFrom: {db.movies, db.mediaSources, db.storages, db.collectionItems},
+          readsFrom: {
+            db.movies,
+            db.mediaSources,
+            db.storages,
+            db.collectionItems,
+          },
         )
         .getSingle();
 
@@ -59,7 +69,12 @@ class MovieQueryEngine {
         .customSelect(
           queryPlan.dataSql,
           variables: queryPlan.dataVariables,
-          readsFrom: {db.movies, db.mediaSources, db.storages, db.collectionItems},
+          readsFrom: {
+            db.movies,
+            db.mediaSources,
+            db.storages,
+            db.collectionItems,
+          },
         )
         .watch()
         .asyncMap((dataRows) async {
@@ -67,7 +82,12 @@ class MovieQueryEngine {
               .customSelect(
                 queryPlan.countSql,
                 variables: queryPlan.countVariables,
-                readsFrom: {db.movies, db.mediaSources, db.storages, db.collectionItems},
+                readsFrom: {
+                  db.movies,
+                  db.mediaSources,
+                  db.storages,
+                  db.collectionItems,
+                },
               )
               .getSingle();
 
@@ -89,6 +109,14 @@ class MovieQueryEngine {
     final whereClauses = <String>[];
     final whereVariables = <Variable>[];
 
+    final filter = query.filter;
+
+    // 0. ID filter
+    if (filter.id != null && filter.id!.isNotEmpty) {
+      whereClauses.add('m.id = ?');
+      whereVariables.add(Variable<String>(filter.id!));
+    }
+
     // 1. Search filter
     if (query.search != null && query.search!.isNotEmpty) {
       final term = '%${query.search!.trimmedQuery.toLowerCase()}%';
@@ -109,11 +137,12 @@ class MovieQueryEngine {
       }
     }
 
-    final filter = query.filter;
-
     // 2. WatchState filter
     if (filter.watchStates != null && filter.watchStates!.isNotEmpty) {
-      final placeholders = List.filled(filter.watchStates!.length, '?').join(', ');
+      final placeholders = List.filled(
+        filter.watchStates!.length,
+        '?',
+      ).join(', ');
       whereClauses.add('m.watch_state IN ($placeholders)');
       for (final state in filter.watchStates!) {
         whereVariables.add(Variable<String>(state.toDbString()));
@@ -133,8 +162,12 @@ class MovieQueryEngine {
     }
 
     // 5. Metadata status filter
-    if (filter.metadataStatuses != null && filter.metadataStatuses!.isNotEmpty) {
-      final placeholders = List.filled(filter.metadataStatuses!.length, '?').join(', ');
+    if (filter.metadataStatuses != null &&
+        filter.metadataStatuses!.isNotEmpty) {
+      final placeholders = List.filled(
+        filter.metadataStatuses!.length,
+        '?',
+      ).join(', ');
       whereClauses.add('m.identification_status IN ($placeholders)');
       for (final status in filter.metadataStatuses!) {
         whereVariables.add(Variable<String>(status.toDbString()));
@@ -190,7 +223,9 @@ class MovieQueryEngine {
       }
     }
 
-    final whereSql = whereClauses.isNotEmpty ? 'WHERE ${whereClauses.join(' AND ')}' : '';
+    final whereSql = whereClauses.isNotEmpty
+        ? 'WHERE ${whereClauses.join(' AND ')}'
+        : '';
 
     // Count SQL (exact count with matching where filters)
     final countSql = 'SELECT COUNT(*) AS total FROM movies m $whereSql';
@@ -201,7 +236,9 @@ class MovieQueryEngine {
     for (final sortClause in query.sort) {
       final colExpr = _mapSortFieldToSql(sortClause.field);
       final dir = sortClause.direction == SortDirection.asc ? 'ASC' : 'DESC';
-      final nulls = sortClause.nullsOrder == NullsOrder.first ? 'NULLS FIRST' : 'NULLS LAST';
+      final nulls = sortClause.nullsOrder == NullsOrder.first
+          ? 'NULLS FIRST'
+          : 'NULLS LAST';
       orderTerms.add('$colExpr $dir $nulls');
     }
     // Deterministic tie-breaker
@@ -217,15 +254,18 @@ class MovieQueryEngine {
       dataVariables.add(Variable<int>(query.pagination!.offset));
     }
 
-    final dataSql = '''
+    final dataSql =
+        '''
 SELECT 
   m.id,
   m.title,
+  m.original_title,
   m.detected_title,
   m.year,
   m.detected_year,
   m.poster_path,
   m.backdrop_path,
+  m.overview,
   m.rating,
   m.runtime,
   m.is_favorite,
@@ -294,11 +334,13 @@ $paginationSql
     return MovieLibraryItem(
       id: row.read<String>('id'),
       title: row.readNullable<String>('title'),
+      originalTitle: row.readNullable<String>('original_title'),
       detectedTitle: row.read<String>('detected_title'),
       year: row.readNullable<int>('year'),
       detectedYear: row.readNullable<int>('detected_year'),
       posterPath: row.readNullable<String>('poster_path'),
       backdropPath: row.readNullable<String>('backdrop_path'),
+      overview: row.readNullable<String>('overview'),
       rating: row.readNullable<double>('rating'),
       runtime: row.readNullable<int>('runtime'),
       isFavorite: row.read<bool>('is_favorite'),

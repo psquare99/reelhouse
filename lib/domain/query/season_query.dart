@@ -21,12 +21,12 @@ class SeasonQuery {
 
   /// Factory for retrieving all seasons of a specific TV show in canonical order.
   factory SeasonQuery.forShow(String showId) => SeasonQuery(
-        showId: showId,
-        filter: SeasonFilter(showId: showId),
-        sort: const [
-          SortClause(SeasonSortField.seasonNumber, direction: SortDirection.asc),
-        ],
-      );
+    showId: showId,
+    filter: SeasonFilter(showId: showId),
+    sort: const [
+      SortClause(SeasonSortField.seasonNumber, direction: SortDirection.asc),
+    ],
+  );
 
   SeasonQuery copyWith({
     String? showId,
@@ -50,14 +50,11 @@ class SeasonQuery {
           _listEquals(sort, other.sort);
 
   @override
-  int get hashCode => Object.hash(
-        showId,
-        filter,
-        Object.hashAll(sort),
-      );
+  int get hashCode => Object.hash(showId, filter, Object.hashAll(sort));
 
   @override
-  String toString() => 'SeasonQuery(showId: $showId, filter: $filter, sort: $sort)';
+  String toString() =>
+      'SeasonQuery(showId: $showId, filter: $filter, sort: $sort)';
 
   static bool _listEquals<E>(List<E> a, List<E> b) {
     if (identical(a, b)) return true;

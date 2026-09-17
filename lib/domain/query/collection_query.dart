@@ -30,21 +30,21 @@ class CollectionQuery {
   factory CollectionQuery.all({
     PaginationSpec? pagination,
     List<SortClause<CollectionSortField>>? sort,
-  }) =>
-      CollectionQuery(
-        pagination: pagination,
-        sort: sort ??
-            const [
-              SortClause(CollectionSortField.name, direction: SortDirection.asc),
-            ],
-      );
+  }) => CollectionQuery(
+    pagination: pagination,
+    sort:
+        sort ??
+        const [
+          SortClause(CollectionSortField.name, direction: SortDirection.asc),
+        ],
+  );
 
   /// Factory for searching collections by name.
   factory CollectionQuery.search(String query) => CollectionQuery(
-        scope: QueryScope.search(query),
-        search: SearchSpec(query: query),
-        filter: CollectionFilter(nameQuery: query),
-      );
+    scope: QueryScope.search(query),
+    search: SearchSpec(query: query),
+    filter: CollectionFilter(nameQuery: query),
+  );
 
   CollectionQuery copyWith({
     SearchSpec? search,
@@ -76,13 +76,8 @@ class CollectionQuery {
           _listEquals(sort, other.sort);
 
   @override
-  int get hashCode => Object.hash(
-        search,
-        filter,
-        Object.hashAll(sort),
-        pagination,
-        scope,
-      );
+  int get hashCode =>
+      Object.hash(search, filter, Object.hashAll(sort), pagination, scope);
 
   @override
   String toString() =>

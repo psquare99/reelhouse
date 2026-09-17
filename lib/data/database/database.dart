@@ -434,10 +434,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Update identification status of a movie.
-  Future<int> updateMovieIdentificationStatus(
-    String movieId,
-    String status,
-  ) {
+  Future<int> updateMovieIdentificationStatus(String movieId, String status) {
     return (update(movies)..where((m) => m.id.equals(movieId))).write(
       MoviesCompanion(
         identificationStatus: Value(status),
@@ -447,10 +444,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Update identification status of a TV show.
-  Future<int> updateTvShowIdentificationStatus(
-    String showId,
-    String status,
-  ) {
+  Future<int> updateTvShowIdentificationStatus(String showId, String status) {
     return (update(tvShows)..where((t) => t.id.equals(showId))).write(
       TvShowsCompanion(
         identificationStatus: Value(status),
@@ -500,8 +494,9 @@ class AppDatabase extends _$AppDatabase {
       (select(tvShows)..where((t) => t.id.equals(showId))).getSingleOrNull();
 
   /// Find TV show by TMDB ID.
-  Future<TvShow?> findTvShowByTmdbId(int tmdbId) =>
-      (select(tvShows)..where((t) => t.tmdbId.equals(tmdbId))).getSingleOrNull();
+  Future<TvShow?> findTvShowByTmdbId(int tmdbId) => (select(
+    tvShows,
+  )..where((t) => t.tmdbId.equals(tmdbId))).getSingleOrNull();
 
   /// Watch TV show by its internal ID.
   Stream<TvShow?> watchTvShowById(String showId) =>
@@ -523,15 +518,20 @@ class AppDatabase extends _$AppDatabase {
     if (sourceShowId == targetShowId) return;
 
     await transaction(() async {
-      final sourceShow = await (select(tvShows)..where((t) => t.id.equals(sourceShowId))).getSingleOrNull();
-      final targetShow = await (select(tvShows)..where((t) => t.id.equals(targetShowId))).getSingleOrNull();
+      final sourceShow = await (select(
+        tvShows,
+      )..where((t) => t.id.equals(sourceShowId))).getSingleOrNull();
+      final targetShow = await (select(
+        tvShows,
+      )..where((t) => t.id.equals(targetShowId))).getSingleOrNull();
 
       if (sourceShow == null || targetShow == null) return;
 
       // 1. Merge show-level user flags (favorite, watchlist)
       final newFavorite = targetShow.isFavorite || sourceShow.isFavorite;
       final newWatchlist = targetShow.isWatchlist || sourceShow.isWatchlist;
-      if (newFavorite != targetShow.isFavorite || newWatchlist != targetShow.isWatchlist) {
+      if (newFavorite != targetShow.isFavorite ||
+          newWatchlist != targetShow.isWatchlist) {
         await (update(tvShows)..where((t) => t.id.equals(targetShowId))).write(
           TvShowsCompanion(
             isFavorite: Value(newFavorite),
@@ -542,48 +542,74 @@ class AppDatabase extends _$AppDatabase {
       }
 
       // 2. Re-parent / deduplicate collection items
-      final sourceColItems = await (select(collectionItems)..where((ci) => ci.tvShowId.equals(sourceShowId))).get();
+      final sourceColItems = await (select(
+        collectionItems,
+      )..where((ci) => ci.tvShowId.equals(sourceShowId))).get();
       for (final sci in sourceColItems) {
-        final existingInCol = await (select(collectionItems)..where((ci) => ci.collectionId.equals(sci.collectionId) & ci.tvShowId.equals(targetShowId))).getSingleOrNull();
+        final existingInCol =
+            await (select(collectionItems)..where(
+                  (ci) =>
+                      ci.collectionId.equals(sci.collectionId) &
+                      ci.tvShowId.equals(targetShowId),
+                ))
+                .getSingleOrNull();
         if (existingInCol != null) {
-          await (delete(collectionItems)..where((ci) => ci.id.equals(sci.id))).go();
+          await (delete(
+            collectionItems,
+          )..where((ci) => ci.id.equals(sci.id))).go();
         } else {
-          await (update(collectionItems)..where((ci) => ci.id.equals(sci.id))).write(
-            CollectionItemsCompanion(tvShowId: Value(targetShowId)),
-          );
+          await (update(collectionItems)..where((ci) => ci.id.equals(sci.id)))
+              .write(CollectionItemsCompanion(tvShowId: Value(targetShowId)));
         }
       }
 
       // 3. Merge Seasons & Episodes
-      final sourceSeasons = await (select(seasons)..where((s) => s.showId.equals(sourceShowId))).get();
+      final sourceSeasons = await (select(
+        seasons,
+      )..where((s) => s.showId.equals(sourceShowId))).get();
       for (final sourceSeason in sourceSeasons) {
-        final targetSeason = await (select(seasons)..where((s) => s.showId.equals(targetShowId) & s.seasonNumber.equals(sourceSeason.seasonNumber))).getSingleOrNull();
+        final targetSeason =
+            await (select(seasons)..where(
+                  (s) =>
+                      s.showId.equals(targetShowId) &
+                      s.seasonNumber.equals(sourceSeason.seasonNumber),
+                ))
+                .getSingleOrNull();
 
         if (targetSeason == null) {
           // Disjoint season: re-parent entire season to target show
-          await (update(seasons)..where((s) => s.id.equals(sourceSeason.id))).write(
-            SeasonsCompanion(showId: Value(targetShowId)),
-          );
+          await (update(seasons)..where((s) => s.id.equals(sourceSeason.id)))
+              .write(SeasonsCompanion(showId: Value(targetShowId)));
         } else {
           // Overlapping season: merge episodes from source season into target season
-          final sourceEpisodes = await (select(episodes)..where((e) => e.seasonId.equals(sourceSeason.id))).get();
+          final sourceEpisodes = await (select(
+            episodes,
+          )..where((e) => e.seasonId.equals(sourceSeason.id))).get();
           for (final sourceEp in sourceEpisodes) {
-            final targetEp = await (select(episodes)..where((e) => e.seasonId.equals(targetSeason.id) & e.episodeNumber.equals(sourceEp.episodeNumber))).getSingleOrNull();
+            final targetEp =
+                await (select(episodes)..where(
+                      (e) =>
+                          e.seasonId.equals(targetSeason.id) &
+                          e.episodeNumber.equals(sourceEp.episodeNumber),
+                    ))
+                    .getSingleOrNull();
 
             if (targetEp == null) {
               // Disjoint episode: re-parent episode to target season
-              await (update(episodes)..where((e) => e.id.equals(sourceEp.id))).write(
-                EpisodesCompanion(seasonId: Value(targetSeason.id)),
-              );
+              await (update(episodes)..where((e) => e.id.equals(sourceEp.id)))
+                  .write(EpisodesCompanion(seasonId: Value(targetSeason.id)));
             } else {
               // Overlapping episode: re-point media sources, transfer jobs, merge watch state, then delete source episode
-              await (update(mediaSources)..where((ms) => ms.episodeId.equals(sourceEp.id))).write(
-                MediaSourcesCompanion(episodeId: Value(targetEp.id)),
-              );
+              await (update(mediaSources)
+                    ..where((ms) => ms.episodeId.equals(sourceEp.id)))
+                  .write(MediaSourcesCompanion(episodeId: Value(targetEp.id)));
 
-              await (update(transferJobs)..where((tj) => tj.mediaType.equals('episode') & tj.mediaId.equals(sourceEp.id))).write(
-                TransferJobsCompanion(mediaId: Value(targetEp.id)),
-              );
+              await (update(transferJobs)..where(
+                    (tj) =>
+                        tj.mediaType.equals('episode') &
+                        tj.mediaId.equals(sourceEp.id),
+                  ))
+                  .write(TransferJobsCompanion(mediaId: Value(targetEp.id)));
 
               // Merge watch state: WATCHED > IN_PROGRESS > UNWATCHED
               var mergedWatchState = targetEp.watchState;
@@ -603,8 +629,11 @@ class AppDatabase extends _$AppDatabase {
                 }
               }
 
-              if (mergedWatchState != targetEp.watchState || mergedPosition != targetEp.playbackPositionSeconds) {
-                await (update(episodes)..where((e) => e.id.equals(targetEp.id))).write(
+              if (mergedWatchState != targetEp.watchState ||
+                  mergedPosition != targetEp.playbackPositionSeconds) {
+                await (update(
+                  episodes,
+                )..where((e) => e.id.equals(targetEp.id))).write(
                   EpisodesCompanion(
                     watchState: Value(mergedWatchState),
                     playbackPositionSeconds: Value(mergedPosition),
@@ -613,12 +642,16 @@ class AppDatabase extends _$AppDatabase {
               }
 
               // Delete redundant source episode
-              await (delete(episodes)..where((e) => e.id.equals(sourceEp.id))).go();
+              await (delete(
+                episodes,
+              )..where((e) => e.id.equals(sourceEp.id))).go();
             }
           }
 
           // Delete now-empty source season
-          await (delete(seasons)..where((s) => s.id.equals(sourceSeason.id))).go();
+          await (delete(
+            seasons,
+          )..where((s) => s.id.equals(sourceSeason.id))).go();
         }
       }
 
@@ -647,8 +680,12 @@ class AppDatabase extends _$AppDatabase {
     if (sourceMovieId == targetMovieId) return;
 
     await transaction(() async {
-      final sourceMovie = await (select(movies)..where((m) => m.id.equals(sourceMovieId))).getSingleOrNull();
-      final targetMovie = await (select(movies)..where((m) => m.id.equals(targetMovieId))).getSingleOrNull();
+      final sourceMovie = await (select(
+        movies,
+      )..where((m) => m.id.equals(sourceMovieId))).getSingleOrNull();
+      final targetMovie = await (select(
+        movies,
+      )..where((m) => m.id.equals(targetMovieId))).getSingleOrNull();
 
       if (sourceMovie == null || targetMovie == null) return;
 
@@ -684,27 +721,38 @@ class AppDatabase extends _$AppDatabase {
       );
 
       // 2. Re-parent / deduplicate collection items
-      final sourceColItems = await (select(collectionItems)..where((ci) => ci.movieId.equals(sourceMovieId))).get();
+      final sourceColItems = await (select(
+        collectionItems,
+      )..where((ci) => ci.movieId.equals(sourceMovieId))).get();
       for (final sci in sourceColItems) {
-        final existingInCol = await (select(collectionItems)..where((ci) => ci.collectionId.equals(sci.collectionId) & ci.movieId.equals(targetMovieId))).getSingleOrNull();
+        final existingInCol =
+            await (select(collectionItems)..where(
+                  (ci) =>
+                      ci.collectionId.equals(sci.collectionId) &
+                      ci.movieId.equals(targetMovieId),
+                ))
+                .getSingleOrNull();
         if (existingInCol != null) {
-          await (delete(collectionItems)..where((ci) => ci.id.equals(sci.id))).go();
+          await (delete(
+            collectionItems,
+          )..where((ci) => ci.id.equals(sci.id))).go();
         } else {
-          await (update(collectionItems)..where((ci) => ci.id.equals(sci.id))).write(
-            CollectionItemsCompanion(movieId: Value(targetMovieId)),
-          );
+          await (update(collectionItems)..where((ci) => ci.id.equals(sci.id)))
+              .write(CollectionItemsCompanion(movieId: Value(targetMovieId)));
         }
       }
 
       // 3. Re-point media sources
-      await (update(mediaSources)..where((ms) => ms.movieId.equals(sourceMovieId))).write(
-        MediaSourcesCompanion(movieId: Value(targetMovieId)),
-      );
+      await (update(mediaSources)
+            ..where((ms) => ms.movieId.equals(sourceMovieId)))
+          .write(MediaSourcesCompanion(movieId: Value(targetMovieId)));
 
       // 4. Re-point transfer jobs
-      await (update(transferJobs)..where((tj) => tj.mediaType.equals('movie') & tj.mediaId.equals(sourceMovieId))).write(
-        TransferJobsCompanion(mediaId: Value(targetMovieId)),
-      );
+      await (update(transferJobs)..where(
+            (tj) =>
+                tj.mediaType.equals('movie') & tj.mediaId.equals(sourceMovieId),
+          ))
+          .write(TransferJobsCompanion(mediaId: Value(targetMovieId)));
 
       // 5. Delete source movie
       await (delete(movies)..where((m) => m.id.equals(sourceMovieId))).go();
@@ -1058,12 +1106,12 @@ class AppDatabase extends _$AppDatabase {
   Stream<LibraryResult<TvShowLibraryItem>> watchTvShows(TvShowQuery query) =>
       _queryEngine.watchTvShows(query);
 
-  /// Executes a [SeasonQuery] returning a [LibraryResult] of [Season].
-  Future<LibraryResult<Season>> querySeasons(SeasonQuery query) =>
+  /// Executes a [SeasonQuery] returning a [LibraryResult] of [SeasonLibraryItem].
+  Future<LibraryResult<SeasonLibraryItem>> querySeasons(SeasonQuery query) =>
       _queryEngine.querySeasons(query);
 
   /// Streams [SeasonQuery] results reactively.
-  Stream<LibraryResult<Season>> watchSeasons(SeasonQuery query) =>
+  Stream<LibraryResult<SeasonLibraryItem>> watchSeasons(SeasonQuery query) =>
       _queryEngine.watchSeasons(query);
 
   /// Executes an [EpisodeQuery] returning a paginated [LibraryResult] of [EpisodeLibraryItem].
@@ -1074,11 +1122,13 @@ class AppDatabase extends _$AppDatabase {
   Stream<LibraryResult<EpisodeLibraryItem>> watchEpisodes(EpisodeQuery query) =>
       _queryEngine.watchEpisodes(query);
 
-  /// Executes a [CollectionQuery] returning a paginated [LibraryResult] of [Collection].
-  Future<LibraryResult<Collection>> queryCollections(CollectionQuery query) =>
-      _queryEngine.queryCollections(query);
+  /// Executes a [CollectionQuery] returning a paginated [LibraryResult] of [CollectionLibraryItem].
+  Future<LibraryResult<CollectionLibraryItem>> queryCollections(
+    CollectionQuery query,
+  ) => _queryEngine.queryCollections(query);
 
   /// Streams [CollectionQuery] results reactively.
-  Stream<LibraryResult<Collection>> watchCollections(CollectionQuery query) =>
-      _queryEngine.watchCollections(query);
+  Stream<LibraryResult<CollectionLibraryItem>> watchCollections(
+    CollectionQuery query,
+  ) => _queryEngine.watchCollections(query);
 }

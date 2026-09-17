@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide NullsOrder;
 
 import '../../../domain/query/library_result.dart';
+import '../../../domain/query/query_projections.dart';
 import '../../../domain/query/season_query.dart';
 import '../../../domain/query/sort_fields.dart';
 import '../../../domain/query/sort_spec.dart';
@@ -12,15 +13,15 @@ class SeasonQueryEngine {
 
   const SeasonQueryEngine(this.db);
 
-  /// Executes a one-shot query for seasons returning a [LibraryResult] of [Season].
-  Future<LibraryResult<Season>> query(SeasonQuery query) async {
+  /// Executes a one-shot query for seasons returning a [LibraryResult] of [SeasonLibraryItem].
+  Future<LibraryResult<SeasonLibraryItem>> query(SeasonQuery query) async {
     final queryPlan = _buildQueryPlan(query);
 
     final dataRows = await db
         .customSelect(
           queryPlan.dataSql,
           variables: queryPlan.dataVariables,
-          readsFrom: {db.seasons},
+          readsFrom: {db.seasons, db.episodes},
         )
         .get();
 
@@ -28,14 +29,14 @@ class SeasonQueryEngine {
         .customSelect(
           queryPlan.countSql,
           variables: queryPlan.countVariables,
-          readsFrom: {db.seasons},
+          readsFrom: {db.seasons, db.episodes},
         )
         .getSingle();
 
     final totalCount = countRow.read<int>('total');
-    final items = dataRows.map(_mapRowToSeason).toList();
+    final items = dataRows.map(_mapRowToSeasonItem).toList();
 
-    return LibraryResult<Season>(
+    return LibraryResult<SeasonLibraryItem>(
       items: items,
       totalCount: totalCount,
       hasMore: false,
@@ -43,14 +44,14 @@ class SeasonQueryEngine {
   }
 
   /// Returns a reactive stream of [LibraryResult] for seasons.
-  Stream<LibraryResult<Season>> watch(SeasonQuery query) {
+  Stream<LibraryResult<SeasonLibraryItem>> watch(SeasonQuery query) {
     final queryPlan = _buildQueryPlan(query);
 
     return db
         .customSelect(
           queryPlan.dataSql,
           variables: queryPlan.dataVariables,
-          readsFrom: {db.seasons},
+          readsFrom: {db.seasons, db.episodes},
         )
         .watch()
         .asyncMap((dataRows) async {
@@ -58,14 +59,14 @@ class SeasonQueryEngine {
               .customSelect(
                 queryPlan.countSql,
                 variables: queryPlan.countVariables,
-                readsFrom: {db.seasons},
+                readsFrom: {db.seasons, db.episodes},
               )
               .getSingle();
 
           final totalCount = countRow.read<int>('total');
-          final items = dataRows.map(_mapRowToSeason).toList();
+          final items = dataRows.map(_mapRowToSeasonItem).toList();
 
-          return LibraryResult<Season>(
+          return LibraryResult<SeasonLibraryItem>(
             items: items,
             totalCount: totalCount,
             hasMore: false,
@@ -77,21 +78,32 @@ class SeasonQueryEngine {
     final whereClauses = <String>[];
     final whereVariables = <Variable>[];
 
+    if (query.filter.id != null && query.filter.id!.isNotEmpty) {
+      whereClauses.add('s.id = ?');
+      whereVariables.add(Variable<String>(query.filter.id!));
+    }
+
     final effectiveShowId = query.showId ?? query.filter.showId;
     if (effectiveShowId != null && effectiveShowId.isNotEmpty) {
       whereClauses.add('s.show_id = ?');
       whereVariables.add(Variable<String>(effectiveShowId));
     }
 
-    if (query.filter.seasonNumbers != null && query.filter.seasonNumbers!.isNotEmpty) {
-      final placeholders = List.filled(query.filter.seasonNumbers!.length, '?').join(', ');
+    if (query.filter.seasonNumbers != null &&
+        query.filter.seasonNumbers!.isNotEmpty) {
+      final placeholders = List.filled(
+        query.filter.seasonNumbers!.length,
+        '?',
+      ).join(', ');
       whereClauses.add('s.season_number IN ($placeholders)');
       for (final num in query.filter.seasonNumbers!) {
         whereVariables.add(Variable<int>(num));
       }
     }
 
-    final whereSql = whereClauses.isNotEmpty ? 'WHERE ${whereClauses.join(' AND ')}' : '';
+    final whereSql = whereClauses.isNotEmpty
+        ? 'WHERE ${whereClauses.join(' AND ')}'
+        : '';
 
     final countSql = 'SELECT COUNT(*) AS total FROM seasons s $whereSql';
     final countVariables = List<Variable>.from(whereVariables);
@@ -100,13 +112,18 @@ class SeasonQueryEngine {
     for (final sortClause in query.sort) {
       final colExpr = _mapSortFieldToSql(sortClause.field);
       final dir = sortClause.direction == SortDirection.asc ? 'ASC' : 'DESC';
-      final nulls = sortClause.nullsOrder == NullsOrder.first ? 'NULLS FIRST' : 'NULLS LAST';
+      final nulls = sortClause.nullsOrder == NullsOrder.first
+          ? 'NULLS FIRST'
+          : 'NULLS LAST';
       orderTerms.add('$colExpr $dir $nulls');
     }
     orderTerms.add('s.id ASC');
     final orderSql = 'ORDER BY ${orderTerms.join(', ')}';
 
-    final dataSql = '''
+    final dataVariables = List<Variable>.from(whereVariables);
+
+    final dataSql =
+        '''
 SELECT 
   s.id,
   s.show_id,
@@ -115,15 +132,17 @@ SELECT
   s.overview,
   s.poster_path,
   s.air_date,
-  s.tmdb_id
+  COUNT(e.id) AS episode_count
 FROM seasons s
+LEFT JOIN episodes e ON e.season_id = s.id
 $whereSql
+GROUP BY s.id
 $orderSql
 ''';
 
     return _SeasonQueryPlan(
       dataSql: dataSql,
-      dataVariables: List<Variable>.from(whereVariables),
+      dataVariables: dataVariables,
       countSql: countSql,
       countVariables: countVariables,
     );
@@ -136,16 +155,16 @@ $orderSql
     }
   }
 
-  Season _mapRowToSeason(QueryRow row) {
-    return Season(
+  SeasonLibraryItem _mapRowToSeasonItem(QueryRow row) {
+    return SeasonLibraryItem(
       id: row.read<String>('id'),
       showId: row.read<String>('show_id'),
       seasonNumber: row.read<int>('season_number'),
       name: row.readNullable<String>('name'),
       overview: row.readNullable<String>('overview'),
       posterPath: row.readNullable<String>('poster_path'),
+      episodeCount: row.read<int?>('episode_count') ?? 0,
       airDate: row.readNullable<DateTime>('air_date'),
-      tmdbId: row.readNullable<int>('tmdb_id'),
     );
   }
 }

@@ -20,15 +20,20 @@ import 'package:reelhouse/domain/services/storage_identity_service.dart';
 
 class MockStorageIdentityService implements StorageIdentityService {
   @override
-  Future<String> getFilesystemIdentifier(String rootUriOrPath) async => 'mock-id';
+  Future<String> getFilesystemIdentifier(String rootUriOrPath) async =>
+      'mock-id';
   @override
-  Future<String> getStorageDisplayName(String rootUriOrPath) async => 'Mock Drive';
+  Future<String> getStorageDisplayName(String rootUriOrPath) async =>
+      'Mock Drive';
   @override
   Future<bool> isStorageConnected(String rootUriOrPath) async => true;
   @override
   Future<String?> readMarkerIdentifier(String rootUriOrPath) async => null;
   @override
-  Future<void> writeMarkerIdentifier(String rootUriOrPath, String storageId) async {}
+  Future<void> writeMarkerIdentifier(
+    String rootUriOrPath,
+    String storageId,
+  ) async {}
 }
 
 class MockLocalStorageManager implements LocalStorageManager {
@@ -350,16 +355,18 @@ void main() {
     );
 
     final now = DateTime.now();
-    await db.into(db.movies).insert(
-      MoviesCompanion.insert(
-        id: 'movie-inception',
-        detectedTitle: 'Inception',
-        detectedYear: const drift.Value(2010),
-        identificationStatus: const drift.Value('PENDING'),
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
+    await db
+        .into(db.movies)
+        .insert(
+          MoviesCompanion.insert(
+            id: 'movie-inception',
+            detectedTitle: 'Inception',
+            detectedYear: const drift.Value(2010),
+            identificationStatus: const drift.Value('PENDING'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
 
     final movie = (await db.getAllMovies()).first;
     final decision = await service.identifyMovie(movie);
@@ -433,15 +440,17 @@ void main() {
     );
 
     final now = DateTime.now();
-    await db.into(db.tvShows).insert(
-      TvShowsCompanion.insert(
-        id: 'show-himym',
-        detectedTitle: 'HIMYM',
-        identificationStatus: const drift.Value('PENDING'),
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
+    await db
+        .into(db.tvShows)
+        .insert(
+          TvShowsCompanion.insert(
+            id: 'show-himym',
+            detectedTitle: 'HIMYM',
+            identificationStatus: const drift.Value('PENDING'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
 
     final show = (await db.getAllTvShows()).first;
     expect(show.detectedTitle, 'HIMYM');
@@ -452,9 +461,15 @@ void main() {
     expect(candidates.isNotEmpty, isTrue);
     final chosenCandidate = candidates.first;
 
-    await service.applyTvShowMatch('show-himym', chosenCandidate, isManual: true);
+    await service.applyTvShowMatch(
+      'show-himym',
+      chosenCandidate,
+      isManual: true,
+    );
 
-    final updated = await (db.select(db.tvShows)..where((t) => t.id.equals('show-himym'))).getSingle();
+    final updated = await (db.select(
+      db.tvShows,
+    )..where((t) => t.id.equals('show-himym'))).getSingle();
     // (B & E & G) Verify canonical title is provider name, detectedTitle remains HIMYM
     expect(updated.detectedTitle, 'HIMYM');
     expect(updated.title, 'How I Met Your Mother');
@@ -506,22 +521,26 @@ void main() {
     );
 
     final now = DateTime.now();
-    await db.into(db.tvShows).insert(
-      TvShowsCompanion.insert(
-        id: 'show-ambiguous',
-        detectedTitle: 'Obscure Show',
-        identificationStatus: const drift.Value('PENDING'),
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
+    await db
+        .into(db.tvShows)
+        .insert(
+          TvShowsCompanion.insert(
+            id: 'show-ambiguous',
+            detectedTitle: 'Obscure Show',
+            identificationStatus: const drift.Value('PENDING'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
 
     final show = (await db.getAllTvShows()).first;
     final decision = await service.identifyTvShow(show);
 
     expect(decision.needsVerification, isTrue);
 
-    final updated = await (db.select(db.tvShows)..where((t) => t.id.equals('show-ambiguous'))).getSingle();
+    final updated = await (db.select(
+      db.tvShows,
+    )..where((t) => t.id.equals('show-ambiguous'))).getSingle();
     expect(updated.detectedTitle, 'Obscure Show');
     expect(updated.title, isNull);
     expect(updated.tmdbId, isNull);
@@ -539,7 +558,9 @@ void main() {
       available: const drift.Value(true),
     );
     await db.upsertStorage(storageCompanion);
-    final storage = (await db.getAllStorages()).firstWhere((s) => s.id == 'hdd-rescan-meta');
+    final storage = (await db.getAllStorages()).firstWhere(
+      (s) => s.id == 'hdd-rescan-meta',
+    );
 
     final scanner = LibraryScannerService(
       database: db,
@@ -547,7 +568,9 @@ void main() {
     );
 
     // 1. Initial scan discovers HIMYM S01E01
-    final ep1File = File(p.join(tempDir.path, 'HIMYM', 'Season 1', 'HIMYM.S01E01.mkv'));
+    final ep1File = File(
+      p.join(tempDir.path, 'HIMYM', 'Season 1', 'HIMYM.S01E01.mkv'),
+    );
     ep1File.parent.createSync(recursive: true);
     ep1File.writeAsBytesSync(List.filled(1024, 0));
 
@@ -588,13 +611,17 @@ void main() {
       const TmdbTvSearchResult(id: 1100, name: 'How I Met Your Mother'),
     );
 
-    final canonicalizedShow = await (db.select(db.tvShows)..where((t) => t.id.equals(originalShowId))).getSingle();
+    final canonicalizedShow = await (db.select(
+      db.tvShows,
+    )..where((t) => t.id.equals(originalShowId))).getSingle();
     expect(canonicalizedShow.title, 'How I Met Your Mother');
     expect(canonicalizedShow.detectedTitle, 'HIMYM');
     expect(canonicalizedShow.identificationStatus, 'IDENTIFIED');
 
     // 3. User adds Episode 2 to disk and rescans
-    final ep2File = File(p.join(tempDir.path, 'HIMYM', 'Season 1', 'HIMYM.S01E02.mkv'));
+    final ep2File = File(
+      p.join(tempDir.path, 'HIMYM', 'Season 1', 'HIMYM.S01E02.mkv'),
+    );
     ep2File.writeAsBytesSync(List.filled(1024, 0));
 
     await scanner.scanStorage(storage);
@@ -621,127 +648,142 @@ void main() {
     expect(ep2Sources.length, 1);
   });
 
-  test('applyTvShowMatch downloads, caches, and persists distinct episode stills', () async {
-    final mockClient = MockClient((request) async {
-      final path = request.url.path;
+  test(
+    'applyTvShowMatch downloads, caches, and persists distinct episode stills',
+    () async {
+      final mockClient = MockClient((request) async {
+        final path = request.url.path;
 
-      if (path == '/3/tv/1100') {
-        return http.Response(
-          jsonEncode({
-            'id': 1100,
-            'name': 'How I Met Your Mother',
-            'first_air_date': '2005-09-19',
-          }),
-          200,
-        );
-      }
+        if (path == '/3/tv/1100') {
+          return http.Response(
+            jsonEncode({
+              'id': 1100,
+              'name': 'How I Met Your Mother',
+              'first_air_date': '2005-09-19',
+            }),
+            200,
+          );
+        }
 
-      if (path == '/3/tv/1100/season/1') {
-        return http.Response(
-          jsonEncode({
-            'id': 9901,
-            'season_number': 1,
-            'name': 'Season 1',
-            'episodes': [
-              {
-                'id': 1001,
-                'episode_number': 1,
-                'name': 'Pilot',
-                'overview': 'Ted falls for Robin.',
-                'still_path': '/pilot_still.jpg',
-                'vote_average': 8.0,
-                'runtime': 22,
-              },
-              {
-                'id': 1002,
-                'episode_number': 2,
-                'name': 'Purple Giraffe',
-                'overview': 'Ted throws three parties.',
-                'still_path': '/giraffe_still.jpg',
-                'vote_average': 7.8,
-                'runtime': 22,
-              },
-            ],
-          }),
-          200,
-        );
-      }
+        if (path == '/3/tv/1100/season/1') {
+          return http.Response(
+            jsonEncode({
+              'id': 9901,
+              'season_number': 1,
+              'name': 'Season 1',
+              'episodes': [
+                {
+                  'id': 1001,
+                  'episode_number': 1,
+                  'name': 'Pilot',
+                  'overview': 'Ted falls for Robin.',
+                  'still_path': '/pilot_still.jpg',
+                  'vote_average': 8.0,
+                  'runtime': 22,
+                },
+                {
+                  'id': 1002,
+                  'episode_number': 2,
+                  'name': 'Purple Giraffe',
+                  'overview': 'Ted throws three parties.',
+                  'still_path': '/giraffe_still.jpg',
+                  'vote_average': 7.8,
+                  'runtime': 22,
+                },
+              ],
+            }),
+            200,
+          );
+        }
 
-      // Image download handler
-      if (path.contains('/t/p/')) {
-        return http.Response.bytes(Uint8List.fromList([10, 20, 30, 40]), 200);
-      }
+        // Image download handler
+        if (path.contains('/t/p/')) {
+          return http.Response.bytes(Uint8List.fromList([10, 20, 30, 40]), 200);
+        }
 
-      return http.Response.bytes([1, 2], 200);
-    });
+        return http.Response.bytes([1, 2], 200);
+      });
 
-    final tmdbClient = TmdbApiClient(
-      apiKey: 'test-api-key',
-      httpClient: mockClient,
-      minRequestInterval: Duration.zero,
-    );
-    final imageCache = ImageCacheService(
-      localStorageManager: storageManager,
-      httpClient: mockClient,
-    );
-    final service = MetadataService(
-      database: db,
-      tmdbClient: tmdbClient,
-      imageCacheService: imageCache,
-    );
+      final tmdbClient = TmdbApiClient(
+        apiKey: 'test-api-key',
+        httpClient: mockClient,
+        minRequestInterval: Duration.zero,
+      );
+      final imageCache = ImageCacheService(
+        localStorageManager: storageManager,
+        httpClient: mockClient,
+      );
+      final service = MetadataService(
+        database: db,
+        tmdbClient: tmdbClient,
+        imageCacheService: imageCache,
+      );
 
-    final now = DateTime.now();
-    await db.into(db.tvShows).insert(
-      TvShowsCompanion.insert(
-        id: 'show-himym-stills',
-        detectedTitle: 'How I Met Your Mother',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
-    await db.into(db.seasons).insert(
-      SeasonsCompanion.insert(
-        id: 'season-himym-1',
-        showId: 'show-himym-stills',
-        seasonNumber: 1,
-      ),
-    );
-    await db.into(db.episodes).insert(
-      EpisodesCompanion.insert(
-        id: 'ep-himym-1',
-        seasonId: 'season-himym-1',
-        episodeNumber: 1,
-      ),
-    );
-    await db.into(db.episodes).insert(
-      EpisodesCompanion.insert(
-        id: 'ep-himym-2',
-        seasonId: 'season-himym-1',
-        episodeNumber: 2,
-      ),
-    );
+      final now = DateTime.now();
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'show-himym-stills',
+              detectedTitle: 'How I Met Your Mother',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.seasons)
+          .insert(
+            SeasonsCompanion.insert(
+              id: 'season-himym-1',
+              showId: 'show-himym-stills',
+              seasonNumber: 1,
+            ),
+          );
+      await db
+          .into(db.episodes)
+          .insert(
+            EpisodesCompanion.insert(
+              id: 'ep-himym-1',
+              seasonId: 'season-himym-1',
+              episodeNumber: 1,
+            ),
+          );
+      await db
+          .into(db.episodes)
+          .insert(
+            EpisodesCompanion.insert(
+              id: 'ep-himym-2',
+              seasonId: 'season-himym-1',
+              episodeNumber: 2,
+            ),
+          );
 
-    await service.applyTvShowMatch(
-      'show-himym-stills',
-      const TmdbTvSearchResult(id: 1100, name: 'How I Met Your Mother'),
-    );
+      await service.applyTvShowMatch(
+        'show-himym-stills',
+        const TmdbTvSearchResult(id: 1100, name: 'How I Met Your Mother'),
+      );
 
-    final ep1 = await (db.select(db.episodes)..where((e) => e.id.equals('ep-himym-1'))).getSingle();
-    final ep2 = await (db.select(db.episodes)..where((e) => e.id.equals('ep-himym-2'))).getSingle();
+      final ep1 = await (db.select(
+        db.episodes,
+      )..where((e) => e.id.equals('ep-himym-1'))).getSingle();
+      final ep2 = await (db.select(
+        db.episodes,
+      )..where((e) => e.id.equals('ep-himym-2'))).getSingle();
 
-    expect(ep1.name, 'Pilot');
-    expect(ep1.stillPath, isNotNull);
-    expect(ep1.stillPath, contains('ep_ep-himym-1'));
-    expect(File(ep1.stillPath!).existsSync(), isTrue);
+      expect(ep1.name, 'Pilot');
+      expect(ep1.stillPath, isNotNull);
+      expect(ep1.stillPath, contains('ep_ep-himym-1'));
+      expect(File(ep1.stillPath!).existsSync(), isTrue);
 
-    expect(ep2.name, 'Purple Giraffe');
-    expect(ep2.stillPath, isNotNull);
-    expect(ep2.stillPath, contains('ep_ep-himym-2'));
-    expect(File(ep2.stillPath!).existsSync(), isTrue);
+      expect(ep2.name, 'Purple Giraffe');
+      expect(ep2.stillPath, isNotNull);
+      expect(ep2.stillPath, contains('ep_ep-himym-2'));
+      expect(File(ep2.stillPath!).existsSync(), isTrue);
 
-    // Stills are distinct
-    expect(ep1.stillPath, isNot(equals(ep2.stillPath)));
-  });
+      // Stills are distinct
+      expect(ep1.stillPath, isNot(equals(ep2.stillPath)));
+    },
+  );
 
   test('identifyAllUnmatched enriches already-identified TV show when its episodes have null stillPath', () async {
     final mockClient = MockClient((request) async {
@@ -793,40 +835,48 @@ void main() {
 
     final now = DateTime.now();
     // Insert an ALREADY IDENTIFIED TV show (tmdbId is set, but episode stillPath is null)
-    await db.into(db.tvShows).insert(
-      TvShowsCompanion.insert(
-        id: 'show-got',
-        detectedTitle: 'Game of Thrones',
-        title: const drift.Value('Game of Thrones'),
-        tmdbId: const drift.Value(1399),
-        identificationStatus: const drift.Value('IDENTIFIED'),
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
-    await db.into(db.seasons).insert(
-      SeasonsCompanion.insert(
-        id: 'season-got-1',
-        showId: 'show-got',
-        seasonNumber: 1,
-      ),
-    );
-    await db.into(db.episodes).insert(
-      EpisodesCompanion.insert(
-        id: 'ep-got-s1e1',
-        seasonId: 'season-got-1',
-        episodeNumber: 1,
-        name: const drift.Value('S01E01'),
-        // stillPath is null
-      ),
-    );
+    await db
+        .into(db.tvShows)
+        .insert(
+          TvShowsCompanion.insert(
+            id: 'show-got',
+            detectedTitle: 'Game of Thrones',
+            title: const drift.Value('Game of Thrones'),
+            tmdbId: const drift.Value(1399),
+            identificationStatus: const drift.Value('IDENTIFIED'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    await db
+        .into(db.seasons)
+        .insert(
+          SeasonsCompanion.insert(
+            id: 'season-got-1',
+            showId: 'show-got',
+            seasonNumber: 1,
+          ),
+        );
+    await db
+        .into(db.episodes)
+        .insert(
+          EpisodesCompanion.insert(
+            id: 'ep-got-s1e1',
+            seasonId: 'season-got-1',
+            episodeNumber: 1,
+            name: const drift.Value('S01E01'),
+            // stillPath is null
+          ),
+        );
 
     // Run batch identification pass
     final summary = await service.identifyAllUnmatched();
     expect(summary.totalProcessed, 1);
     expect(summary.automaticallyMatched, 1);
 
-    final ep = await (db.select(db.episodes)..where((e) => e.id.equals('ep-got-s1e1'))).getSingle();
+    final ep = await (db.select(
+      db.episodes,
+    )..where((e) => e.id.equals('ep-got-s1e1'))).getSingle();
     expect(ep.name, 'Winter Is Coming');
     expect(ep.stillPath, isNotNull);
     expect(File(ep.stillPath!).existsSync(), isTrue);

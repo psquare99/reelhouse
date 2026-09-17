@@ -25,7 +25,8 @@ class Movies extends Table {
   TextColumn get originalTitle => text().nullable()();
   IntColumn get year => integer().nullable()(); // Canonical/provider year
   TextColumn get detectedTitle => text()(); // Discovered filesystem title
-  IntColumn get detectedYear => integer().nullable()(); // Discovered filesystem year
+  IntColumn get detectedYear =>
+      integer().nullable()(); // Discovered filesystem year
   TextColumn get identificationStatus => text().withDefault(
     const Constant('PENDING'),
   )(); // PENDING, IDENTIFIED, NEEDS_VERIFICATION

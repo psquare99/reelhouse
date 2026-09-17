@@ -2,15 +2,34 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
+import '../../data/repository/drift_library_repository.dart';
+import '../../domain/query/episode_query.dart';
+import '../../domain/query/movie_query.dart';
+import '../../domain/query/query_projections.dart';
+import '../../domain/query/search_spec.dart';
+import '../../domain/query/tv_show_query.dart';
+import '../../domain/repository/library_repository.dart';
 import '../movies/movie_detail_screen.dart';
 import '../tv_shows/tv_show_detail_screen.dart';
 import '../widgets/cinema_poster_card.dart';
 
 /// Fast, offline local cinema search across movies, TV shows, and episodes.
 class SearchScreen extends StatefulWidget {
-  final AppDatabase database;
+  final LibraryRepository repository;
+  final AppDatabase? database;
 
-  const SearchScreen({super.key, required this.database});
+  SearchScreen({
+    super.key,
+    LibraryRepository? repository,
+    AppDatabase? database,
+  }) : repository =
+           repository ??
+           (database != null
+               ? DriftLibraryRepository(database)
+               : throw ArgumentError(
+                   'Either repository or database must be provided',
+                 )),
+       database = database;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -19,9 +38,9 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
   String _query = '';
-  List<Movie> _movieResults = [];
-  List<TvShow> _showResults = [];
-  List<Episode> _episodeResults = [];
+  List<MovieLibraryItem> _movieResults = [];
+  List<TvShowLibraryItem> _showResults = [];
+  List<EpisodeLibraryItem> _episodeResults = [];
   bool _isSearching = false;
 
   @override
@@ -48,9 +67,15 @@ class _SearchScreenState extends State<SearchScreen> {
 
     setState(() => _isSearching = true);
 
-    final movies = await widget.database.searchMovies(query);
-    final shows = await widget.database.searchTvShows(query);
-    final episodes = await widget.database.searchEpisodes(query);
+    final movies = await widget.repository.getMovies(
+      MovieQuery.search(query, mode: SearchMode.all),
+    );
+    final shows = await widget.repository.getTvShows(
+      TvShowQuery.search(query, mode: SearchMode.all),
+    );
+    final episodes = await widget.repository.getEpisodes(
+      EpisodeQuery.search(query, mode: SearchMode.all),
+    );
 
     if (mounted && _query == query) {
       setState(() {
@@ -211,12 +236,13 @@ class _SearchScreenState extends State<SearchScreen> {
                         year: movie.year ?? movie.detectedYear,
                         posterPath: movie.posterPath,
                         isFavorite: movie.isFavorite,
-                        watchState: movie.watchState,
+                        watchState: movie.watchState.toDbString(),
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => MovieDetailScreen(
                                 movieId: movie.id,
+                                repository: widget.repository,
                                 database: widget.database,
                               ),
                             ),
@@ -263,6 +289,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             MaterialPageRoute(
                               builder: (_) => TvShowDetailScreen(
                                 showId: show.id,
+                                repository: widget.repository,
                                 database: widget.database,
                               ),
                             ),

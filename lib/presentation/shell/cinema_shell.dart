@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
+import '../../data/repository/drift_library_repository.dart';
 import '../../domain/metadata/metadata_service.dart';
+import '../../domain/repository/library_repository.dart';
 import '../../domain/scanner/library_scanner_service.dart';
 import '../../domain/services/local_storage_manager.dart';
 import '../../domain/services/settings_service.dart';
@@ -18,6 +20,7 @@ import '../tv_shows/tv_shows_screen.dart';
 
 class CinemaShell extends StatefulWidget {
   final AppDatabase database;
+  final LibraryRepository repository;
   final StorageIdentityService storageIdentityService;
   final LocalStorageManager localStorageManager;
   final LibraryScannerService? libraryScannerService;
@@ -25,16 +28,17 @@ class CinemaShell extends StatefulWidget {
   final MetadataService? metadataService;
   final SettingsService? settingsService;
 
-  const CinemaShell({
+  CinemaShell({
     super.key,
     required this.database,
+    LibraryRepository? repository,
     required this.storageIdentityService,
     required this.localStorageManager,
     this.libraryScannerService,
     this.storageMonitorService,
     this.metadataService,
     this.settingsService,
-  });
+  }) : repository = repository ?? DriftLibraryRepository(database);
 
   @override
   State<CinemaShell> createState() => _CinemaShellState();
@@ -65,19 +69,24 @@ class _CinemaShellState extends State<CinemaShell> {
   Widget build(BuildContext context) {
     final screens = [
       HomeScreen(
+        repository: widget.repository,
         database: widget.database,
         onNavigateToMovies: () => _onDestinationSelected(1),
         onNavigateToTv: () => _onDestinationSelected(2),
         onNavigateToOffline: () => _onDestinationSelected(3),
         onNavigateToSettings: () => _onDestinationSelected(6),
       ),
-      MoviesScreen(database: widget.database),
-      TvShowsScreen(database: widget.database),
-      OfflineScreen(database: widget.database),
-      CollectionsScreen(database: widget.database),
-      SearchScreen(database: widget.database),
+      MoviesScreen(repository: widget.repository, database: widget.database),
+      TvShowsScreen(repository: widget.repository, database: widget.database),
+      OfflineScreen(repository: widget.repository, database: widget.database),
+      CollectionsScreen(
+        repository: widget.repository,
+        database: widget.database,
+      ),
+      SearchScreen(repository: widget.repository, database: widget.database),
       SettingsScreen(
         database: widget.database,
+        repository: widget.repository,
         storageIdentityService: widget.storageIdentityService,
         localStorageManager: widget.localStorageManager,
         libraryScannerService: widget.libraryScannerService,

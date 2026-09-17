@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
+import '../../domain/query/query.dart';
+import '../../domain/repository/library_repository.dart';
 import '../movies/movie_detail_screen.dart';
 import '../widgets/cinema_poster_card.dart';
 
 /// Cinematic Home screen displaying dynamic, state-aware cinema sections
 /// (Continue Watching, Recently Added, Favorites, Watchlist) and catalogue gateways.
 class HomeScreen extends StatelessWidget {
+  final LibraryRepository repository;
   final AppDatabase database;
   final VoidCallback onNavigateToMovies;
   final VoidCallback onNavigateToTv;
@@ -16,6 +19,7 @@ class HomeScreen extends StatelessWidget {
 
   const HomeScreen({
     super.key,
+    required this.repository,
     required this.database,
     required this.onNavigateToMovies,
     required this.onNavigateToTv,
@@ -75,7 +79,7 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
-              // Storage & Cinema Status Banner
+              // Storage & Cinema Status Banner (belongs to storage infrastructure)
               StreamBuilder<List<Storage>>(
                 stream: database.watchAllStorages(),
                 builder: (context, snapshot) {
@@ -180,11 +184,13 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 36),
 
-              // 1. CONTINUE WATCHING (What I am currently watching)
-              StreamBuilder<List<Movie>>(
-                stream: database.watchContinueWatchingMovies(),
+              // 1. CONTINUE WATCHING (Smart View Query)
+              StreamBuilder<LibraryResult<MovieLibraryItem>>(
+                stream: repository.watchMovies(
+                  MovieQuery.continueWatching(limit: 10),
+                ),
                 builder: (context, snapshot) {
-                  final inProgressMovies = snapshot.data ?? [];
+                  final inProgressMovies = snapshot.data?.items ?? [];
                   if (inProgressMovies.isEmpty) return const SizedBox.shrink();
 
                   return Column(
@@ -206,16 +212,18 @@ class HomeScreen extends StatelessWidget {
                             return SizedBox(
                               width: 170,
                               child: CinemaPosterCard(
-                                title: movie.title ?? movie.detectedTitle,
-                                year: movie.year ?? movie.detectedYear,
+                                title: movie.displayTitle,
+                                year: movie.displayYear,
                                 posterPath: movie.posterPath,
+                                availabilityStatus: movie.availability,
                                 isFavorite: movie.isFavorite,
-                                watchState: movie.watchState,
+                                watchState: movie.watchState.toDbString(),
                                 onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (_) => MovieDetailScreen(
                                         movieId: movie.id,
+                                        repository: repository,
                                         database: database,
                                       ),
                                     ),
@@ -232,11 +240,13 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
 
-              // 2. RECENTLY ADDED (What I recently acquired)
-              StreamBuilder<List<Movie>>(
-                stream: database.watchRecentlyAddedMovies(limit: 10),
+              // 2. RECENTLY ADDED (Smart View Query)
+              StreamBuilder<LibraryResult<MovieLibraryItem>>(
+                stream: repository.watchMovies(
+                  MovieQuery.recentlyAdded(limit: 10),
+                ),
                 builder: (context, snapshot) {
-                  final recent = snapshot.data ?? [];
+                  final recent = snapshot.data?.items ?? [];
                   if (recent.isEmpty) return const SizedBox.shrink();
 
                   return Column(
@@ -259,16 +269,18 @@ class HomeScreen extends StatelessWidget {
                             return SizedBox(
                               width: 170,
                               child: CinemaPosterCard(
-                                title: movie.title ?? movie.detectedTitle,
-                                year: movie.year ?? movie.detectedYear,
+                                title: movie.displayTitle,
+                                year: movie.displayYear,
                                 posterPath: movie.posterPath,
+                                availabilityStatus: movie.availability,
                                 isFavorite: movie.isFavorite,
-                                watchState: movie.watchState,
+                                watchState: movie.watchState.toDbString(),
                                 onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (_) => MovieDetailScreen(
                                         movieId: movie.id,
+                                        repository: repository,
                                         database: database,
                                       ),
                                     ),
@@ -285,11 +297,11 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
 
-              // 3. FAVORITES (What I personally selected)
-              StreamBuilder<List<Movie>>(
-                stream: database.watchFavoriteMovies(),
+              // 3. FAVORITES (Smart View Query)
+              StreamBuilder<LibraryResult<MovieLibraryItem>>(
+                stream: repository.watchMovies(MovieQuery.favorites()),
                 builder: (context, snapshot) {
-                  final favorites = snapshot.data ?? [];
+                  final favorites = snapshot.data?.items ?? [];
                   if (favorites.isEmpty) return const SizedBox.shrink();
 
                   return Column(
@@ -311,16 +323,18 @@ class HomeScreen extends StatelessWidget {
                             return SizedBox(
                               width: 170,
                               child: CinemaPosterCard(
-                                title: movie.title ?? movie.detectedTitle,
-                                year: movie.year ?? movie.detectedYear,
+                                title: movie.displayTitle,
+                                year: movie.displayYear,
                                 posterPath: movie.posterPath,
+                                availabilityStatus: movie.availability,
                                 isFavorite: true,
-                                watchState: movie.watchState,
+                                watchState: movie.watchState.toDbString(),
                                 onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (_) => MovieDetailScreen(
                                         movieId: movie.id,
+                                        repository: repository,
                                         database: database,
                                       ),
                                     ),
@@ -337,11 +351,11 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
 
-              // 4. WATCHLIST (Titles saved for your next screening)
-              StreamBuilder<List<Movie>>(
-                stream: database.watchWatchlistMovies(),
+              // 4. WATCHLIST (Smart View Query)
+              StreamBuilder<LibraryResult<MovieLibraryItem>>(
+                stream: repository.watchMovies(MovieQuery.watchlist()),
                 builder: (context, snapshot) {
-                  final watchlist = snapshot.data ?? [];
+                  final watchlist = snapshot.data?.items ?? [];
                   if (watchlist.isEmpty) return const SizedBox.shrink();
 
                   return Column(
@@ -363,16 +377,18 @@ class HomeScreen extends StatelessWidget {
                             return SizedBox(
                               width: 170,
                               child: CinemaPosterCard(
-                                title: movie.title ?? movie.detectedTitle,
-                                year: movie.year ?? movie.detectedYear,
+                                title: movie.displayTitle,
+                                year: movie.displayYear,
                                 posterPath: movie.posterPath,
+                                availabilityStatus: movie.availability,
                                 isFavorite: movie.isFavorite,
-                                watchState: movie.watchState,
+                                watchState: movie.watchState.toDbString(),
                                 onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (_) => MovieDetailScreen(
                                         movieId: movie.id,
+                                        repository: repository,
                                         database: database,
                                       ),
                                     ),
@@ -389,7 +405,7 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
 
-              // 5. EXPLORE CATALOGUE (Where I can browse my cinema)
+              // 5. EXPLORE CATALOGUE (Repository Stream Counts)
               const _SectionHeader(
                 title: 'EXPLORE CINEMA',
                 subtitle: 'Browse your personal cinema by category',
@@ -408,7 +424,7 @@ class HomeScreen extends StatelessWidget {
                               subtitle:
                                   'Feature films across all storage disks',
                               icon: Icons.movie_outlined,
-                              streamCount: database.watchMovieCount(),
+                              streamCount: repository.watchMovieCount(),
                               onTap: onNavigateToMovies,
                             ),
                           ),
@@ -418,7 +434,7 @@ class HomeScreen extends StatelessWidget {
                               title: 'TV Shows',
                               subtitle: 'Series, seasons, and episode archives',
                               icon: Icons.tv_outlined,
-                              streamCount: database.watchTvShowCount(),
+                              streamCount: repository.watchTvShowCount(),
                               onTap: onNavigateToTv,
                             ),
                           ),
@@ -430,9 +446,9 @@ class HomeScreen extends StatelessWidget {
                                 subtitle:
                                     'Media downloaded directly to this device',
                                 icon: Icons.offline_pin_outlined,
-                                streamCount: database.watchOfflineMovies().map(
-                                  (m) => m.length,
-                                ),
+                                streamCount: repository
+                                    .watchMovies(MovieQuery.offline())
+                                    .map((r) => r.totalCount),
                                 onTap: onNavigateToOffline!,
                               ),
                             ),
@@ -445,9 +461,9 @@ class HomeScreen extends StatelessWidget {
                           title: 'Offline Library',
                           subtitle: 'Media downloaded directly to this device',
                           icon: Icons.offline_pin_outlined,
-                          streamCount: database.watchOfflineMovies().map(
-                            (m) => m.length,
-                          ),
+                          streamCount: repository
+                              .watchMovies(MovieQuery.offline())
+                              .map((r) => r.totalCount),
                           onTap: onNavigateToOffline!,
                         ),
                       ],

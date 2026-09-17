@@ -10,10 +10,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: CinemaPosterImage(
-              imagePath: null,
-              fallbackIcon: Icons.tv,
-            ),
+            body: CinemaPosterImage(imagePath: null, fallbackIcon: Icons.tv),
           ),
         ),
       );
@@ -21,22 +18,23 @@ void main() {
       expect(find.byIcon(Icons.tv), findsOneWidget);
     });
 
-    testWidgets('renders custom fallbackWidget when provided and path is null', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: CinemaPosterImage(
-              imagePath: null,
-              fallbackWidget: Text('CUSTOM_FALLBACK_SLATE'),
+    testWidgets(
+      'renders custom fallbackWidget when provided and path is null',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: CinemaPosterImage(
+                imagePath: null,
+                fallbackWidget: Text('CUSTOM_FALLBACK_SLATE'),
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('CUSTOM_FALLBACK_SLATE'), findsOneWidget);
-    });
+        expect(find.text('CUSTOM_FALLBACK_SLATE'), findsOneWidget);
+      },
+    );
 
     testWidgets('resolves relative TMDB still path into Image.network', (
       tester,
@@ -44,9 +42,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: CinemaPosterImage(
-              imagePath: '/sample_episode_still.jpg',
-            ),
+            body: CinemaPosterImage(imagePath: '/sample_episode_still.jpg'),
           ),
         ),
       );
@@ -83,21 +79,22 @@ void main() {
       expect(networkImage.url, 'https://example.com/stills/ep1.jpg');
     });
 
-    testWidgets('renders fallback for non-existent local Windows path without corrupting TMDB URL', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: CinemaPosterImage(
-              imagePath: r'C:\NonExistent\Path\episode_still.jpg',
-              fallbackWidget: Text('FALLBACK_FOR_MISSING_LOCAL_FILE'),
+    testWidgets(
+      'renders fallback for non-existent local Windows path without corrupting TMDB URL',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: CinemaPosterImage(
+                imagePath: r'C:\NonExistent\Path\episode_still.jpg',
+                fallbackWidget: Text('FALLBACK_FOR_MISSING_LOCAL_FILE'),
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('FALLBACK_FOR_MISSING_LOCAL_FILE'), findsOneWidget);
-    });
+        expect(find.text('FALLBACK_FOR_MISSING_LOCAL_FILE'), findsOneWidget);
+      },
+    );
   });
 }

@@ -25,10 +25,7 @@ class SearchSpec {
   final String query;
   final SearchMode mode;
 
-  const SearchSpec({
-    required this.query,
-    this.mode = SearchMode.all,
-  });
+  const SearchSpec({required this.query, this.mode = SearchMode.all});
 
   /// Factory for empty search.
   static const SearchSpec empty = SearchSpec(query: '', mode: SearchMode.all);
@@ -42,14 +39,8 @@ class SearchSpec {
   /// Normalized trimmed query string.
   String get trimmedQuery => query.trim();
 
-  SearchSpec copyWith({
-    String? query,
-    SearchMode? mode,
-  }) {
-    return SearchSpec(
-      query: query ?? this.query,
-      mode: mode ?? this.mode,
-    );
+  SearchSpec copyWith({String? query, SearchMode? mode}) {
+    return SearchSpec(query: query ?? this.query, mode: mode ?? this.mode);
   }
 
   @override

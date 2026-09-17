@@ -252,7 +252,9 @@ void main() {
     expect(mementoSources.first.available, isFalse);
 
     // Inception remains available = true
-    final inception = allMovies.firstWhere((m) => m.detectedTitle == 'Inception');
+    final inception = allMovies.firstWhere(
+      (m) => m.detectedTitle == 'Inception',
+    );
     final inceptionSources = await db.getSourcesForMovie(inception.id);
     expect(inceptionSources.first.available, isTrue);
 
@@ -280,7 +282,9 @@ void main() {
       available: const drift.Value(true),
     );
     await db.upsertStorage(storageCompanion);
-    final storage = (await db.getAllStorages()).firstWhere((s) => s.id == 'hdd-movies');
+    final storage = (await db.getAllStorages()).firstWhere(
+      (s) => s.id == 'hdd-movies',
+    );
 
     createTestFile('The.Dark.Knight.2008.1080p.mkv', 2048);
 
@@ -329,7 +333,9 @@ void main() {
       available: const drift.Value(true),
     );
     await db.upsertStorage(storageCompanion);
-    final storage = (await db.getAllStorages()).firstWhere((s) => s.id == 'hdd-tv');
+    final storage = (await db.getAllStorages()).firstWhere(
+      (s) => s.id == 'hdd-tv',
+    );
 
     createTestFile(r'TV\Succession\Season 1\Succession.S01E01.mkv', 2048);
 
@@ -373,7 +379,9 @@ void main() {
       available: const drift.Value(true),
     );
     await db.upsertStorage(storage1);
-    final s1 = (await db.getAllStorages()).firstWhere((s) => s.id == 'hdd-movie-e');
+    final s1 = (await db.getAllStorages()).firstWhere(
+      (s) => s.id == 'hdd-movie-e',
+    );
 
     createTestFile('Some.Movie.2020.1080p.mkv', 1024);
     await libraryScanner.scanStorage(s1);
@@ -383,7 +391,9 @@ void main() {
     expect(originalMovie.detectedYear, 2020);
 
     // Simulate metadata identification updating canonical title and status
-    await (db.update(db.movies)..where((m) => m.id.equals(originalMovie.id))).write(
+    await (db.update(
+      db.movies,
+    )..where((m) => m.id.equals(originalMovie.id))).write(
       const MoviesCompanion(
         title: drift.Value('Canonical Movie Title'),
         year: drift.Value(2020),
@@ -401,7 +411,9 @@ void main() {
     expect(movies.first.detectedTitle, 'Some Movie');
 
     // 2. Discover another source on a second drive with same discovery hints
-    final drive2Dir = Directory.systemTemp.createTempSync('reelhouse_movie_e2_');
+    final drive2Dir = Directory.systemTemp.createTempSync(
+      'reelhouse_movie_e2_',
+    );
     identityService.connectedMap[drive2Dir.path] = true;
     try {
       final storage2 = StoragesCompanion.insert(
@@ -414,7 +426,9 @@ void main() {
         available: const drift.Value(true),
       );
       await db.upsertStorage(storage2);
-      final s2 = (await db.getAllStorages()).firstWhere((s) => s.id == 'hdd-movie-e2');
+      final s2 = (await db.getAllStorages()).firstWhere(
+        (s) => s.id == 'hdd-movie-e2',
+      );
 
       final fullPath = p.join(drive2Dir.path, 'Some.Movie.2020.2160p.mkv');
       File(fullPath).writeAsBytesSync(List.filled(1024, 0));
@@ -447,7 +461,9 @@ void main() {
       available: const drift.Value(true),
     );
     await db.upsertStorage(storage1);
-    final s1 = (await db.getAllStorages()).firstWhere((s) => s.id == 'hdd-tv-fg');
+    final s1 = (await db.getAllStorages()).firstWhere(
+      (s) => s.id == 'hdd-tv-fg',
+    );
 
     createTestFile(r'TV\HIMYM\Season 1\HIMYM.S01E01.mkv', 1024);
     await libraryScanner.scanStorage(s1);
@@ -462,7 +478,9 @@ void main() {
     expect(ep1, isNotNull);
 
     // Simulate metadata identification updating canonical title and status
-    await (db.update(db.tvShows)..where((t) => t.id.equals(originalShow.id))).write(
+    await (db.update(
+      db.tvShows,
+    )..where((t) => t.id.equals(originalShow.id))).write(
       const TvShowsCompanion(
         title: drift.Value('How I Met Your Mother'),
         tmdbId: drift.Value(1100),
@@ -514,7 +532,9 @@ void main() {
       available: const drift.Value(true),
     );
     await db.upsertStorage(storageCompanion);
-    final storage = (await db.getAllStorages()).firstWhere((s) => s.id == 'hdd-distinct');
+    final storage = (await db.getAllStorages()).firstWhere(
+      (s) => s.id == 'hdd-distinct',
+    );
 
     // 1. Two movies with different years
     createTestFile('Avatar.2009.1080p.mkv', 1024);

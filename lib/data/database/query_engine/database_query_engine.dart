@@ -31,19 +31,25 @@ class DatabaseQueryEngine {
   }
 
   // --- Movie Queries ---
-  Future<LibraryResult<MovieLibraryItem>> queryMovies(MovieQuery query) => _movies.query(query);
+  Future<LibraryResult<MovieLibraryItem>> queryMovies(MovieQuery query) =>
+      _movies.query(query);
 
-  Stream<LibraryResult<MovieLibraryItem>> watchMovies(MovieQuery query) => _movies.watch(query);
+  Stream<LibraryResult<MovieLibraryItem>> watchMovies(MovieQuery query) =>
+      _movies.watch(query);
 
   // --- TV Show Queries ---
-  Future<LibraryResult<TvShowLibraryItem>> queryTvShows(TvShowQuery query) => _tvShows.query(query);
+  Future<LibraryResult<TvShowLibraryItem>> queryTvShows(TvShowQuery query) =>
+      _tvShows.query(query);
 
-  Stream<LibraryResult<TvShowLibraryItem>> watchTvShows(TvShowQuery query) => _tvShows.watch(query);
+  Stream<LibraryResult<TvShowLibraryItem>> watchTvShows(TvShowQuery query) =>
+      _tvShows.watch(query);
 
   // --- Season Queries ---
-  Future<LibraryResult<Season>> querySeasons(SeasonQuery query) => _seasons.query(query);
+  Future<LibraryResult<SeasonLibraryItem>> querySeasons(SeasonQuery query) =>
+      _seasons.query(query);
 
-  Stream<LibraryResult<Season>> watchSeasons(SeasonQuery query) => _seasons.watch(query);
+  Stream<LibraryResult<SeasonLibraryItem>> watchSeasons(SeasonQuery query) =>
+      _seasons.watch(query);
 
   // --- Episode Queries ---
   Future<LibraryResult<EpisodeLibraryItem>> queryEpisodes(EpisodeQuery query) =>
@@ -53,9 +59,11 @@ class DatabaseQueryEngine {
       _episodes.watch(query);
 
   // --- Collection Queries ---
-  Future<LibraryResult<Collection>> queryCollections(CollectionQuery query) =>
-      _collections.query(query);
+  Future<LibraryResult<CollectionLibraryItem>> queryCollections(
+    CollectionQuery query,
+  ) => _collections.query(query);
 
-  Stream<LibraryResult<Collection>> watchCollections(CollectionQuery query) =>
-      _collections.watch(query);
+  Stream<LibraryResult<CollectionLibraryItem>> watchCollections(
+    CollectionQuery query,
+  ) => _collections.watch(query);
 }

@@ -1,15 +1,31 @@
-import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
+import '../../data/repository/drift_library_repository.dart';
+import '../../domain/query/collection_query.dart';
+import '../../domain/query/library_result.dart';
+import '../../domain/query/query_projections.dart';
+import '../../domain/repository/library_repository.dart';
 import 'collection_detail_screen.dart';
 
 /// Screen displaying all user-curated cinema collections.
 class CollectionsScreen extends StatelessWidget {
-  final AppDatabase database;
+  final LibraryRepository repository;
+  final AppDatabase? database;
 
-  const CollectionsScreen({super.key, required this.database});
+  CollectionsScreen({
+    super.key,
+    LibraryRepository? repository,
+    AppDatabase? database,
+  }) : repository =
+           repository ??
+           (database != null
+               ? DriftLibraryRepository(database)
+               : throw ArgumentError(
+                   'Either repository or database must be provided',
+                 )),
+       database = database;
 
   void _showCreateCollectionDialog(BuildContext context) {
     final nameController = TextEditingController();
@@ -67,17 +83,10 @@ class CollectionsScreen extends StatelessWidget {
               if (name.isEmpty) return;
 
               Navigator.of(ctx).pop();
-              final now = DateTime.now();
-              await database.createCollection(
-                CollectionsCompanion.insert(
-                  id: 'col-${DateTime.now().millisecondsSinceEpoch}',
-                  name: name,
-                  overview: overviewController.text.trim().isNotEmpty
-                      ? drift.Value(overviewController.text.trim())
-                      : const drift.Value.absent(),
-                  createdAt: now,
-                  updatedAt: now,
-                ),
+              final overviewText = overviewController.text.trim();
+              await repository.createCollection(
+                name: name,
+                overview: overviewText.isNotEmpty ? overviewText : null,
               );
             },
             child: const Text('Create'),
@@ -100,10 +109,10 @@ class CollectionsScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: StreamBuilder<List<Collection>>(
-        stream: database.watchAllCollections(),
+      body: StreamBuilder<LibraryResult<CollectionLibraryItem>>(
+        stream: repository.watchCollections(CollectionQuery.all()),
         builder: (context, snapshot) {
-          final collections = snapshot.data ?? [];
+          final collections = snapshot.data?.items ?? [];
           if (collections.isEmpty) {
             return Center(
               child: Padding(
@@ -152,94 +161,86 @@ class CollectionsScreen extends StatelessWidget {
             separatorBuilder: (_, _) => const SizedBox(height: 14),
             itemBuilder: (context, index) {
               final col = collections[index];
-              return StreamBuilder<List<CollectionItem>>(
-                stream: database.watchItemsForCollection(col.id),
-                builder: (context, itemSnapshot) {
-                  final items = itemSnapshot.data ?? [];
-
-                  return InkWell(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => CollectionDetailScreen(
-                            collectionId: col.id,
-                            database: database,
-                          ),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: CinemaColors.card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: CinemaColors.borderSubtle),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              color: CinemaColors.surface,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: CinemaColors.amberSubtle,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.collections_bookmark,
-                              color: CinemaColors.amber,
-                              size: 26,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  col.name,
-                                  style: const TextStyle(
-                                    color: CinemaColors.textPrimary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                if (col.overview != null &&
-                                    col.overview!.isNotEmpty) ...[
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    col.overview!,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: CinemaColors.textSecondary,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${items.length} ${items.length == 1 ? 'item' : 'items'}',
-                                  style: const TextStyle(
-                                    color: CinemaColors.textMuted,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(
-                            Icons.chevron_right,
-                            color: CinemaColors.textSecondary,
-                          ),
-                        ],
+              return InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => CollectionDetailScreen(
+                        collectionId: col.id,
+                        repository: repository,
+                        database: database,
                       ),
                     ),
                   );
                 },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: CinemaColors.card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: CinemaColors.borderSubtle),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: CinemaColors.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: CinemaColors.amberSubtle),
+                        ),
+                        child: const Icon(
+                          Icons.collections_bookmark,
+                          color: CinemaColors.amber,
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              col.name,
+                              style: const TextStyle(
+                                color: CinemaColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (col.overview != null &&
+                                col.overview!.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                col.overview!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: CinemaColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 4),
+                            Text(
+                              '${col.itemCount} ${col.itemCount == 1 ? 'item' : 'items'}',
+                              style: const TextStyle(
+                                color: CinemaColors.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right,
+                        color: CinemaColors.textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
               );
             },
           );

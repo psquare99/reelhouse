@@ -1,8 +1,13 @@
-import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
+import '../../data/repository/drift_library_repository.dart';
+import '../../domain/query/library_result.dart';
+import '../../domain/query/movie_query.dart';
+import '../../domain/query/query_projections.dart';
+import '../../domain/query/tv_show_query.dart';
+import '../../domain/repository/library_repository.dart';
 import '../movies/movie_detail_screen.dart';
 import '../tv_shows/tv_show_detail_screen.dart';
 import '../widgets/cinema_poster_card.dart';
@@ -10,20 +15,34 @@ import '../widgets/cinema_poster_card.dart';
 /// Detailed view of a curated user collection with contained movies and TV shows.
 class CollectionDetailScreen extends StatelessWidget {
   final String collectionId;
-  final AppDatabase database;
+  final LibraryRepository repository;
+  final AppDatabase? database;
 
-  const CollectionDetailScreen({
+  CollectionDetailScreen({
     super.key,
     required this.collectionId,
-    required this.database,
-  });
+    LibraryRepository? repository,
+    AppDatabase? database,
+  }) : repository =
+           repository ??
+           (database != null
+               ? DriftLibraryRepository(database)
+               : throw ArgumentError(
+                   'Either repository or database must be provided',
+                 )),
+       database = database;
 
   void _showAddMediaDialog(BuildContext context) async {
-    final allMovies = await database.getAllMovies();
-    final allShows = await database.getAllTvShows();
-    final currentItems = await database.getItemsForCollection(collectionId);
-    final existingMovieIds = currentItems.map((ci) => ci.movieId).toSet();
-    final existingShowIds = currentItems.map((ci) => ci.tvShowId).toSet();
+    final allMovies = await repository.getMovies(MovieQuery.all());
+    final allShows = await repository.getTvShows(TvShowQuery.all());
+    final currentMovies = await repository.getMovies(
+      MovieQuery.forCollection(collectionId),
+    );
+    final currentShows = await repository.getTvShows(
+      TvShowQuery.forCollection(collectionId),
+    );
+    final existingMovieIds = currentMovies.map((m) => m.id).toSet();
+    final existingShowIds = currentShows.map((s) => s.id).toSet();
 
     if (!context.mounted) return;
 
@@ -116,13 +135,9 @@ class CollectionDetailScreen extends StatelessWidget {
                                   ? null
                                   : () async {
                                       Navigator.of(ctx).pop();
-                                      await database.addItemToCollection(
-                                        CollectionItemsCompanion.insert(
-                                          id: 'ci-${DateTime.now().millisecondsSinceEpoch}',
-                                          collectionId: collectionId,
-                                          movieId: drift.Value(m.id),
-                                          addedAt: DateTime.now(),
-                                        ),
+                                      await repository.addMovieToCollection(
+                                        collectionId,
+                                        m.id,
                                       );
                                     },
                             );
@@ -163,13 +178,9 @@ class CollectionDetailScreen extends StatelessWidget {
                                   ? null
                                   : () async {
                                       Navigator.of(ctx).pop();
-                                      await database.addItemToCollection(
-                                        CollectionItemsCompanion.insert(
-                                          id: 'ci-${DateTime.now().millisecondsSinceEpoch}',
-                                          collectionId: collectionId,
-                                          tvShowId: drift.Value(s.id),
-                                          addedAt: DateTime.now(),
-                                        ),
+                                      await repository.addTvShowToCollection(
+                                        collectionId,
+                                        s.id,
                                       );
                                     },
                             );
@@ -211,7 +222,7 @@ class CollectionDetailScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
-              await database.deleteCollection(collectionId);
+              await repository.deleteCollection(collectionId);
               if (context.mounted) {
                 Navigator.of(context).pop();
               }
@@ -229,8 +240,8 @@ class CollectionDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<Collection?>(
-      stream: database.watchCollection(collectionId),
+    return StreamBuilder<CollectionLibraryItem?>(
+      stream: repository.watchCollectionById(collectionId),
       builder: (context, snapshot) {
         final collection = snapshot.data;
         if (collection == null) {
@@ -268,137 +279,170 @@ class CollectionDetailScreen extends StatelessWidget {
               ),
             ],
           ),
-          body: StreamBuilder<List<CollectionItem>>(
-            stream: database.watchItemsForCollection(collectionId),
-            builder: (context, itemsSnapshot) {
-              final items = itemsSnapshot.data ?? [];
-              if (items.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.collections_bookmark_outlined,
-                          size: 56,
-                          color: CinemaColors.textMuted,
+          body: StreamBuilder<LibraryResult<MovieLibraryItem>>(
+            stream: repository.watchMovies(
+              MovieQuery.forCollection(collectionId),
+            ),
+            builder: (context, moviesSnapshot) {
+              final movies = moviesSnapshot.data?.items ?? [];
+
+              return StreamBuilder<LibraryResult<TvShowLibraryItem>>(
+                stream: repository.watchTvShows(
+                  TvShowQuery.forCollection(collectionId),
+                ),
+                builder: (context, showsSnapshot) {
+                  final shows = showsSnapshot.data?.items ?? [];
+                  final totalCount = movies.length + shows.length;
+
+                  if (totalCount == 0) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.collections_bookmark_outlined,
+                              size: 56,
+                              color: CinemaColors.textMuted,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Collection is empty',
+                              style: TextStyle(
+                                color: CinemaColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Curate this collection by adding movies or TV shows from your library.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: CinemaColors.textSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              onPressed: () => _showAddMediaDialog(context),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add Media'),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Collection is empty',
-                          style: TextStyle(
-                            color: CinemaColors.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                      ),
+                    );
+                  }
+
+                  return CustomScrollView(
+                    slivers: [
+                      if (movies.isNotEmpty) ...[
+                        const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(24, 20, 24, 12),
+                            child: Text(
+                              'MOVIES',
+                              style: TextStyle(
+                                color: CinemaColors.amber,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Curate this collection by adding movies or TV shows from your library.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: CinemaColors.textSecondary,
-                            fontSize: 14,
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          sliver: SliverGrid(
+                            gridDelegate:
+                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 220,
+                                  childAspectRatio: 0.65,
+                                  crossAxisSpacing: 18,
+                                  mainAxisSpacing: 18,
+                                ),
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final movie = movies[index];
+                              return CinemaPosterCard(
+                                title: movie.title ?? movie.detectedTitle,
+                                year: movie.year ?? movie.detectedYear,
+                                posterPath: movie.posterPath,
+                                isFavorite: movie.isFavorite,
+                                watchState: movie.watchState.toDbString(),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => MovieDetailScreen(
+                                        movieId: movie.id,
+                                        repository: repository,
+                                        database: database,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }, childCount: movies.length),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        ElevatedButton.icon(
-                          onPressed: () => _showAddMediaDialog(context),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add Media'),
                         ),
                       ],
-                    ),
-                  ),
-                );
-              }
-
-              return FutureBuilder<Map<String, dynamic>>(
-                future: () async {
-                  final movieIds = items
-                      .where((i) => i.movieId != null)
-                      .map((i) => i.movieId!)
-                      .toList();
-                  final showIds = items
-                      .where((i) => i.tvShowId != null)
-                      .map((i) => i.tvShowId!)
-                      .toList();
-
-                  final movies = await (database.select(
-                    database.movies,
-                  )..where((m) => m.id.isIn(movieIds))).get();
-                  final shows = await (database.select(
-                    database.tvShows,
-                  )..where((t) => t.id.isIn(showIds))).get();
-
-                  return {
-                    'movies': {for (final m in movies) m.id: m},
-                    'shows': {for (final s in shows) s.id: s},
-                  };
-                }(),
-                builder: (context, mediaSnapshot) {
-                  final movieMap =
-                      (mediaSnapshot.data?['movies'] as Map<String, Movie>?) ??
-                      {};
-                  final showMap =
-                      (mediaSnapshot.data?['shows'] as Map<String, TvShow>?) ??
-                      {};
-
-                  return GridView.builder(
-                    padding: const EdgeInsets.all(24),
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 220,
-                          childAspectRatio: 0.65,
-                          crossAxisSpacing: 18,
-                          mainAxisSpacing: 18,
+                      if (shows.isNotEmpty) ...[
+                        const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(24, 28, 24, 12),
+                            child: Text(
+                              'TV SHOWS',
+                              style: TextStyle(
+                                color: CinemaColors.amber,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ),
                         ),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      if (item.movieId != null) {
-                        final movie = movieMap[item.movieId];
-                        if (movie == null) return const SizedBox.shrink();
-                        return CinemaPosterCard(
-                          title: movie.title ?? movie.detectedTitle,
-                          year: movie.year ?? movie.detectedYear,
-                          posterPath: movie.posterPath,
-                          isFavorite: movie.isFavorite,
-                          watchState: movie.watchState,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => MovieDetailScreen(
-                                  movieId: movie.id,
-                                  database: database,
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          sliver: SliverGrid(
+                            gridDelegate:
+                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 220,
+                                  childAspectRatio: 0.65,
+                                  crossAxisSpacing: 18,
+                                  mainAxisSpacing: 18,
                                 ),
-                              ),
-                            );
-                          },
-                        );
-                      } else if (item.tvShowId != null) {
-                        final show = showMap[item.tvShowId];
-                        if (show == null) return const SizedBox.shrink();
-                        return CinemaPosterCard(
-                          title: show.title ?? show.detectedTitle,
-                          posterPath: show.posterPath,
-                          isFavorite: show.isFavorite,
-                          fallbackIcon: Icons.tv,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => TvShowDetailScreen(
-                                  showId: show.id,
-                                  database: database,
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final show = shows[index];
+                              return CinemaPosterCard(
+                                title: show.title ?? show.detectedTitle,
+                                posterPath: show.posterPath,
+                                isFavorite: show.isFavorite,
+                                fallbackIcon: Icons.tv,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => TvShowDetailScreen(
+                                        showId: show.id,
+                                        repository: repository,
+                                        database: database,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }, childCount: shows.length),
+                          ),
+                        ),
+                      ],
+                      const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                    ],
                   );
                 },
               );

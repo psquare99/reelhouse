@@ -33,90 +33,74 @@ class TvShowQuery {
   factory TvShowQuery.all({
     PaginationSpec? pagination,
     List<SortClause<TvShowSortField>>? sort,
-  }) =>
-      TvShowQuery(
-        pagination: pagination,
-        sort: sort ??
-            const [
-              SortClause(TvShowSortField.title, direction: SortDirection.asc),
-            ],
-      );
+  }) => TvShowQuery(
+    pagination: pagination,
+    sort:
+        sort ??
+        const [SortClause(TvShowSortField.title, direction: SortDirection.asc)],
+  );
 
   /// Factory for Recently Added Smart View.
   factory TvShowQuery.recentlyAdded({int? limit}) => TvShowQuery(
-        scope: QueryScope.recentlyAdded,
-        sort: const [
-          SortClause(TvShowSortField.createdAt, direction: SortDirection.desc),
-        ],
-        pagination: limit != null ? PaginationSpec(limit: limit) : null,
-      );
+    scope: QueryScope.recentlyAdded,
+    sort: const [
+      SortClause(TvShowSortField.createdAt, direction: SortDirection.desc),
+    ],
+    pagination: limit != null ? PaginationSpec(limit: limit) : null,
+  );
 
   /// Factory for Favorites Smart View.
   factory TvShowQuery.favorites() => const TvShowQuery(
-        scope: QueryScope.favorites,
-        filter: TvShowFilter(
-          isFavorite: true,
-        ),
-      );
+    scope: QueryScope.favorites,
+    filter: TvShowFilter(isFavorite: true),
+  );
 
   /// Factory for Watchlist Smart View.
   factory TvShowQuery.watchlist() => const TvShowQuery(
-        scope: QueryScope.watchlist,
-        filter: TvShowFilter(
-          isWatchlist: true,
-        ),
-      );
+    scope: QueryScope.watchlist,
+    filter: TvShowFilter(isWatchlist: true),
+  );
 
   /// Factory for Unwatched Smart View.
   ///
   /// Matches shows whose derived watch state is unwatched.
   factory TvShowQuery.unwatched() => const TvShowQuery(
-        scope: QueryScope.unwatched,
-        filter: TvShowFilter(
-          watchStates: {WatchState.unwatched},
-        ),
-      );
+    scope: QueryScope.unwatched,
+    filter: TvShowFilter(watchStates: {WatchState.unwatched}),
+  );
 
   /// Factory for Needs Verification Smart View.
   factory TvShowQuery.needsVerification() => const TvShowQuery(
-        scope: QueryScope.needsVerification,
-        filter: TvShowFilter(
-          metadataStatuses: {
-            IdentificationStatus.pending,
-            IdentificationStatus.needsVerification,
-          },
-        ),
-      );
+    scope: QueryScope.needsVerification,
+    filter: TvShowFilter(
+      metadataStatuses: {
+        IdentificationStatus.pending,
+        IdentificationStatus.needsVerification,
+      },
+    ),
+  );
 
   /// Factory for Offline Library Smart View.
   factory TvShowQuery.offline() => const TvShowQuery(
-        scope: QueryScope.offline,
-        filter: TvShowFilter(
-          availability: AvailabilityFilter.available,
-        ),
-      );
+    scope: QueryScope.offline,
+    filter: TvShowFilter(availability: AvailabilityFilter.available),
+  );
 
   /// Factory for Collection-scoped TV Show Query.
-  factory TvShowQuery.forCollection(
-    String collectionId, {
-    String? label,
-  }) =>
+  factory TvShowQuery.forCollection(String collectionId, {String? label}) =>
       TvShowQuery(
         scope: QueryScope.collection(collectionId, label: label),
-        filter: TvShowFilter(
-          collectionId: collectionId,
-        ),
+        filter: TvShowFilter(collectionId: collectionId),
       );
 
   /// Factory for TV Show Search Query.
   factory TvShowQuery.search(
     String query, {
     SearchMode mode = SearchMode.title,
-  }) =>
-      TvShowQuery(
-        scope: QueryScope.search(query),
-        search: SearchSpec(query: query, mode: mode),
-      );
+  }) => TvShowQuery(
+    scope: QueryScope.search(query),
+    search: SearchSpec(query: query, mode: mode),
+  );
 
   TvShowQuery copyWith({
     SearchSpec? search,
@@ -148,13 +132,8 @@ class TvShowQuery {
           _listEquals(sort, other.sort);
 
   @override
-  int get hashCode => Object.hash(
-        search,
-        filter,
-        Object.hashAll(sort),
-        pagination,
-        scope,
-      );
+  int get hashCode =>
+      Object.hash(search, filter, Object.hashAll(sort), pagination, scope);
 
   @override
   String toString() =>

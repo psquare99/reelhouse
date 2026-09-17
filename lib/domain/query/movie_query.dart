@@ -33,100 +33,82 @@ class MovieQuery {
   factory MovieQuery.all({
     PaginationSpec? pagination,
     List<SortClause<MovieSortField>>? sort,
-  }) =>
-      MovieQuery(
-        pagination: pagination,
-        sort: sort ??
-            const [
-              SortClause(MovieSortField.title, direction: SortDirection.asc),
-            ],
-      );
+  }) => MovieQuery(
+    pagination: pagination,
+    sort:
+        sort ??
+        const [SortClause(MovieSortField.title, direction: SortDirection.asc)],
+  );
 
   /// Factory for Recently Added Smart View.
   factory MovieQuery.recentlyAdded({int? limit}) => MovieQuery(
-        scope: QueryScope.recentlyAdded,
-        sort: const [
-          SortClause(MovieSortField.createdAt, direction: SortDirection.desc),
-        ],
-        pagination: limit != null ? PaginationSpec(limit: limit) : null,
-      );
+    scope: QueryScope.recentlyAdded,
+    sort: const [
+      SortClause(MovieSortField.createdAt, direction: SortDirection.desc),
+    ],
+    pagination: limit != null ? PaginationSpec(limit: limit) : null,
+  );
 
   /// Factory for Continue Watching Smart View.
   factory MovieQuery.continueWatching({int? limit}) => MovieQuery(
-        scope: QueryScope.continueWatching,
-        filter: const MovieFilter(
-          watchStates: {WatchState.inProgress},
-        ),
-        sort: const [
-          SortClause(MovieSortField.updatedAt, direction: SortDirection.desc),
-        ],
-        pagination: limit != null ? PaginationSpec(limit: limit) : null,
-      );
+    scope: QueryScope.continueWatching,
+    filter: const MovieFilter(watchStates: {WatchState.inProgress}),
+    sort: const [
+      SortClause(MovieSortField.updatedAt, direction: SortDirection.desc),
+    ],
+    pagination: limit != null ? PaginationSpec(limit: limit) : null,
+  );
 
   /// Factory for Favorites Smart View.
   factory MovieQuery.favorites() => const MovieQuery(
-        scope: QueryScope.favorites,
-        filter: MovieFilter(
-          isFavorite: true,
-        ),
-      );
+    scope: QueryScope.favorites,
+    filter: MovieFilter(isFavorite: true),
+  );
 
   /// Factory for Watchlist Smart View.
   factory MovieQuery.watchlist() => const MovieQuery(
-        scope: QueryScope.watchlist,
-        filter: MovieFilter(
-          isWatchlist: true,
-        ),
-      );
+    scope: QueryScope.watchlist,
+    filter: MovieFilter(isWatchlist: true),
+  );
 
   /// Factory for Unwatched Smart View.
   factory MovieQuery.unwatched() => const MovieQuery(
-        scope: QueryScope.unwatched,
-        filter: MovieFilter(
-          watchStates: {WatchState.unwatched},
-        ),
-      );
+    scope: QueryScope.unwatched,
+    filter: MovieFilter(watchStates: {WatchState.unwatched}),
+  );
 
   /// Factory for Needs Verification Smart View.
   factory MovieQuery.needsVerification() => const MovieQuery(
-        scope: QueryScope.needsVerification,
-        filter: MovieFilter(
-          metadataStatuses: {
-            IdentificationStatus.pending,
-            IdentificationStatus.needsVerification,
-          },
-        ),
-      );
+    scope: QueryScope.needsVerification,
+    filter: MovieFilter(
+      metadataStatuses: {
+        IdentificationStatus.pending,
+        IdentificationStatus.needsVerification,
+      },
+    ),
+  );
 
   /// Factory for Offline Library Smart View.
   factory MovieQuery.offline() => const MovieQuery(
-        scope: QueryScope.offline,
-        filter: MovieFilter(
-          availability: AvailabilityFilter.available,
-        ),
-      );
+    scope: QueryScope.offline,
+    filter: MovieFilter(availability: AvailabilityFilter.available),
+  );
 
   /// Factory for Collection-scoped Movie Query.
-  factory MovieQuery.forCollection(
-    String collectionId, {
-    String? label,
-  }) =>
+  factory MovieQuery.forCollection(String collectionId, {String? label}) =>
       MovieQuery(
         scope: QueryScope.collection(collectionId, label: label),
-        filter: MovieFilter(
-          collectionId: collectionId,
-        ),
+        filter: MovieFilter(collectionId: collectionId),
       );
 
   /// Factory for Movie Search Query.
   factory MovieQuery.search(
     String query, {
     SearchMode mode = SearchMode.title,
-  }) =>
-      MovieQuery(
-        scope: QueryScope.search(query),
-        search: SearchSpec(query: query, mode: mode),
-      );
+  }) => MovieQuery(
+    scope: QueryScope.search(query),
+    search: SearchSpec(query: query, mode: mode),
+  );
 
   MovieQuery copyWith({
     SearchSpec? search,
@@ -158,13 +140,8 @@ class MovieQuery {
           _listEquals(sort, other.sort);
 
   @override
-  int get hashCode => Object.hash(
-        search,
-        filter,
-        Object.hashAll(sort),
-        pagination,
-        scope,
-      );
+  int get hashCode =>
+      Object.hash(search, filter, Object.hashAll(sort), pagination, scope);
 
   @override
   String toString() =>

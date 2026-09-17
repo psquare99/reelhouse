@@ -6,6 +6,7 @@ import '../../../domain/query/episode_query.dart';
 import '../../../domain/query/filter_spec.dart';
 import '../../../domain/query/library_result.dart';
 import '../../../domain/query/query_projections.dart';
+import '../../../domain/query/search_spec.dart';
 import '../../../domain/query/sort_fields.dart';
 import '../../../domain/query/sort_spec.dart';
 import '../database.dart';
@@ -65,7 +66,12 @@ class EpisodeQueryEngine {
               .customSelect(
                 queryPlan.countSql,
                 variables: queryPlan.countVariables,
-                readsFrom: {db.episodes, db.seasons, db.mediaSources, db.storages},
+                readsFrom: {
+                  db.episodes,
+                  db.seasons,
+                  db.mediaSources,
+                  db.storages,
+                },
               )
               .getSingle();
 
@@ -87,6 +93,11 @@ class EpisodeQueryEngine {
     final whereClauses = <String>[];
     final whereVariables = <Variable>[];
 
+    if (query.filter.id != null && query.filter.id!.isNotEmpty) {
+      whereClauses.add('e.id = ?');
+      whereVariables.add(Variable<String>(query.filter.id!));
+    }
+
     final effectiveSeasonId = query.seasonId ?? query.filter.seasonId;
     if (effectiveSeasonId != null && effectiveSeasonId.isNotEmpty) {
       whereClauses.add('e.season_id = ?');
@@ -104,8 +115,27 @@ class EpisodeQueryEngine {
       whereVariables.add(Variable<int>(query.filter.seasonNumber!));
     }
 
-    if (query.filter.watchStates != null && query.filter.watchStates!.isNotEmpty) {
-      final placeholders = List.filled(query.filter.watchStates!.length, '?').join(', ');
+    // Search filter
+    if (query.search != null && query.search!.isNotEmpty) {
+      final term = '%${query.search!.trimmedQuery.toLowerCase()}%';
+      if (query.search!.mode == SearchMode.title) {
+        whereClauses.add('LOWER(COALESCE(e.name, \'\')) LIKE ?');
+        whereVariables.add(Variable<String>(term));
+      } else {
+        whereClauses.add(
+          '(LOWER(COALESCE(e.name, \'\')) LIKE ? OR LOWER(COALESCE(e.overview, \'\')) LIKE ?)',
+        );
+        whereVariables.add(Variable<String>(term));
+        whereVariables.add(Variable<String>(term));
+      }
+    }
+
+    if (query.filter.watchStates != null &&
+        query.filter.watchStates!.isNotEmpty) {
+      final placeholders = List.filled(
+        query.filter.watchStates!.length,
+        '?',
+      ).join(', ');
       whereClauses.add('e.watch_state IN ($placeholders)');
       for (final state in query.filter.watchStates!) {
         whereVariables.add(Variable<String>(state.toDbString()));
@@ -131,9 +161,12 @@ class EpisodeQueryEngine {
       }
     }
 
-    final whereSql = whereClauses.isNotEmpty ? 'WHERE ${whereClauses.join(' AND ')}' : '';
+    final whereSql = whereClauses.isNotEmpty
+        ? 'WHERE ${whereClauses.join(' AND ')}'
+        : '';
 
-    final countSql = '''
+    final countSql =
+        '''
 SELECT COUNT(*) AS total 
 FROM episodes e 
 INNER JOIN seasons s ON s.id = e.season_id 
@@ -145,7 +178,9 @@ $whereSql
     for (final sortClause in query.sort) {
       final colExpr = _mapSortFieldToSql(sortClause.field);
       final dir = sortClause.direction == SortDirection.asc ? 'ASC' : 'DESC';
-      final nulls = sortClause.nullsOrder == NullsOrder.first ? 'NULLS FIRST' : 'NULLS LAST';
+      final nulls = sortClause.nullsOrder == NullsOrder.first
+          ? 'NULLS FIRST'
+          : 'NULLS LAST';
       orderTerms.add('$colExpr $dir $nulls');
     }
     orderTerms.add('e.id ASC');
@@ -159,7 +194,8 @@ $whereSql
       dataVariables.add(Variable<int>(query.pagination!.offset));
     }
 
-    final dataSql = '''
+    final dataSql =
+        '''
 SELECT 
   e.id,
   e.season_id,

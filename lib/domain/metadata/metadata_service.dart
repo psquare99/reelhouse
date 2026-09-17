@@ -370,9 +370,10 @@ class MetadataService {
   }) async {
     final unmatchedMovies = await database.getUnmatchedMovies();
     final unmatchedShows = await database.getUnmatchedTvShows();
-    final showsNeedingEpisodeEnrichment =
-        await database.getIdentifiedTvShowsNeedingEpisodeEnrichment();
-    final total = unmatchedMovies.length +
+    final showsNeedingEpisodeEnrichment = await database
+        .getIdentifiedTvShowsNeedingEpisodeEnrichment();
+    final total =
+        unmatchedMovies.length +
         unmatchedShows.length +
         showsNeedingEpisodeEnrichment.length;
 

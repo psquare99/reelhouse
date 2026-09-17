@@ -25,25 +25,17 @@ class YearRange {
   final int? startYear;
   final int? endYear;
 
-  const YearRange({
-    this.startYear,
-    this.endYear,
-  }) : assert(
-          startYear == null || endYear == null || startYear <= endYear,
-          'startYear ($startYear) must be <= endYear ($endYear)',
-        );
+  const YearRange({this.startYear, this.endYear})
+    : assert(
+        startYear == null || endYear == null || startYear <= endYear,
+        'startYear ($startYear) must be <= endYear ($endYear)',
+      );
 
-  const YearRange.exact(int year)
-      : startYear = year,
-        endYear = year;
+  const YearRange.exact(int year) : startYear = year, endYear = year;
 
-  const YearRange.since(int year)
-      : startYear = year,
-        endYear = null;
+  const YearRange.since(int year) : startYear = year, endYear = null;
 
-  const YearRange.until(int year)
-      : startYear = null,
-        endYear = year;
+  const YearRange.until(int year) : startYear = null, endYear = year;
 
   bool contains(int? year) {
     if (year == null) return false;
@@ -72,13 +64,11 @@ class DateRange {
   final DateTime? start;
   final DateTime? end;
 
-  DateRange({
-    this.start,
-    this.end,
-  }) : assert(
-          start == null || end == null || !start.isAfter(end),
-          'start must be before or equal to end',
-        );
+  DateRange({this.start, this.end})
+    : assert(
+        start == null || end == null || !start.isAfter(end),
+        'start must be before or equal to end',
+      );
 
   bool contains(DateTime? date) {
     if (date == null) return false;
@@ -107,6 +97,7 @@ class DateRange {
 /// Section 29–37:
 /// - Combines filter dimensions with predictable AND semantics.
 class MovieFilter {
+  final String? id;
   final Set<WatchState>? watchStates;
   final bool? isFavorite;
   final bool? isWatchlist;
@@ -118,6 +109,7 @@ class MovieFilter {
   final String? sourceId;
 
   const MovieFilter({
+    this.id,
     this.watchStates,
     this.isFavorite,
     this.isWatchlist,
@@ -132,6 +124,7 @@ class MovieFilter {
   static const MovieFilter empty = MovieFilter();
 
   bool get isEmpty =>
+      id == null &&
       watchStates == null &&
       isFavorite == null &&
       isWatchlist == null &&
@@ -145,6 +138,7 @@ class MovieFilter {
   bool get isNotEmpty => !isEmpty;
 
   MovieFilter copyWith({
+    String? id,
     Set<WatchState>? watchStates,
     bool? isFavorite,
     bool? isWatchlist,
@@ -156,6 +150,7 @@ class MovieFilter {
     String? sourceId,
   }) {
     return MovieFilter(
+      id: id ?? this.id,
       watchStates: watchStates ?? this.watchStates,
       isFavorite: isFavorite ?? this.isFavorite,
       isWatchlist: isWatchlist ?? this.isWatchlist,
@@ -173,6 +168,7 @@ class MovieFilter {
       identical(this, other) ||
       other is MovieFilter &&
           runtimeType == other.runtimeType &&
+          id == other.id &&
           isFavorite == other.isFavorite &&
           isWatchlist == other.isWatchlist &&
           availability == other.availability &&
@@ -185,20 +181,21 @@ class MovieFilter {
 
   @override
   int get hashCode => Object.hash(
-        watchStates == null ? null : Object.hashAll(watchStates!),
-        isFavorite,
-        isWatchlist,
-        availability,
-        metadataStatuses == null ? null : Object.hashAll(metadataStatuses!),
-        yearRange,
-        collectionId,
-        storageId,
-        sourceId,
-      );
+    id,
+    watchStates == null ? null : Object.hashAll(watchStates!),
+    isFavorite,
+    isWatchlist,
+    availability,
+    metadataStatuses == null ? null : Object.hashAll(metadataStatuses!),
+    yearRange,
+    collectionId,
+    storageId,
+    sourceId,
+  );
 
   @override
   String toString() =>
-      'MovieFilter(watch: $watchStates, fav: $isFavorite, watchl: $isWatchlist, avail: $availability, meta: $metadataStatuses, year: $yearRange, col: $collectionId, storage: $storageId, src: $sourceId)';
+      'MovieFilter(id: $id, watch: $watchStates, fav: $isFavorite, watchl: $isWatchlist, avail: $availability, meta: $metadataStatuses, year: $yearRange, col: $collectionId, storage: $storageId, src: $sourceId)';
 
   static bool _setEquals<E>(Set<E>? a, Set<E>? b) {
     if (a == null && b == null) return true;
@@ -213,6 +210,7 @@ class MovieFilter {
 /// Section 29–37:
 /// - Note: TV show watchState filter matches against derived series watch state.
 class TvShowFilter {
+  final String? id;
   final Set<WatchState>? watchStates;
   final bool? isFavorite;
   final bool? isWatchlist;
@@ -224,6 +222,7 @@ class TvShowFilter {
   final String? sourceId;
 
   const TvShowFilter({
+    this.id,
     this.watchStates,
     this.isFavorite,
     this.isWatchlist,
@@ -238,6 +237,7 @@ class TvShowFilter {
   static const TvShowFilter empty = TvShowFilter();
 
   bool get isEmpty =>
+      id == null &&
       watchStates == null &&
       isFavorite == null &&
       isWatchlist == null &&
@@ -251,6 +251,7 @@ class TvShowFilter {
   bool get isNotEmpty => !isEmpty;
 
   TvShowFilter copyWith({
+    String? id,
     Set<WatchState>? watchStates,
     bool? isFavorite,
     bool? isWatchlist,
@@ -262,6 +263,7 @@ class TvShowFilter {
     String? sourceId,
   }) {
     return TvShowFilter(
+      id: id ?? this.id,
       watchStates: watchStates ?? this.watchStates,
       isFavorite: isFavorite ?? this.isFavorite,
       isWatchlist: isWatchlist ?? this.isWatchlist,
@@ -279,6 +281,7 @@ class TvShowFilter {
       identical(this, other) ||
       other is TvShowFilter &&
           runtimeType == other.runtimeType &&
+          id == other.id &&
           isFavorite == other.isFavorite &&
           isWatchlist == other.isWatchlist &&
           availability == other.availability &&
@@ -291,42 +294,39 @@ class TvShowFilter {
 
   @override
   int get hashCode => Object.hash(
-        watchStates == null ? null : Object.hashAll(watchStates!),
-        isFavorite,
-        isWatchlist,
-        availability,
-        metadataStatuses == null ? null : Object.hashAll(metadataStatuses!),
-        yearRange,
-        collectionId,
-        storageId,
-        sourceId,
-      );
+    id,
+    watchStates == null ? null : Object.hashAll(watchStates!),
+    isFavorite,
+    isWatchlist,
+    availability,
+    metadataStatuses == null ? null : Object.hashAll(metadataStatuses!),
+    yearRange,
+    collectionId,
+    storageId,
+    sourceId,
+  );
 
   @override
   String toString() =>
-      'TvShowFilter(watch: $watchStates, fav: $isFavorite, watchl: $isWatchlist, avail: $availability, meta: $metadataStatuses, year: $yearRange, col: $collectionId, storage: $storageId, src: $sourceId)';
+      'TvShowFilter(id: $id, watch: $watchStates, fav: $isFavorite, watchl: $isWatchlist, avail: $availability, meta: $metadataStatuses, year: $yearRange, col: $collectionId, storage: $storageId, src: $sourceId)';
 }
 
 /// Filter criteria for Season queries.
 class SeasonFilter {
+  final String? id;
   final String? showId;
   final Set<int>? seasonNumbers;
 
-  const SeasonFilter({
-    this.showId,
-    this.seasonNumbers,
-  });
+  const SeasonFilter({this.id, this.showId, this.seasonNumbers});
 
   static const SeasonFilter empty = SeasonFilter();
 
-  bool get isEmpty => showId == null && seasonNumbers == null;
+  bool get isEmpty => id == null && showId == null && seasonNumbers == null;
   bool get isNotEmpty => !isEmpty;
 
-  SeasonFilter copyWith({
-    String? showId,
-    Set<int>? seasonNumbers,
-  }) {
+  SeasonFilter copyWith({String? id, String? showId, Set<int>? seasonNumbers}) {
     return SeasonFilter(
+      id: id ?? this.id,
       showId: showId ?? this.showId,
       seasonNumbers: seasonNumbers ?? this.seasonNumbers,
     );
@@ -337,21 +337,25 @@ class SeasonFilter {
       identical(this, other) ||
       other is SeasonFilter &&
           runtimeType == other.runtimeType &&
+          id == other.id &&
           showId == other.showId &&
           MovieFilter._setEquals(seasonNumbers, other.seasonNumbers);
 
   @override
   int get hashCode => Object.hash(
-        showId,
-        seasonNumbers == null ? null : Object.hashAll(seasonNumbers!),
-      );
+    id,
+    showId,
+    seasonNumbers == null ? null : Object.hashAll(seasonNumbers!),
+  );
 
   @override
-  String toString() => 'SeasonFilter(showId: $showId, seasons: $seasonNumbers)';
+  String toString() =>
+      'SeasonFilter(id: $id, showId: $showId, seasons: $seasonNumbers)';
 }
 
 /// Filter criteria for Episode queries.
 class EpisodeFilter {
+  final String? id;
   final String? seasonId;
   final String? showId;
   final int? seasonNumber;
@@ -360,6 +364,7 @@ class EpisodeFilter {
   final String? storageId;
 
   const EpisodeFilter({
+    this.id,
     this.seasonId,
     this.showId,
     this.seasonNumber,
@@ -371,6 +376,7 @@ class EpisodeFilter {
   static const EpisodeFilter empty = EpisodeFilter();
 
   bool get isEmpty =>
+      id == null &&
       seasonId == null &&
       showId == null &&
       seasonNumber == null &&
@@ -381,6 +387,7 @@ class EpisodeFilter {
   bool get isNotEmpty => !isEmpty;
 
   EpisodeFilter copyWith({
+    String? id,
     String? seasonId,
     String? showId,
     int? seasonNumber,
@@ -389,6 +396,7 @@ class EpisodeFilter {
     String? storageId,
   }) {
     return EpisodeFilter(
+      id: id ?? this.id,
       seasonId: seasonId ?? this.seasonId,
       showId: showId ?? this.showId,
       seasonNumber: seasonNumber ?? this.seasonNumber,
@@ -403,6 +411,7 @@ class EpisodeFilter {
       identical(this, other) ||
       other is EpisodeFilter &&
           runtimeType == other.runtimeType &&
+          id == other.id &&
           seasonId == other.seasonId &&
           showId == other.showId &&
           seasonNumber == other.seasonNumber &&
@@ -412,36 +421,36 @@ class EpisodeFilter {
 
   @override
   int get hashCode => Object.hash(
-        seasonId,
-        showId,
-        seasonNumber,
-        watchStates == null ? null : Object.hashAll(watchStates!),
-        availability,
-        storageId,
-      );
+    id,
+    seasonId,
+    showId,
+    seasonNumber,
+    watchStates == null ? null : Object.hashAll(watchStates!),
+    availability,
+    storageId,
+  );
 
   @override
   String toString() =>
-      'EpisodeFilter(seasonId: $seasonId, showId: $showId, sNum: $seasonNumber, watch: $watchStates, avail: $availability, storage: $storageId)';
+      'EpisodeFilter(id: $id, seasonId: $seasonId, showId: $showId, sNum: $seasonNumber, watch: $watchStates, avail: $availability, storage: $storageId)';
 }
 
 /// Filter criteria for Collection queries.
 class CollectionFilter {
+  final String? id;
   final String? nameQuery;
 
-  const CollectionFilter({
-    this.nameQuery,
-  });
+  const CollectionFilter({this.id, this.nameQuery});
 
   static const CollectionFilter empty = CollectionFilter();
 
-  bool get isEmpty => nameQuery == null || nameQuery!.trim().isEmpty;
+  bool get isEmpty =>
+      id == null && (nameQuery == null || nameQuery!.trim().isEmpty);
   bool get isNotEmpty => !isEmpty;
 
-  CollectionFilter copyWith({
-    String? nameQuery,
-  }) {
+  CollectionFilter copyWith({String? id, String? nameQuery}) {
     return CollectionFilter(
+      id: id ?? this.id,
       nameQuery: nameQuery ?? this.nameQuery,
     );
   }
@@ -451,11 +460,12 @@ class CollectionFilter {
       identical(this, other) ||
       other is CollectionFilter &&
           runtimeType == other.runtimeType &&
+          id == other.id &&
           nameQuery == other.nameQuery;
 
   @override
-  int get hashCode => nameQuery.hashCode;
+  int get hashCode => Object.hash(id, nameQuery);
 
   @override
-  String toString() => 'CollectionFilter(nameQuery: $nameQuery)';
+  String toString() => 'CollectionFilter(id: $id, nameQuery: $nameQuery)';
 }

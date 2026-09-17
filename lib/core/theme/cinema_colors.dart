@@ -74,59 +74,59 @@ class CinemaColors {
   // --- Theme-Aware Dynamic Resolvers ---
   static Color ofCanvas(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light
-          ? lightCanvas
-          : darkCanvas;
+      ? lightCanvas
+      : darkCanvas;
 
   static Color ofSurface(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light
-          ? lightSurface
-          : darkSurface;
+      ? lightSurface
+      : darkSurface;
 
   static Color ofSurfaceElevated(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light
-          ? lightSurfaceElevated
-          : darkSurfaceElevated;
+      ? lightSurfaceElevated
+      : darkSurfaceElevated;
 
   static Color ofCard(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light ? lightCard : darkCard;
 
   static Color ofCardHover(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light
-          ? lightCardHover
-          : darkCardHover;
+      ? lightCardHover
+      : darkCardHover;
 
   static Color ofBorder(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light
-          ? lightBorder
-          : darkBorder;
+      ? lightBorder
+      : darkBorder;
 
   static Color ofBorderSubtle(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light
-          ? lightBorderSubtle
-          : darkBorderSubtle;
+      ? lightBorderSubtle
+      : darkBorderSubtle;
 
   static Color ofTextPrimary(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light
-          ? lightTextPrimary
-          : darkTextPrimary;
+      ? lightTextPrimary
+      : darkTextPrimary;
 
   static Color ofTextSecondary(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light
-          ? lightTextSecondary
-          : darkTextSecondary;
+      ? lightTextSecondary
+      : darkTextSecondary;
 
   static Color ofTextMuted(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light
-          ? lightTextMuted
-          : darkTextMuted;
+      ? lightTextMuted
+      : darkTextMuted;
 
   static Color ofAccent(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light
-          ? terracottaDark
-          : terracotta;
+      ? terracottaDark
+      : terracotta;
 
   static Color ofAccentSubtle(BuildContext context) =>
       Theme.of(context).brightness == Brightness.light
-          ? const Color(0x24B84A28)
-          : terracottaSubtle;
+      ? const Color(0x24B84A28)
+      : terracottaSubtle;
 }

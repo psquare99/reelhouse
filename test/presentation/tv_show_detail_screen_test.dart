@@ -98,7 +98,9 @@ void main() {
               overview: const drift.Value(
                 'The macrodata refinement team welcomes Helly.',
               ),
-              stillPath: const drift.Value('https://example.com/stills/ep2.jpg'),
+              stillPath: const drift.Value(
+                'https://example.com/stills/ep2.jpg',
+              ),
               runtime: const drift.Value(53),
             ),
           );

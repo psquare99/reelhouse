@@ -46,7 +46,10 @@ class CinemaTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: const BorderSide(color: CinemaColors.darkBorderSubtle, width: 1),
+          side: const BorderSide(
+            color: CinemaColors.darkBorderSubtle,
+            width: 1,
+          ),
         ),
       ),
       dialogTheme: DialogThemeData(

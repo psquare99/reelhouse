@@ -5,8 +5,10 @@ import 'package:uuid/uuid.dart';
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
 import '../../data/network/tmdb_api_client.dart';
+import '../../data/repository/drift_library_repository.dart';
 import '../../domain/metadata/image_cache_service.dart';
 import '../../domain/metadata/metadata_service.dart';
+import '../../domain/repository/library_repository.dart';
 import '../../domain/scanner/library_scanner_service.dart';
 import '../../domain/services/local_storage_manager.dart';
 import '../../domain/services/settings_service.dart';
@@ -15,6 +17,7 @@ import 'needs_verification_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppDatabase database;
+  final LibraryRepository repository;
   final StorageIdentityService storageIdentityService;
   final LocalStorageManager localStorageManager;
   final LibraryScannerService libraryScannerService;
@@ -24,12 +27,14 @@ class SettingsScreen extends StatefulWidget {
   SettingsScreen({
     super.key,
     required this.database,
+    LibraryRepository? repository,
     required this.storageIdentityService,
     required this.localStorageManager,
     LibraryScannerService? libraryScannerService,
     this.metadataService,
     this.settingsService,
-  }) : libraryScannerService =
+  }) : repository = repository ?? DriftLibraryRepository(database),
+       libraryScannerService =
            libraryScannerService ??
            LibraryScannerService(
              database: database,
@@ -372,7 +377,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           // Section: Needs Verification Alert (Sections 14 & 44)
           StreamBuilder<int>(
-            stream: widget.database.watchUnmatchedTotalCount(),
+            stream: widget.repository.watchUnmatchedTotalCount(),
             builder: (context, snapshot) {
               final count = snapshot.data ?? 0;
               if (count == 0) return const SizedBox.shrink();
@@ -422,6 +427,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => NeedsVerificationScreen(
+                              repository: widget.repository,
                               database: widget.database,
                               metadataService: _metadataService,
                             ),
@@ -948,9 +954,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               _settingsService?.themeMode == ThemeMode.light
                                   ? 'Light Mode (The Exhibition / Gallery Linen)'
                                   : _settingsService?.themeMode ==
-                                          ThemeMode.system
-                                      ? 'System Default'
-                                      : 'Dark Mode (The Screening Room)',
+                                        ThemeMode.system
+                                  ? 'System Default'
+                                  : 'Dark Mode (The Screening Room)',
                               style: const TextStyle(
                                 color: CinemaColors.textSecondary,
                                 fontSize: 13,
@@ -974,7 +980,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ThemeMode.dark,
                         onSelected: (selected) async {
                           if (selected && _settingsService != null) {
-                            await _settingsService!.setThemeMode(ThemeMode.dark);
+                            await _settingsService!.setThemeMode(
+                              ThemeMode.dark,
+                            );
                             setState(() {});
                           }
                         },
@@ -986,7 +994,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _settingsService?.themeMode == ThemeMode.light,
                         onSelected: (selected) async {
                           if (selected && _settingsService != null) {
-                            await _settingsService!.setThemeMode(ThemeMode.light);
+                            await _settingsService!.setThemeMode(
+                              ThemeMode.light,
+                            );
                             setState(() {});
                           }
                         },
@@ -998,7 +1008,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _settingsService?.themeMode == ThemeMode.system,
                         onSelected: (selected) async {
                           if (selected && _settingsService != null) {
-                            await _settingsService!.setThemeMode(ThemeMode.system);
+                            await _settingsService!.setThemeMode(
+                              ThemeMode.system,
+                            );
                             setState(() {});
                           }
                         },

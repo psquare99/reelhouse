@@ -2,7 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
+import '../../data/repository/drift_library_repository.dart';
 import '../../domain/models/availability_status.dart';
+import '../../domain/query/library_result.dart';
+import '../../domain/query/movie_query.dart';
+import '../../domain/query/query_projections.dart';
+import '../../domain/query/tv_show_query.dart';
+import '../../domain/repository/library_repository.dart';
 import '../movies/movie_detail_screen.dart';
 import '../tv_shows/tv_show_detail_screen.dart';
 import '../widgets/cinema_poster_card.dart';
@@ -11,9 +17,21 @@ import '../widgets/cinema_poster_card.dart';
 ///
 /// Operates 100% offline with zero external disks connected.
 class OfflineScreen extends StatefulWidget {
-  final AppDatabase database;
+  final LibraryRepository repository;
+  final AppDatabase? database;
 
-  const OfflineScreen({super.key, required this.database});
+  OfflineScreen({
+    super.key,
+    LibraryRepository? repository,
+    AppDatabase? database,
+  }) : repository =
+           repository ??
+           (database != null
+               ? DriftLibraryRepository(database)
+               : throw ArgumentError(
+                   'Either repository or database must be provided',
+                 )),
+       database = database;
 
   @override
   State<OfflineScreen> createState() => _OfflineScreenState();
@@ -25,15 +43,15 @@ class _OfflineScreenState extends State<OfflineScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<List<Movie>>(
-        stream: widget.database.watchOfflineMovies(),
+      body: StreamBuilder<LibraryResult<MovieLibraryItem>>(
+        stream: widget.repository.watchMovies(MovieQuery.offline()),
         builder: (context, moviesSnapshot) {
-          final offlineMovies = moviesSnapshot.data ?? [];
+          final offlineMovies = moviesSnapshot.data?.items ?? [];
 
-          return StreamBuilder<List<TvShow>>(
-            stream: widget.database.watchOfflineTvShows(),
+          return StreamBuilder<LibraryResult<TvShowLibraryItem>>(
+            stream: widget.repository.watchTvShows(TvShowQuery.offline()),
             builder: (context, showsSnapshot) {
-              final offlineShows = showsSnapshot.data ?? [];
+              final offlineShows = showsSnapshot.data?.items ?? [];
               final totalCount = offlineMovies.length + offlineShows.length;
 
               final showMovies = _filter == 'all' || _filter == 'movies';
@@ -205,12 +223,13 @@ class _OfflineScreenState extends State<OfflineScreen> {
                               availabilityStatus:
                                   AvailabilityStatus.availableLocally,
                               isFavorite: movie.isFavorite,
-                              watchState: movie.watchState,
+                              watchState: movie.watchState.toDbString(),
                               onTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) => MovieDetailScreen(
                                       movieId: movie.id,
+                                      repository: widget.repository,
                                       database: widget.database,
                                     ),
                                   ),
@@ -270,6 +289,7 @@ class _OfflineScreenState extends State<OfflineScreen> {
                                   MaterialPageRoute(
                                     builder: (_) => TvShowDetailScreen(
                                       showId: show.id,
+                                      repository: widget.repository,
                                       database: widget.database,
                                     ),
                                   ),

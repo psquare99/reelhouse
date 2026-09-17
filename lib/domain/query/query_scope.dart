@@ -57,29 +57,50 @@ class QueryScope {
   final String? targetId;
   final String? label;
 
-  const QueryScope(
-    this.type, {
-    this.targetId,
-    this.label,
-  });
+  const QueryScope(this.type, {this.targetId, this.label});
 
   static const QueryScope all = QueryScope(QueryScopeType.all, label: 'All');
-  static const QueryScope favorites = QueryScope(QueryScopeType.favorites, label: 'Favorites');
-  static const QueryScope watchlist = QueryScope(QueryScopeType.watchlist, label: 'Watchlist');
-  static const QueryScope recentlyAdded =
-      QueryScope(QueryScopeType.recentlyAdded, label: 'Recently Added');
-  static const QueryScope continueWatching =
-      QueryScope(QueryScopeType.continueWatching, label: 'Continue Watching');
-  static const QueryScope unwatched = QueryScope(QueryScopeType.unwatched, label: 'Unwatched');
-  static const QueryScope needsVerification =
-      QueryScope(QueryScopeType.needsVerification, label: 'Needs Verification');
-  static const QueryScope offline = QueryScope(QueryScopeType.offline, label: 'Offline Library');
+  static const QueryScope favorites = QueryScope(
+    QueryScopeType.favorites,
+    label: 'Favorites',
+  );
+  static const QueryScope watchlist = QueryScope(
+    QueryScopeType.watchlist,
+    label: 'Watchlist',
+  );
+  static const QueryScope recentlyAdded = QueryScope(
+    QueryScopeType.recentlyAdded,
+    label: 'Recently Added',
+  );
+  static const QueryScope continueWatching = QueryScope(
+    QueryScopeType.continueWatching,
+    label: 'Continue Watching',
+  );
+  static const QueryScope unwatched = QueryScope(
+    QueryScopeType.unwatched,
+    label: 'Unwatched',
+  );
+  static const QueryScope needsVerification = QueryScope(
+    QueryScopeType.needsVerification,
+    label: 'Needs Verification',
+  );
+  static const QueryScope offline = QueryScope(
+    QueryScopeType.offline,
+    label: 'Offline Library',
+  );
 
   factory QueryScope.collection(String collectionId, {String? label}) =>
-      QueryScope(QueryScopeType.collection, targetId: collectionId, label: label ?? 'Collection');
+      QueryScope(
+        QueryScopeType.collection,
+        targetId: collectionId,
+        label: label ?? 'Collection',
+      );
 
-  factory QueryScope.search(String query) =>
-      QueryScope(QueryScopeType.search, targetId: query, label: 'Search "$query"');
+  factory QueryScope.search(String query) => QueryScope(
+    QueryScopeType.search,
+    targetId: query,
+    label: 'Search "$query"',
+  );
 
   factory QueryScope.custom(String name, {String? targetId}) =>
       QueryScope(QueryScopeType.custom, targetId: targetId, label: name);

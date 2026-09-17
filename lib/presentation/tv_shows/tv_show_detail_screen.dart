@@ -3,7 +3,15 @@ import 'package:flutter/material.dart';
 import '../../core/theme/cinema_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/database/database.dart';
+import '../../data/repository/drift_library_repository.dart';
+import '../../domain/models/availability_status.dart';
 import '../../domain/models/playback_resolution.dart';
+import '../../domain/models/watch_state.dart';
+import '../../domain/query/episode_query.dart';
+import '../../domain/query/library_result.dart';
+import '../../domain/query/query_projections.dart';
+import '../../domain/query/season_query.dart';
+import '../../domain/repository/library_repository.dart';
 import '../../domain/services/availability_resolver.dart';
 import '../../domain/services/playback_launcher_service.dart';
 import '../../domain/services/playback_source_resolver.dart';
@@ -14,13 +22,22 @@ import '../widgets/cinema_poster_image.dart';
 /// episodes, source-aware episode availability, and single/batch offline download hooks.
 class TvShowDetailScreen extends StatefulWidget {
   final String showId;
-  final AppDatabase database;
+  final LibraryRepository repository;
+  final AppDatabase? database;
 
-  const TvShowDetailScreen({
+  TvShowDetailScreen({
     super.key,
     required this.showId,
-    required this.database,
-  });
+    LibraryRepository? repository,
+    AppDatabase? database,
+  }) : repository =
+           repository ??
+           (database != null
+               ? DriftLibraryRepository(database)
+               : throw ArgumentError(
+                   'Either repository or database must be provided',
+                 )),
+       database = database;
 
   @override
   State<TvShowDetailScreen> createState() => _TvShowDetailScreenState();
@@ -28,16 +45,18 @@ class TvShowDetailScreen extends StatefulWidget {
 
 class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
   final PlaybackSourceResolver _resolver = const PlaybackSourceResolver();
-  late final PlaybackLauncherService _playbackLauncher;
+  PlaybackLauncherService? _playbackLauncher;
   String? _selectedSeasonId;
-  late Stream<TvShow?> _showStream;
+  late Stream<TvShowLibraryItem?> _showStream;
   late Stream<List<Storage>> _storageStream;
-  late Stream<List<Season>> _seasonsStream;
+  late Stream<LibraryResult<SeasonLibraryItem>> _seasonsStream;
 
   @override
   void initState() {
     super.initState();
-    _playbackLauncher = PlaybackLauncherService(database: widget.database);
+    if (widget.database != null) {
+      _playbackLauncher = PlaybackLauncherService(database: widget.database!);
+    }
     _initStreams();
   }
 
@@ -45,15 +64,20 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
   void didUpdateWidget(covariant TvShowDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.showId != widget.showId ||
+        oldWidget.repository != widget.repository ||
         oldWidget.database != widget.database) {
       _initStreams();
     }
   }
 
   void _initStreams() {
-    _showStream = widget.database.watchTvShowById(widget.showId);
-    _storageStream = widget.database.watchAllStorages();
-    _seasonsStream = widget.database.watchSeasonsForShow(widget.showId);
+    _showStream = widget.repository.watchTvShowById(widget.showId);
+    _storageStream = widget.database != null
+        ? widget.database!.watchAllStorages()
+        : Stream.value([]);
+    _seasonsStream = widget.repository.watchSeasons(
+      SeasonQuery.forShow(widget.showId),
+    );
   }
 
   void _showConnectDiskDialog(String? storageName) {
@@ -102,10 +126,24 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
     );
   }
 
-  void _handlePlayEpisode(
-    PlaybackResolution resolution,
-    Episode episode,
-  ) async {
+  void _handlePlayEpisode(EpisodeLibraryItem episode) async {
+    if (widget.database == null) return;
+    final sources = await widget.database!.getSourcesForEpisode(episode.id);
+    final storages = await widget.database!.getAllStorages();
+    final storageMap = {for (final s in storages) s.id: s};
+    final checkSources = sources.map((s) {
+      final storage = storageMap[s.storageId];
+      return SourceCheckInfo(
+        sourceId: s.id,
+        sourceType: s.sourceType,
+        storageId: s.storageId,
+        storageName: storage?.name ?? 'Storage',
+        isSourceAvailable: s.available,
+        isStorageConnected: storage?.available ?? true,
+      );
+    }).toList();
+
+    final resolution = _resolver.resolve(checkSources);
     final sourceId = resolution.selectedSourceId;
     if (sourceId == null) {
       _showConnectDiskDialog(resolution.storageName);
@@ -113,6 +151,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
     }
 
     final epTitle = episode.name ?? 'Episode ${episode.episodeNumber}';
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Opening $epTitle in player...'),
@@ -121,13 +160,15 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
       ),
     );
 
-    final result = await _playbackLauncher.launchPlayback(
-      mediaSourceId: sourceId,
-    );
-    if (!mounted) return;
+    if (_playbackLauncher != null) {
+      final result = await _playbackLauncher!.launchPlayback(
+        mediaSourceId: sourceId,
+      );
+      if (!mounted) return;
 
-    if (!result.isSuccess) {
-      _showPlaybackDiagnosticDialog(result);
+      if (!result.isSuccess) {
+        _showPlaybackDiagnosticDialog(result);
+      }
     }
   }
 
@@ -256,7 +297,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<TvShow?>(
+    return StreamBuilder<TvShowLibraryItem?>(
       stream: _showStream,
       builder: (context, showSnapshot) {
         final show = showSnapshot.data;
@@ -282,18 +323,20 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
               final storages = storageSnapshot.data ?? [];
               final storageMap = {for (final s in storages) s.id: s};
 
-              return StreamBuilder<List<Season>>(
+              return StreamBuilder<LibraryResult<SeasonLibraryItem>>(
                 stream: _seasonsStream,
                 builder: (context, seasonsSnapshot) {
-                  final seasons = seasonsSnapshot.data ?? [];
+                  final seasons = seasonsSnapshot.data?.items ?? [];
                   if (_selectedSeasonId == null && seasons.isNotEmpty) {
                     _selectedSeasonId = seasons.first.id;
                   }
 
-                  final selectedSeason = seasons.cast<Season?>().firstWhere(
-                    (s) => s?.id == _selectedSeasonId,
-                    orElse: () => seasons.isNotEmpty ? seasons.first : null,
-                  );
+                  final selectedSeason = seasons
+                      .cast<SeasonLibraryItem?>()
+                      .firstWhere(
+                        (s) => s?.id == _selectedSeasonId,
+                        orElse: () => seasons.isNotEmpty ? seasons.first : null,
+                      );
 
                   return CustomScrollView(
                     slivers: [
@@ -318,9 +361,8 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                     end: Alignment.bottomCenter,
                                     colors: [
                                       Colors.transparent,
-                                      CinemaColors.ofCanvas(
-                                        context,
-                                      ).withValues(alpha: 0.6),
+                                      CinemaColors.ofCanvas(context)
+                                          .withValues(alpha: 0.6),
                                       CinemaColors.ofCanvas(context),
                                     ],
                                     stops: const [0.3, 0.7, 1.0],
@@ -450,7 +492,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                         ? 'In Watchlist'
                                         : 'Add to Watchlist',
                                     onPressed: () =>
-                                        widget.database.toggleTvShowWatchlist(
+                                        widget.repository.toggleTvShowWatchlist(
                                           show.id,
                                           !show.isWatchlist,
                                         ),
@@ -469,7 +511,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                         ? 'Favorited'
                                         : 'Add to Favorites',
                                     onPressed: () =>
-                                        widget.database.toggleTvShowFavorite(
+                                        widget.repository.toggleTvShowFavorite(
                                           show.id,
                                           !show.isFavorite,
                                         ),
@@ -592,12 +634,12 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
 
                       // Episode List for Selected Season
                       if (selectedSeason != null)
-                        StreamBuilder<List<Episode>>(
-                          stream: widget.database.watchEpisodesForSeason(
-                            selectedSeason.id,
+                        StreamBuilder<LibraryResult<EpisodeLibraryItem>>(
+                          stream: widget.repository.watchEpisodes(
+                            EpisodeQuery.forSeason(selectedSeason.id),
                           ),
                           builder: (context, episodesSnapshot) {
-                            final episodes = episodesSnapshot.data ?? [];
+                            final episodes = episodesSnapshot.data?.items ?? [];
                             if (episodes.isEmpty) {
                               return SliverToBoxAdapter(
                                 child: Padding(
@@ -627,17 +669,15 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                   final episode = episodes[index];
                                   return _EpisodeCard(
                                     episode: episode,
-                                    database: widget.database,
+                                    repository: widget.repository,
                                     storageMap: storageMap,
-                                    resolver: _resolver,
                                     onConnectDisk: _showConnectDiskDialog,
-                                    onPlay: (res) =>
-                                        _handlePlayEpisode(res, episode),
-                                    onDownload: (source) =>
-                                        _showM5DownloadDialog(
-                                          'Episode Download',
-                                          source.filename,
-                                        ),
+                                    onPlay: () => _handlePlayEpisode(episode),
+                                    onDownload: () => _showM5DownloadDialog(
+                                      'Episode Download',
+                                      episode.name ??
+                                          'Episode ${episode.episodeNumber}',
+                                    ),
                                   );
                                 }, childCount: episodes.length),
                               ),
@@ -657,275 +697,235 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
   }
 }
 
-class _EpisodeCard extends StatefulWidget {
-  final Episode episode;
-  final AppDatabase database;
+class _EpisodeCard extends StatelessWidget {
+  final EpisodeLibraryItem episode;
+  final LibraryRepository repository;
   final Map<String, Storage> storageMap;
-  final PlaybackSourceResolver resolver;
   final void Function(String?) onConnectDisk;
-  final void Function(PlaybackResolution) onPlay;
-  final void Function(MediaSource) onDownload;
+  final VoidCallback onPlay;
+  final VoidCallback onDownload;
 
   const _EpisodeCard({
     required this.episode,
-    required this.database,
+    required this.repository,
     required this.storageMap,
-    required this.resolver,
     required this.onConnectDisk,
     required this.onPlay,
     required this.onDownload,
   });
 
-  @override
-  State<_EpisodeCard> createState() => _EpisodeCardState();
-}
-
-class _EpisodeCardState extends State<_EpisodeCard> {
-  late Stream<List<MediaSource>> _sourcesStream;
-
-  @override
-  void initState() {
-    super.initState();
-    _sourcesStream = widget.database.watchSourcesForEpisode(widget.episode.id);
-  }
-
-  @override
-  void didUpdateWidget(covariant _EpisodeCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.episode.id != widget.episode.id ||
-        oldWidget.database != widget.database) {
-      _sourcesStream = widget.database.watchSourcesForEpisode(
-        widget.episode.id,
-      );
+  PlaybackResolution get _resolution {
+    switch (episode.availability) {
+      case AvailabilityStatus.availableLocally:
+        return const PlaybackResolution(action: PlaybackAction.playOffline);
+      case AvailabilityStatus.availableOnRemovableStorage:
+      case AvailabilityStatus.availableOnMultipleSources:
+        return const PlaybackResolution(action: PlaybackAction.play);
+      case AvailabilityStatus.unavailable:
+        return const PlaybackResolution(action: PlaybackAction.connectDisk);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<MediaSource>>(
-      stream: _sourcesStream,
-      builder: (context, sourcesSnapshot) {
-        final sources = sourcesSnapshot.data ?? [];
+    final resolution = _resolution;
+    final isLocal = episode.availability == AvailabilityStatus.availableLocally;
+    final isExternal =
+        episode.availability ==
+            AvailabilityStatus.availableOnRemovableStorage ||
+        episode.availability == AvailabilityStatus.availableOnMultipleSources;
 
-        final checkSources = sources.map((s) {
-          final storage = widget.storageMap[s.storageId];
-          return SourceCheckInfo(
-            sourceId: s.id,
-            sourceType: s.sourceType,
-            storageId: s.storageId,
-            storageName: storage?.name ?? 'Storage',
-            isSourceAvailable: s.available,
-            isStorageConnected: storage?.available ?? true,
-          );
-        }).toList();
-
-        final resolution = widget.resolver.resolve(checkSources);
-        final hasLocalCopy = sources.any((s) => s.sourceType == 'localDevice');
-        final primaryRemovable = sources.cast<MediaSource?>().firstWhere(
-          (s) => s?.sourceType == 'removableStorage' && s!.available,
-          orElse: () => null,
-        );
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: CinemaColors.ofCard(context),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: CinemaColors.ofBorderSubtle(context)),
-          ),
-          child: Column(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: CinemaColors.ofCard(context),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: CinemaColors.ofBorderSubtle(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Episode thumbnail / still image (16:9 ratio)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: SizedBox(
+              // Episode thumbnail / still image (16:9 ratio)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  width: 124,
+                  height: 70,
+                  child: CinemaPosterImage(
+                    imagePath: episode.stillPath,
+                    fallbackWidget: Container(
                       width: 124,
                       height: 70,
-                      child: CinemaPosterImage(
-                        imagePath: widget.episode.stillPath,
-                        fallbackWidget: Container(
-                          width: 124,
-                          height: 70,
-                          decoration: BoxDecoration(
-                            color: CinemaColors.ofSurface(context),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: CinemaColors.ofBorderSubtle(context),
-                            ),
-                          ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Icon(
-                                Icons.movie_outlined,
-                                color: CinemaColors.ofTextMuted(
-                                  context,
-                                ).withValues(alpha: 0.5),
-                                size: 28,
-                              ),
-                              Positioned(
-                                bottom: 4,
-                                right: 6,
-                                child: Text(
-                                  'EP ${widget.episode.episodeNumber}',
-                                  style: TextStyle(
-                                    color: CinemaColors.ofTextMuted(context),
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                      decoration: BoxDecoration(
+                        color: CinemaColors.ofSurface(context),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: CinemaColors.ofBorderSubtle(context),
                         ),
-                        fallbackIcon: Icons.tv,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-
-                  // Episode Title & Number
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              'Episode ${widget.episode.episodeNumber}',
-                              style: const TextStyle(
-                                color: CinemaColors.amber,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.movie_outlined,
+                            color: CinemaColors.ofTextMuted(context)
+                                .withValues(alpha: 0.5),
+                            size: 28,
+                          ),
+                          Positioned(
+                            bottom: 4,
+                            right: 6,
+                            child: Text(
+                              'EP ${episode.episodeNumber}',
+                              style: TextStyle(
+                                color: CinemaColors.ofTextMuted(context),
+                                fontSize: 9,
                                 fontWeight: FontWeight.w700,
-                                fontSize: 12,
                                 letterSpacing: 0.5,
                               ),
                             ),
-                            if (widget.episode.runtime != null) ...[
-                              const SizedBox(width: 8),
-                              Text(
-                                '· ${Formatters.formatRuntime(widget.episode.runtime)}',
-                                style: TextStyle(
-                                  color: CinemaColors.ofTextSecondary(context),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          widget.episode.name ??
-                              'Episode ${widget.episode.episodeNumber}',
-                          style: TextStyle(
-                            color: CinemaColors.ofTextPrimary(context),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-
-                  // Watched Toggle
-                  IconButton(
-                    icon: Icon(
-                      widget.episode.watchState == 'WATCHED'
-                          ? Icons.check_circle
-                          : Icons.check_circle_outline,
-                      color: widget.episode.watchState == 'WATCHED'
-                          ? CinemaColors.amber
-                          : CinemaColors.ofTextMuted(context),
-                      size: 20,
-                    ),
-                    tooltip: widget.episode.watchState == 'WATCHED'
-                        ? 'Mark Unwatched'
-                        : 'Mark Watched',
-                    onPressed: () {
-                      widget.database.setEpisodeWatchState(
-                        widget.episode.id,
-                        widget.episode.watchState == 'WATCHED'
-                            ? 'UNWATCHED'
-                            : 'WATCHED',
-                      );
-                    },
-                  ),
-                ],
-              ),
-
-              if (widget.episode.overview != null &&
-                  widget.episode.overview!.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  widget.episode.overview!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: CinemaColors.ofTextSecondary(context),
-                    fontSize: 13,
-                    height: 1.4,
+                    fallbackIcon: Icons.tv,
                   ),
                 ),
-              ],
-              const SizedBox(height: 12),
+              ),
+              const SizedBox(width: 16),
 
-              // Bottom Actions Row: Play/Connect + Download button
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  AvailabilityActionButton(
-                    resolution: resolution,
-                    isCompact: true,
-                    onPlay: () => widget.onPlay(resolution),
-                    onConnectDisk: () =>
-                        widget.onConnectDisk(resolution.storageName),
-                  ),
-
-                  if (!hasLocalCopy && primaryRemovable != null)
-                    OutlinedButton.icon(
-                      onPressed: () => widget.onDownload(primaryRemovable),
-                      icon: const Icon(Icons.download_rounded, size: 14),
-                      label: const Text(
-                        'DOWNLOAD',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: CinemaColors.amber,
-                        side: const BorderSide(color: CinemaColors.amberSubtle),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    )
-                  else if (hasLocalCopy)
-                    const Row(
-                      mainAxisSize: MainAxisSize.min,
+              // Episode Title & Number
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Icon(
-                          Icons.offline_pin,
-                          color: CinemaColors.amber,
-                          size: 14,
-                        ),
-                        SizedBox(width: 4),
                         Text(
-                          'OFFLINE',
-                          style: TextStyle(
+                          'Episode ${episode.episodeNumber}',
+                          style: const TextStyle(
                             color: CinemaColors.amber,
-                            fontSize: 11,
                             fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            letterSpacing: 0.5,
                           ),
                         ),
+                        if (episode.runtime != null) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '· ${Formatters.formatRuntime(episode.runtime)}',
+                            style: TextStyle(
+                              color: CinemaColors.ofTextSecondary(context),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                ],
+                    const SizedBox(height: 3),
+                    Text(
+                      episode.name ?? 'Episode ${episode.episodeNumber}',
+                      style: TextStyle(
+                        color: CinemaColors.ofTextPrimary(context),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Watched Toggle
+              IconButton(
+                icon: Icon(
+                  episode.watchState == WatchState.watched
+                      ? Icons.check_circle
+                      : Icons.check_circle_outline,
+                  color: episode.watchState == WatchState.watched
+                      ? CinemaColors.amber
+                      : CinemaColors.ofTextMuted(context),
+                  size: 20,
+                ),
+                tooltip: episode.watchState == WatchState.watched
+                    ? 'Mark Unwatched'
+                    : 'Mark Watched',
+                onPressed: () {
+                  repository.setEpisodeWatchState(
+                    episode.id,
+                    episode.watchState == WatchState.watched
+                        ? WatchState.unwatched
+                        : WatchState.watched,
+                  );
+                },
               ),
             ],
           ),
-        );
-      },
+
+          if (episode.overview != null && episode.overview!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              episode.overview!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: CinemaColors.ofTextSecondary(context),
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+
+          // Bottom Actions Row: Play/Connect + Download button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              AvailabilityActionButton(
+                resolution: resolution,
+                isCompact: true,
+                onPlay: onPlay,
+                onConnectDisk: () => onConnectDisk(null),
+              ),
+
+              if (!isLocal && isExternal)
+                OutlinedButton.icon(
+                  onPressed: onDownload,
+                  icon: const Icon(Icons.download_rounded, size: 14),
+                  label: const Text('DOWNLOAD', style: TextStyle(fontSize: 11)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: CinemaColors.amber,
+                    side: const BorderSide(color: CinemaColors.amberSubtle),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                )
+              else if (isLocal)
+                const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.offline_pin,
+                      color: CinemaColors.amber,
+                      size: 14,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'OFFLINE',
+                      style: TextStyle(
+                        color: CinemaColors.amber,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
