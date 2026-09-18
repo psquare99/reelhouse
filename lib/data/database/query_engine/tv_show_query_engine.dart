@@ -152,17 +152,17 @@ class TvShowQueryEngine {
         switch (state) {
           case WatchState.unwatched:
             stateBranches.add(
-              '(NOT EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id) OR NOT EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND (e2.watch_state = \'WATCHED\' OR e2.watch_state = \'IN_PROGRESS\')))',
+              '(NOT EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND s2.season_number >= 0) OR NOT EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND s2.season_number >= 0 AND (e2.watch_state = \'WATCHED\' OR e2.watch_state = \'IN_PROGRESS\')))',
             );
             break;
           case WatchState.watched:
             stateBranches.add(
-              '(EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id) AND NOT EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND e2.watch_state != \'WATCHED\'))',
+              '(EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND s2.season_number >= 0) AND NOT EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND s2.season_number >= 0 AND e2.watch_state != \'WATCHED\'))',
             );
             break;
           case WatchState.inProgress:
             stateBranches.add(
-              '(EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND (e2.watch_state = \'WATCHED\' OR e2.watch_state = \'IN_PROGRESS\')) AND EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND e2.watch_state != \'WATCHED\'))',
+              '(EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND s2.season_number >= 0 AND (e2.watch_state = \'WATCHED\' OR e2.watch_state = \'IN_PROGRESS\')) AND EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id WHERE s2.show_id = t.id AND s2.season_number >= 0 AND e2.watch_state != \'WATCHED\'))',
             );
             break;
         }
@@ -310,11 +310,11 @@ SELECT
   t.identification_status,
   t.created_at,
   t.updated_at,
-  COUNT(DISTINCT s.id) AS total_seasons,
-  COUNT(DISTINCT e.id) AS total_episodes,
-  COUNT(DISTINCT CASE WHEN ms.available = 1 AND (ms.source_type = 'localDevice' OR st.available = 1) THEN e.id END) AS available_episodes,
-  COUNT(DISTINCT CASE WHEN e.watch_state = 'WATCHED' THEN e.id END) AS watched_episodes,
-  COUNT(DISTINCT CASE WHEN e.watch_state = 'IN_PROGRESS' THEN e.id END) AS in_progress_episodes,
+  COUNT(DISTINCT CASE WHEN s.season_number >= 0 THEN s.id END) AS total_seasons,
+  COUNT(DISTINCT CASE WHEN s.season_number >= 0 THEN e.id END) AS total_episodes,
+  COUNT(DISTINCT CASE WHEN s.season_number >= 0 AND ms.available = 1 AND (ms.source_type = 'localDevice' OR st.available = 1) THEN e.id END) AS available_episodes,
+  COUNT(DISTINCT CASE WHEN s.season_number >= 0 AND e.watch_state = 'WATCHED' THEN e.id END) AS watched_episodes,
+  COUNT(DISTINCT CASE WHEN s.season_number >= 0 AND e.watch_state = 'IN_PROGRESS' THEN e.id END) AS in_progress_episodes,
   MAX(CASE WHEN ms.source_type = 'localDevice' AND ms.available = 1 THEN 1 ELSE 0 END) AS has_local,
   MAX(CASE WHEN ms.source_type = 'removableStorage' AND ms.available = 1 AND st.available = 1 THEN 1 ELSE 0 END) AS has_removable
 FROM tv_shows t
@@ -343,7 +343,7 @@ $paginationSql
       case TvShowSortField.firstAirDate:
         return 't.first_air_date';
       case TvShowSortField.lastAirDate:
-        return '(SELECT MAX(s2.air_date) FROM seasons s2 WHERE s2.show_id = t.id)';
+        return '(SELECT MAX(s2.air_date) FROM seasons s2 WHERE s2.show_id = t.id AND s2.season_number >= 0)';
       case TvShowSortField.rating:
         return 't.rating';
       case TvShowSortField.createdAt:
@@ -353,9 +353,9 @@ $paginationSql
       case TvShowSortField.watchState:
         return '''
 CASE 
-  WHEN COUNT(DISTINCT e.id) = 0 THEN 0
-  WHEN COUNT(DISTINCT CASE WHEN e.watch_state = 'WATCHED' THEN e.id END) = COUNT(DISTINCT e.id) THEN 2
-  WHEN COUNT(DISTINCT CASE WHEN e.watch_state IN ('WATCHED', 'IN_PROGRESS') THEN e.id END) > 0 THEN 1
+  WHEN COUNT(DISTINCT CASE WHEN s.season_number >= 0 THEN e.id END) = 0 THEN 0
+  WHEN COUNT(DISTINCT CASE WHEN s.season_number >= 0 AND e.watch_state = 'WATCHED' THEN e.id END) = COUNT(DISTINCT CASE WHEN s.season_number >= 0 THEN e.id END) THEN 2
+  WHEN COUNT(DISTINCT CASE WHEN s.season_number >= 0 AND e.watch_state IN ('WATCHED', 'IN_PROGRESS') THEN e.id END) > 0 THEN 1
   ELSE 0
 END''';
     }

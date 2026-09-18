@@ -630,6 +630,96 @@ void main() {
       expect(unwatchedResult.items.first.id, equals('tv-dark'));
     });
 
+    test('queryTvShows ignores extras (season_number < 0) for watch state aggregation and episode counts', () async {
+      final now = DateTime(2026, 1, 1);
+
+      // TV Show: 1 regular season with 1 WATCHED episode, and 1 Extras season (seasonNumber: -1) with 1 UNWATCHED episode
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-show-with-extras',
+              detectedTitle: 'Show With Extras',
+              title: const drift.Value('Show With Extras'),
+              firstAirDate: drift.Value(DateTime(2020, 1, 1)),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.seasons)
+          .insert(
+            SeasonsCompanion.insert(
+              id: 's-swe-1',
+              showId: 'tv-show-with-extras',
+              seasonNumber: 1,
+            ),
+          );
+      await db
+          .into(db.episodes)
+          .insert(
+            EpisodesCompanion.insert(
+              id: 'ep-swe-1',
+              seasonId: 's-swe-1',
+              episodeNumber: 1,
+              watchState: const drift.Value('WATCHED'),
+            ),
+          );
+      // Extras season (-1)
+      await db
+          .into(db.seasons)
+          .insert(
+            SeasonsCompanion.insert(
+              id: 's-swe-extras',
+              showId: 'tv-show-with-extras',
+              seasonNumber: -1,
+            ),
+          );
+      await db
+          .into(db.episodes)
+          .insert(
+            EpisodesCompanion.insert(
+              id: 'ep-swe-extra-1',
+              seasonId: 's-swe-extras',
+              episodeNumber: 1,
+              watchState: const drift.Value('UNWATCHED'),
+            ),
+          );
+
+      final result = await db.queryTvShows(
+        const TvShowQuery(
+          filter: TvShowFilter(id: 'tv-show-with-extras'),
+        ),
+      );
+
+      expect(result.totalCount, equals(1));
+      final item = result.items.first;
+      expect(item.totalSeasons, equals(1)); // Only season 1, not -1
+      expect(item.totalEpisodes, equals(1)); // Only episode 1, not extra
+      expect(item.derivedWatchState, equals(WatchState.watched)); // Derived as watched because all regular episodes are watched
+
+      // Verify watch state filter
+      final watchedFilterResult = await db.queryTvShows(
+        const TvShowQuery(
+          filter: TvShowFilter(
+            id: 'tv-show-with-extras',
+            watchStates: {WatchState.watched},
+          ),
+        ),
+      );
+      expect(watchedFilterResult.totalCount, equals(1));
+
+      final unwatchedFilterResult = await db.queryTvShows(
+        const TvShowQuery(
+          filter: TvShowFilter(
+            id: 'tv-show-with-extras',
+            watchStates: {WatchState.unwatched},
+          ),
+        ),
+      );
+      expect(unwatchedFilterResult.totalCount, equals(0));
+    });
+
     test('queryTvShows filtering by premiere year range', () async {
       final now = DateTime(2026, 1, 1);
 
