@@ -363,6 +363,64 @@ void main() {
       expect(result.items.first.id, equals('m-ironman'));
     });
 
+    test(
+      'queryMovies filtering by genre and TMDB franchise collection',
+      () async {
+        final now = DateTime(2026, 1, 1);
+
+        await db
+            .into(db.movies)
+            .insert(
+              MoviesCompanion.insert(
+                id: 'm-sw4',
+                detectedTitle: 'Star Wars A New Hope',
+                title: const drift.Value('Star Wars: A New Hope'),
+                genres: const drift.Value('Action, Adventure, Science Fiction'),
+                tmdbCollectionId: const drift.Value(10),
+                tmdbCollectionName: const drift.Value('Star Wars Collection'),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+
+        await db
+            .into(db.movies)
+            .insert(
+              MoviesCompanion.insert(
+                id: 'm-godfather',
+                detectedTitle: 'The Godfather',
+                title: const drift.Value('The Godfather'),
+                genres: const drift.Value('Crime, Drama'),
+                tmdbCollectionId: const drift.Value(230),
+                tmdbCollectionName: const drift.Value(
+                  'The Godfather Collection',
+                ),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+
+        // Filter by genre 'Science Fiction'
+        final sciFiResult = await db.queryMovies(
+          const MovieQuery(filter: MovieFilter(genre: 'Science Fiction')),
+        );
+        expect(sciFiResult.totalCount, equals(1));
+        expect(sciFiResult.items.first.id, equals('m-sw4'));
+        expect(sciFiResult.items.first.genres, contains('Science Fiction'));
+
+        // Filter by tmdbCollectionId 10
+        final swResult = await db.queryMovies(
+          const MovieQuery(filter: MovieFilter(tmdbCollectionId: 10)),
+        );
+        expect(swResult.totalCount, equals(1));
+        expect(swResult.items.first.id, equals('m-sw4'));
+        expect(
+          swResult.items.first.tmdbCollectionName,
+          equals('Star Wars Collection'),
+        );
+      },
+    );
+
     test('queryMovies search (title mode and all mode)', () async {
       final now = DateTime(2026, 1, 1);
 
@@ -607,6 +665,48 @@ void main() {
       );
       expect(result.totalCount, equals(1));
       expect(result.items.first.id, equals('tv-new'));
+    });
+
+    test('queryTvShows filtering by genre', () async {
+      final now = DateTime(2026, 1, 1);
+
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-sci',
+              detectedTitle: 'Severance',
+              title: const drift.Value('Severance'),
+              genres: const drift.Value('Drama, Mystery, Science Fiction'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-com',
+              detectedTitle: 'Ted Lasso',
+              title: const drift.Value('Ted Lasso'),
+              genres: const drift.Value('Comedy, Drama'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      final mysteryResult = await db.queryTvShows(
+        const TvShowQuery(filter: TvShowFilter(genre: 'Mystery')),
+      );
+      expect(mysteryResult.totalCount, equals(1));
+      expect(mysteryResult.items.first.id, equals('tv-sci'));
+      expect(mysteryResult.items.first.genres, contains('Mystery'));
+
+      final comedyResult = await db.queryTvShows(
+        const TvShowQuery(filter: TvShowFilter(genre: 'Comedy')),
+      );
+      expect(comedyResult.totalCount, equals(1));
+      expect(comedyResult.items.first.id, equals('tv-com'));
     });
   });
 

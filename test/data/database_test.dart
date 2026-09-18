@@ -473,9 +473,9 @@ void main() {
     });
   });
 
-  group('Schema Version 4 & Canonical Media Identity', () {
-    test('current schema version is 4', () {
-      expect(db.schemaVersion, 4);
+  group('Schema Version 5 & Canonical Media Identity & Curation', () {
+    test('current schema version is 5', () {
+      expect(db.schemaVersion, 5);
     });
 
     test('supports movie and TV show with NULL canonical title (unidentified item)', () async {
@@ -759,6 +759,74 @@ void main() {
       expect(sources.first.storageId, 'storage-ext');
 
       await migratedDb.close();
+    });
+
+    test('System Curation: discovered genres and franchises queries', () async {
+      final now = DateTime.now();
+
+      // Movie 1: Sci-Fi, Action, belongs to Star Wars collection
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-sw4',
+              detectedTitle: 'Star Wars A New Hope',
+              title: const drift.Value('Star Wars: A New Hope'),
+              year: const drift.Value(1977),
+              genres: const drift.Value('Action, Adventure, Science Fiction'),
+              tmdbCollectionId: const drift.Value(10),
+              tmdbCollectionName: const drift.Value('Star Wars Collection'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Movie 2: Sci-Fi, Adventure, belongs to Star Wars collection
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-sw5',
+              detectedTitle: 'Star Wars Empire Strikes Back',
+              title: const drift.Value('The Empire Strikes Back'),
+              year: const drift.Value(1980),
+              genres: const drift.Value('Action, Adventure, Science Fiction'),
+              tmdbCollectionId: const drift.Value(10),
+              tmdbCollectionName: const drift.Value('Star Wars Collection'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // TV Show: Sci-Fi, Drama
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-andor',
+              detectedTitle: 'Andor',
+              title: const drift.Value('Andor'),
+              genres: const drift.Value('Drama, Science Fiction'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // 1. Test getDiscoveredGenres
+      final genres = await db.getDiscoveredGenres();
+      expect(
+        genres,
+        containsAll(['Action', 'Adventure', 'Drama', 'Science Fiction']),
+      );
+      // Verify sorted alphabetically
+      expect(genres, ['Action', 'Adventure', 'Drama', 'Science Fiction']);
+
+      // 2. Test getDiscoveredFranchises
+      final franchises = await db.getDiscoveredFranchises();
+      expect(franchises.length, 1);
+      expect(franchises.first.id, 10);
+      expect(franchises.first.name, 'Star Wars Collection');
+      expect(franchises.first.movieCount, 2);
     });
   });
 }

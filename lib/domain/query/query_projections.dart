@@ -25,6 +25,9 @@ class MovieLibraryItem {
   final IdentificationStatus identificationStatus;
   final AvailabilityStatus availability;
   final int availableSourceCount;
+  final List<String> genres;
+  final int? tmdbCollectionId;
+  final String? tmdbCollectionName;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -47,6 +50,9 @@ class MovieLibraryItem {
     this.identificationStatus = IdentificationStatus.pending,
     this.availability = AvailabilityStatus.unavailable,
     this.availableSourceCount = 0,
+    this.genres = const [],
+    this.tmdbCollectionId,
+    this.tmdbCollectionName,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -83,11 +89,13 @@ class MovieLibraryItem {
           identificationStatus == other.identificationStatus &&
           availability == other.availability &&
           availableSourceCount == other.availableSourceCount &&
+          tmdbCollectionId == other.tmdbCollectionId &&
+          tmdbCollectionName == other.tmdbCollectionName &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt;
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     title,
     originalTitle,
@@ -106,9 +114,11 @@ class MovieLibraryItem {
     identificationStatus,
     availability,
     availableSourceCount,
+    tmdbCollectionId,
+    tmdbCollectionName,
     createdAt,
     updatedAt,
-  );
+  ]);
 
   @override
   String toString() =>
@@ -137,6 +147,7 @@ class TvShowLibraryItem {
   final int totalSeasons;
   final int totalEpisodes;
   final int availableEpisodes;
+  final List<String> genres;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -158,6 +169,7 @@ class TvShowLibraryItem {
     this.totalSeasons = 0,
     this.totalEpisodes = 0,
     this.availableEpisodes = 0,
+    this.genres = const [],
     required this.createdAt,
     required this.updatedAt,
   });
@@ -221,7 +233,52 @@ class TvShowLibraryItem {
 
   @override
   String toString() =>
-      'TvShowLibraryItem($id, "$displayTitle", seasons: $totalSeasons, eps: $totalEpisodes, avail: $availability)';
+      'TvShowLibraryItem($id, "$displayTitle", year: $displayYear, avail: $availability)';
+}
+
+/// Canonical provider-derived grouping of related movies (e.g. Star Wars, Harry Potter).
+class FranchiseLibraryItem {
+  final int id;
+  final String name;
+  final String? posterPath;
+  final String? backdropPath;
+  final int movieCount;
+  final int availableMovieCount;
+
+  const FranchiseLibraryItem({
+    required this.id,
+    required this.name,
+    this.posterPath,
+    this.backdropPath,
+    required this.movieCount,
+    this.availableMovieCount = 0,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FranchiseLibraryItem &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          posterPath == other.posterPath &&
+          backdropPath == other.backdropPath &&
+          movieCount == other.movieCount &&
+          availableMovieCount == other.availableMovieCount;
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    posterPath,
+    backdropPath,
+    movieCount,
+    availableMovieCount,
+  );
+
+  @override
+  String toString() =>
+      'FranchiseLibraryItem($id, "$name", movies: $movieCount, available: $availableMovieCount)';
 }
 
 /// Lightweight read projection of an Episode optimized for season episode lists.

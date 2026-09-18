@@ -19,7 +19,7 @@ void main() {
   });
 
   testWidgets(
-    'CollectionsScreen displays empty state and opens creation dialog',
+    'CollectionsScreen displays System Curation (Genres) and Personal Collections with creation dialog',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -30,11 +30,16 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('No curated collections yet.'), findsOneWidget);
-      expect(find.text('Create Collection'), findsOneWidget);
+      expect(find.text('SYSTEM CURATION — GENRES'), findsOneWidget);
+      expect(find.text('Action'), findsOneWidget);
+      expect(find.text('Drama'), findsOneWidget);
+      expect(find.text('YOUR COLLECTIONS'), findsOneWidget);
+      expect(find.text('No personal collections yet.'), findsOneWidget);
 
       // Tap create button
-      await tester.tap(find.text('Create Collection'));
+      final createButton = find.widgetWithText(ElevatedButton, 'Create');
+      expect(createButton, findsOneWidget);
+      await tester.tap(createButton);
       await tester.pumpAndSettle();
 
       expect(find.text('New Curated Collection'), findsOneWidget);

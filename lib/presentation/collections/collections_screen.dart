@@ -9,9 +9,36 @@ import '../../domain/query/query_projections.dart';
 import '../../domain/repository/library_repository.dart';
 import '../widgets/cinema_error_state.dart';
 import '../widgets/cinema_loading_skeleton.dart';
+import '../widgets/cinema_poster_card.dart';
 import 'collection_detail_screen.dart';
+import 'system_curation_grid_screen.dart';
 
-/// Screen displaying all user-curated cinema collections.
+/// Canonical genres defined by TMDB and standard cinema taxonomy.
+const List<String> kCanonicalGenres = [
+  'Action',
+  'Adventure',
+  'Animation',
+  'Comedy',
+  'Crime',
+  'Documentary',
+  'Drama',
+  'Family',
+  'Fantasy',
+  'History',
+  'Horror',
+  'Music',
+  'Mystery',
+  'Romance',
+  'Science Fiction',
+  'TV Movie',
+  'Thriller',
+  'War',
+  'Western',
+];
+
+/// Redesigned Collections / Curation Screen featuring:
+/// 1. System Curation — Dynamic query-derived views over genres & canonical TMDB franchises.
+/// 2. Personal Collections — User-curated custom collections & lists.
 class CollectionsScreen extends StatelessWidget {
   final LibraryRepository repository;
   final AppDatabase? database;
@@ -57,7 +84,7 @@ class CollectionsScreen extends StatelessWidget {
               style: TextStyle(color: tokens.textPrimary),
               decoration: const InputDecoration(
                 labelText: 'Collection Name',
-                hintText: 'e.g. Christopher Nolan, Marvel Studios',
+                hintText: 'e.g. Christopher Nolan, Comfort Movies',
               ),
             ),
             const SizedBox(height: 12),
@@ -106,164 +133,403 @@ class CollectionsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: tokens.background,
       appBar: AppBar(
-        title: const Text('Collections'),
+        title: const Text('Curation & Collections'),
         actions: [
           IconButton(
-            icon: Icon(Icons.add, color: tokens.accent),
-            tooltip: 'Create Collection',
+            icon: Icon(Icons.add_rounded, color: tokens.accent),
+            tooltip: 'New Collection',
             onPressed: () => _showCreateCollectionDialog(context),
           ),
         ],
       ),
-      body: StreamBuilder<LibraryResult<CollectionLibraryItem>>(
-        stream: repository.watchCollections(CollectionQuery.all()),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return CinemaErrorState(
-              title: 'Unable to Load Collections',
-              message: snapshot.error.toString(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Section: System Curation (Genres)
+            _buildGenresSection(context, tokens),
+            const SizedBox(height: 36),
+
+            // 2. Section: Canonical Franchises / Collections (TMDB-derived)
+            _buildFranchisesSection(context, tokens),
+            const SizedBox(height: 36),
+
+            // 3. Section: Your Collections (Personal User-created lists)
+            _buildPersonalCollectionsSection(context, tokens),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(
+    BuildContext context,
+    CinemaThemeData tokens, {
+    required String title,
+    required String subtitle,
+    Widget? trailing,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: CinemaTheme.eyebrow(context, fontSize: 13)),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(color: tokens.textSecondary, fontSize: 13),
+            ),
+          ],
+        ),
+        ?trailing,
+      ],
+    );
+  }
+
+  Widget _buildGenresSection(BuildContext context, CinemaThemeData tokens) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          context,
+          tokens,
+          title: 'SYSTEM CURATION — GENRES',
+          subtitle: 'Dynamic metadata-derived catalogue views',
+        ),
+        const SizedBox(height: 16),
+        StreamBuilder<List<String>>(
+          stream: repository.watchDiscoveredGenres(),
+          builder: (context, snapshot) {
+            final discoveredSet = (snapshot.data ?? []).toSet();
+
+            // Put discovered genres first, then remaining canonical genres
+            final sortedGenres = List<String>.from(kCanonicalGenres);
+            sortedGenres.sort((a, b) {
+              final aHas = discoveredSet.contains(a);
+              final bHas = discoveredSet.contains(b);
+              if (aHas && !bHas) return -1;
+              if (!aHas && bHas) return 1;
+              return a.compareTo(b);
+            });
+
+            return Wrap(
+              spacing: 8,
+              runSpacing: 10,
+              children: sortedGenres.map((genre) {
+                final hasMedia = discoveredSet.contains(genre);
+
+                return ActionChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasMedia) ...[
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: tokens.accent,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Text(genre),
+                    ],
+                  ),
+                  backgroundColor: hasMedia ? tokens.surface2 : tokens.surface1,
+                  side: BorderSide(
+                    color: hasMedia ? tokens.borderStrong : tokens.border,
+                    width: 1,
+                  ),
+                  labelStyle: TextStyle(
+                    color: hasMedia ? tokens.textPrimary : tokens.textSecondary,
+                    fontSize: 13,
+                    fontWeight: hasMedia ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SystemCurationGridScreen(
+                          title: genre,
+                          genre: genre,
+                          repository: repository,
+                          database: database,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }).toList(),
             );
-          }
+          },
+        ),
+      ],
+    );
+  }
 
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              !snapshot.hasData) {
-            return const CinemaListSkeleton();
-          }
+  Widget _buildFranchisesSection(BuildContext context, CinemaThemeData tokens) {
+    return StreamBuilder<List<FranchiseLibraryItem>>(
+      stream: repository.watchFranchises(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const SizedBox.shrink();
+        }
 
-          final collections = snapshot.data?.items ?? [];
-          if (collections.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.collections_bookmark_outlined,
-                      size: 56,
-                      color: tokens.textMuted,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No curated collections yet.',
-                      style: TextStyle(
-                        color: tokens.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Curated collections group related sagas, directors, and custom film lists without altering folder structures.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: tokens.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: () => _showCreateCollectionDialog(context),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Create Collection'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
+        final franchises = snapshot.data ?? [];
+        if (franchises.isEmpty) {
+          return const SizedBox.shrink();
+        }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(24),
-            itemCount: collections.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 14),
-            itemBuilder: (context, index) {
-              final col = collections[index];
-              return InkWell(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => CollectionDetailScreen(
-                        collectionId: col.id,
-                        repository: repository,
-                        database: database,
-                      ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              context,
+              tokens,
+              title: 'FRANCHISES & SAGAS',
+              subtitle:
+                  'Canonical provider groupings discovered in your library',
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 240,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: franchises.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 14),
+                itemBuilder: (context, index) {
+                  final franchise = franchises[index];
+                  return SizedBox(
+                    width: 140,
+                    child: CinemaPosterCard(
+                      title: franchise.name,
+                      subtitle:
+                          '${franchise.movieCount} ${franchise.movieCount == 1 ? 'Film' : 'Films'}',
+                      posterPath: franchise.posterPath,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => SystemCurationGridScreen(
+                              title: franchise.name,
+                              tmdbCollectionId: franchise.id,
+                              tmdbCollectionName: franchise.name,
+                              repository: repository,
+                              database: database,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   );
                 },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: tokens.surface1,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: tokens.border, width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: tokens.accent.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: tokens.accent.withValues(alpha: 0.3),
-                            width: 1,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPersonalCollectionsSection(
+    BuildContext context,
+    CinemaThemeData tokens,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          context,
+          tokens,
+          title: 'YOUR COLLECTIONS',
+          subtitle: 'Custom lists curated by you',
+          trailing: TextButton.icon(
+            onPressed: () => _showCreateCollectionDialog(context),
+            icon: Icon(Icons.add, size: 16, color: tokens.accent),
+            label: Text(
+              'New Collection',
+              style: TextStyle(
+                color: tokens.accent,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        StreamBuilder<LibraryResult<CollectionLibraryItem>>(
+          stream: repository.watchCollections(CollectionQuery.all()),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return CinemaErrorState(
+                title: 'Unable to Load Collections',
+                message: snapshot.error.toString(),
+              );
+            }
+
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                !snapshot.hasData) {
+              return const CinemaListSkeleton();
+            }
+
+            final collections = snapshot.data?.items ?? [];
+            if (collections.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: tokens.surface1,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: tokens.border, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: tokens.surface2,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.collections_bookmark_outlined,
+                        color: tokens.textMuted,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'No personal collections yet.',
+                            style: TextStyle(
+                              color: tokens.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                        child: Icon(
-                          Icons.collections_bookmark,
-                          color: tokens.accent,
-                          size: 26,
+                          const SizedBox(height: 2),
+                          Text(
+                            'Create custom lists for director retrospectives, weekend marathons, or thematic film collections.',
+                            style: TextStyle(
+                              color: tokens.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: () => _showCreateCollectionDialog(context),
+                      child: const Text('Create'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: collections.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final col = collections[index];
+                return InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CollectionDetailScreen(
+                          collectionId: col.id,
+                          repository: repository,
+                          database: database,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              col.name,
-                              style: TextStyle(
-                                color: tokens.textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: tokens.surface1,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: tokens.border, width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: tokens.accent.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: tokens.accent.withValues(alpha: 0.3),
+                              width: 1,
                             ),
-                            if (col.overview != null &&
-                                col.overview!.isNotEmpty) ...[
+                          ),
+                          child: Icon(
+                            Icons.collections_bookmark,
+                            color: tokens.accent,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                col.name,
+                                style: TextStyle(
+                                  color: tokens.textPrimary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (col.overview != null &&
+                                  col.overview!.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  col.overview!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: tokens.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 3),
                               Text(
-                                col.overview!,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                '${col.itemCount} ${col.itemCount == 1 ? 'item' : 'items'}',
                                 style: TextStyle(
-                                  color: tokens.textSecondary,
-                                  fontSize: 13,
+                                  color: tokens.textMuted,
+                                  fontSize: 12,
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 4),
-                            Text(
-                              '${col.itemCount} ${col.itemCount == 1 ? 'item' : 'items'}',
-                              style: TextStyle(
-                                color: tokens.textMuted,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                      Icon(Icons.chevron_right, color: tokens.textSecondary),
-                    ],
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: tokens.textSecondary,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
-          );
-        },
-      ),
+                );
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 }

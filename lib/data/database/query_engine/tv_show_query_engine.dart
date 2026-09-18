@@ -252,6 +252,13 @@ class TvShowQueryEngine {
       }
     }
 
+    // 11. Genre filter
+    if (filter.genre != null && filter.genre!.isNotEmpty) {
+      whereClauses.add('(t.genres LIKE ? OR LOWER(t.genres) LIKE ?)');
+      whereVariables.add(Variable<String>('%${filter.genre}%'));
+      whereVariables.add(Variable<String>('%${filter.genre!.toLowerCase()}%'));
+    }
+
     final whereSql = whereClauses.isNotEmpty
         ? 'WHERE ${whereClauses.join(' AND ')}'
         : '';
@@ -295,6 +302,7 @@ SELECT
   t.backdrop_path,
   t.overview,
   t.rating,
+  t.genres,
   t.is_favorite,
   t.is_watchlist,
   t.identification_status,
@@ -381,6 +389,15 @@ END''';
       availability = AvailabilityStatus.unavailable;
     }
 
+    final rawGenres = row.readNullable<String>('genres');
+    final genresList = rawGenres != null && rawGenres.isNotEmpty
+        ? rawGenres
+              .split(',')
+              .map((g) => g.trim())
+              .where((g) => g.isNotEmpty)
+              .toList()
+        : const <String>[];
+
     return TvShowLibraryItem(
       id: row.read<String>('id'),
       title: row.readNullable<String>('title'),
@@ -391,6 +408,7 @@ END''';
       backdropPath: row.readNullable<String>('backdrop_path'),
       overview: row.readNullable<String>('overview'),
       rating: row.readNullable<double>('rating'),
+      genres: genresList,
       isFavorite: row.read<bool>('is_favorite'),
       isWatchlist: row.read<bool>('is_watchlist'),
       identificationStatus: IdentificationStatus.fromString(

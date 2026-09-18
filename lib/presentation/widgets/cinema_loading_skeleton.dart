@@ -120,6 +120,7 @@ class CinemaGridSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
+      shrinkWrap: true,
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -145,6 +146,7 @@ class CinemaListSkeleton extends StatelessWidget {
     final tokens = CinemaTheme.of(context);
 
     return ListView.separated(
+      shrinkWrap: true,
       padding: const EdgeInsets.all(24),
       physics: const NeverScrollableScrollPhysics(),
       itemCount: itemCount,

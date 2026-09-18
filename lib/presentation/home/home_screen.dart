@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -7,17 +8,20 @@ import '../../data/database/database.dart';
 import '../../domain/query/query.dart';
 import '../../domain/repository/library_repository.dart';
 import '../movies/movie_detail_screen.dart';
+import '../search/cinema_search_results_view.dart';
 import '../tv_shows/tv_show_detail_screen.dart';
 import '../widgets/cinema_error_state.dart';
 import '../widgets/cinema_loading_skeleton.dart';
 import '../widgets/cinema_poster_card.dart';
+import '../widgets/cinema_search_bar.dart';
 
 /// Cinematic Home screen displaying:
 /// 1. Top bar with quiet disk indicator and settings trigger.
-/// 2. Escalated missing storage banner (only when registered drives are missing and not dismissed in session).
-/// 3. ~180-220px Hero section with backdrop scrim, in-progress resume or recently-added fallback.
-/// 4. Dynamic cinema carousels (Continue Watching, Recently Added, conditional Favorites & Watchlist).
-/// 5. Compact Explore Cinema navigation cards with secondary counts.
+/// 2. Prominent contextual search bar across complete library.
+/// 3. Escalated missing storage banner (only when registered drives are missing and not dismissed in session).
+/// 4. ~180-220px Hero section with backdrop scrim, in-progress resume or recently-added fallback.
+/// 5. Dynamic cinema carousels (Continue Watching, Recently Added, conditional Favorites & Watchlist).
+/// 6. Compact Explore Cinema navigation cards with secondary counts.
 class HomeScreen extends StatefulWidget {
   final LibraryRepository repository;
   final AppDatabase database;
@@ -42,10 +46,36 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _dismissedStorageNotice = false;
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounceTimer;
+  String _searchQuery = '';
+  SearchMode _searchMode = SearchMode.all;
+
+  @override
+  void dispose() {
+    _searchDebounceTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String val) {
+    _searchDebounceTimer?.cancel();
+    final query = val.trim();
+    if (query.isEmpty) {
+      setState(() => _searchQuery = '');
+      return;
+    }
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() => _searchQuery = query);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final tokens = CinemaTheme.of(context);
+    final isSearching = _searchQuery.isNotEmpty;
 
     return Scaffold(
       backgroundColor: tokens.background,
@@ -59,56 +89,90 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildTopBar(context, tokens),
               const SizedBox(height: 16),
 
-              // 2. Escalated Missing Disk Banner (Conditional)
-              _buildEscalatedDiskBanner(tokens),
-
-              // 3. Hero Section (~180-220px)
-              _buildHeroSection(context, tokens),
-              const SizedBox(height: 36),
-
-              // 4. In-Progress Movies (Continue Watching)
-              _buildMovieSection(
-                title: 'CONTINUE WATCHING',
-                subtitle: 'Resume playback where you left off',
-                query: MovieQuery.continueWatching(limit: 10),
+              // 2. Global Contextual Search Bar
+              CinemaSearchBar(
+                controller: _searchController,
+                searchMode: _searchMode,
+                hintText:
+                    'Search complete library (Movies, TV Shows, Episodes)...',
+                onSearchModeChanged: (mode) {
+                  setState(() => _searchMode = mode);
+                },
+                onChanged: _onSearchChanged,
+                onClear: () {
+                  _searchDebounceTimer?.cancel();
+                  setState(() => _searchQuery = '');
+                },
               ),
-
-              // 5. In-Progress TV Episodes
-              _buildTvContinueWatchingSection(),
-
-              // 6. Recently Added Movies
-              _buildMovieSection(
-                title: 'RECENTLY ADDED',
-                subtitle: 'Latest acquisitions discovered across your disks',
-                query: MovieQuery.recentlyAdded(limit: 10),
-              ),
-
-              // 7. TV Recently Added Shows
-              _buildTvRecentlyAddedSection(),
-
-              // 8. Favorites (Omitted entirely when empty)
-              _buildMovieSection(
-                title: 'FAVORITES',
-                subtitle: 'Your personal cinema highlights',
-                query: MovieQuery.favorites(),
-                omitIfEmpty: true,
-              ),
-
-              // 9. Watchlist (Omitted entirely when empty)
-              _buildMovieSection(
-                title: 'WATCHLIST',
-                subtitle: 'Titles saved for your next screening',
-                query: MovieQuery.watchlist(),
-                omitIfEmpty: true,
-              ),
-
-              // 10. Compact Explore Cinema Navigation Cards
-              _buildExploreSection(context, tokens),
-              const SizedBox(height: 36),
-
-              // 11. Cinema Principle Footer
-              _buildCinemaFooter(tokens),
               const SizedBox(height: 24),
+
+              if (isSearching) ...[
+                // Live Library Search Results View
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.7,
+                  child: CinemaSearchResultsView(
+                    repository: widget.repository,
+                    database: widget.database,
+                    query: _searchQuery,
+                    searchMode: _searchMode,
+                    onDismiss: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                  ),
+                ),
+              ] else ...[
+                // 3. Escalated Missing Disk Banner (Conditional)
+                _buildEscalatedDiskBanner(tokens),
+
+                // 4. Hero Section (~180-220px)
+                _buildHeroSection(context, tokens),
+                const SizedBox(height: 36),
+
+                // 5. In-Progress Movies (Continue Watching)
+                _buildMovieSection(
+                  title: 'CONTINUE WATCHING',
+                  subtitle: 'Resume playback where you left off',
+                  query: MovieQuery.continueWatching(limit: 10),
+                ),
+
+                // 6. In-Progress TV Episodes
+                _buildTvContinueWatchingSection(),
+
+                // 7. Recently Added Movies
+                _buildMovieSection(
+                  title: 'RECENTLY ADDED',
+                  subtitle: 'Latest acquisitions discovered across your disks',
+                  query: MovieQuery.recentlyAdded(limit: 10),
+                ),
+
+                // 8. TV Recently Added Shows
+                _buildTvRecentlyAddedSection(),
+
+                // 9. Favorites (Omitted entirely when empty)
+                _buildMovieSection(
+                  title: 'FAVORITES',
+                  subtitle: 'Your personal cinema highlights',
+                  query: MovieQuery.favorites(),
+                  omitIfEmpty: true,
+                ),
+
+                // 10. Watchlist (Omitted entirely when empty)
+                _buildMovieSection(
+                  title: 'WATCHLIST',
+                  subtitle: 'Titles saved for your next screening',
+                  query: MovieQuery.watchlist(),
+                  omitIfEmpty: true,
+                ),
+
+                // 11. Compact Explore Cinema Navigation Cards
+                _buildExploreSection(context, tokens),
+                const SizedBox(height: 36),
+
+                // 12. Cinema Principle Footer
+                _buildCinemaFooter(tokens),
+                const SizedBox(height: 24),
+              ],
             ],
           ),
         ),

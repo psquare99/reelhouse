@@ -166,6 +166,15 @@ class MetadataService {
       metadataProvider: 'TMDB',
       providerItemId: tmdbItem.id.toString(),
       metadataUpdatedAt: DateTime.now(),
+      genres: tmdbItem.genres.isNotEmpty ? tmdbItem.genres.join(', ') : null,
+      tmdbCollectionId: tmdbItem.tmdbCollectionId,
+      tmdbCollectionName: tmdbItem.tmdbCollectionName,
+      tmdbCollectionPosterPath: tmdbItem.tmdbCollectionPosterPath != null
+          ? tmdbClient.getPosterUrl(tmdbItem.tmdbCollectionPosterPath)
+          : null,
+      tmdbCollectionBackdropPath: tmdbItem.tmdbCollectionBackdropPath != null
+          ? tmdbClient.getBackdropUrl(tmdbItem.tmdbCollectionBackdropPath)
+          : null,
     );
   }
 
@@ -285,6 +294,7 @@ class MetadataService {
       metadataProvider: 'TMDB',
       providerItemId: tmdbItem.id.toString(),
       metadataUpdatedAt: DateTime.now(),
+      genres: tmdbItem.genres.isNotEmpty ? tmdbItem.genres.join(', ') : null,
     );
 
     // Enrich existing seasons and episodes

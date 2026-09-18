@@ -24,7 +24,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? connect());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -80,6 +80,13 @@ class AppDatabase extends _$AppDatabase {
                 "CASE WHEN tmdb_id IS NOT NULL THEN 'IDENTIFIED' ELSE 'PENDING' END",
               ),
             },
+            newColumns: [
+              movies.genres,
+              movies.tmdbCollectionId,
+              movies.tmdbCollectionName,
+              movies.tmdbCollectionPosterPath,
+              movies.tmdbCollectionBackdropPath,
+            ],
           ),
         );
 
@@ -92,8 +99,16 @@ class AppDatabase extends _$AppDatabase {
                 "CASE WHEN tmdb_id IS NOT NULL THEN 'IDENTIFIED' ELSE 'PENDING' END",
               ),
             },
+            newColumns: [tvShows.genres],
           ),
         );
+      } else if (from < 5) {
+        await m.addColumn(movies, movies.genres);
+        await m.addColumn(movies, movies.tmdbCollectionId);
+        await m.addColumn(movies, movies.tmdbCollectionName);
+        await m.addColumn(movies, movies.tmdbCollectionPosterPath);
+        await m.addColumn(movies, movies.tmdbCollectionBackdropPath);
+        await m.addColumn(tvShows, tvShows.genres);
       }
     },
   );
@@ -337,6 +352,11 @@ class AppDatabase extends _$AppDatabase {
     String? metadataProvider = 'TMDB',
     String? providerItemId,
     DateTime? metadataUpdatedAt,
+    String? genres,
+    int? tmdbCollectionId,
+    String? tmdbCollectionName,
+    String? tmdbCollectionPosterPath,
+    String? tmdbCollectionBackdropPath,
   }) {
     return (update(movies)..where((m) => m.id.equals(movieId))).write(
       MoviesCompanion(
@@ -373,6 +393,19 @@ class AppDatabase extends _$AppDatabase {
         metadataUpdatedAt: metadataUpdatedAt != null
             ? Value(metadataUpdatedAt)
             : Value(DateTime.now()),
+        genres: genres != null ? Value(genres) : const Value.absent(),
+        tmdbCollectionId: tmdbCollectionId != null
+            ? Value(tmdbCollectionId)
+            : const Value.absent(),
+        tmdbCollectionName: tmdbCollectionName != null
+            ? Value(tmdbCollectionName)
+            : const Value.absent(),
+        tmdbCollectionPosterPath: tmdbCollectionPosterPath != null
+            ? Value(tmdbCollectionPosterPath)
+            : const Value.absent(),
+        tmdbCollectionBackdropPath: tmdbCollectionBackdropPath != null
+            ? Value(tmdbCollectionBackdropPath)
+            : const Value.absent(),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -395,6 +428,7 @@ class AppDatabase extends _$AppDatabase {
     String? metadataProvider = 'TMDB',
     String? providerItemId,
     DateTime? metadataUpdatedAt,
+    String? genres,
   }) {
     return (update(tvShows)..where((t) => t.id.equals(showId))).write(
       TvShowsCompanion(
@@ -428,9 +462,126 @@ class AppDatabase extends _$AppDatabase {
         metadataUpdatedAt: metadataUpdatedAt != null
             ? Value(metadataUpdatedAt)
             : Value(DateTime.now()),
+        genres: genres != null ? Value(genres) : const Value.absent(),
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  // --- Milestone 2.2: System Curation & Franchises Queries ---
+
+  /// Stream distinct canonical genres present in the user's library.
+  Stream<List<String>> watchDiscoveredGenres() {
+    return customSelect(
+      '''
+SELECT DISTINCT genres FROM movies WHERE genres IS NOT NULL AND genres != ''
+UNION
+SELECT DISTINCT genres FROM tv_shows WHERE genres IS NOT NULL AND genres != ''
+''',
+      readsFrom: {movies, tvShows},
+    ).watch().map((rows) {
+      final genreSet = <String>{};
+      for (final row in rows) {
+        final raw = row.read<String>('genres');
+        final parts = raw
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty);
+        genreSet.addAll(parts);
+      }
+      final sorted = genreSet.toList()..sort();
+      return sorted;
+    });
+  }
+
+  /// Get distinct canonical genres present in the user's library.
+  Future<List<String>> getDiscoveredGenres() async {
+    final rows = await customSelect(
+      '''
+SELECT DISTINCT genres FROM movies WHERE genres IS NOT NULL AND genres != ''
+UNION
+SELECT DISTINCT genres FROM tv_shows WHERE genres IS NOT NULL AND genres != ''
+''',
+      readsFrom: {movies, tvShows},
+    ).get();
+
+    final genreSet = <String>{};
+    for (final row in rows) {
+      final raw = row.read<String>('genres');
+      final parts = raw
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty);
+      genreSet.addAll(parts);
+    }
+    final sorted = genreSet.toList()..sort();
+    return sorted;
+  }
+
+  /// Stream TMDB collections / franchises grouped across movies in the user's library.
+  Stream<List<FranchiseLibraryItem>> watchDiscoveredFranchises() {
+    return customSelect(
+      '''
+SELECT 
+  m.tmdb_collection_id AS id,
+  m.tmdb_collection_name AS name,
+  MAX(m.tmdb_collection_poster_path) AS poster_path,
+  MAX(m.tmdb_collection_backdrop_path) AS backdrop_path,
+  COUNT(DISTINCT m.id) AS movie_count,
+  COUNT(DISTINCT CASE WHEN ms.available = 1 AND (ms.source_type = 'localDevice' OR st.available = 1) THEN m.id ELSE NULL END) AS available_movie_count
+FROM movies m
+LEFT JOIN media_sources ms ON ms.movie_id = m.id
+LEFT JOIN storages st ON st.id = ms.storage_id
+WHERE m.tmdb_collection_id IS NOT NULL AND m.tmdb_collection_name IS NOT NULL
+GROUP BY m.tmdb_collection_id, m.tmdb_collection_name
+ORDER BY m.tmdb_collection_name ASC
+''',
+      readsFrom: {movies, mediaSources, storages},
+    ).watch().map((rows) {
+      return rows.map((row) {
+        return FranchiseLibraryItem(
+          id: row.read<int>('id'),
+          name: row.read<String>('name'),
+          posterPath: row.readNullable<String>('poster_path'),
+          backdropPath: row.readNullable<String>('backdrop_path'),
+          movieCount: row.read<int>('movie_count'),
+          availableMovieCount: row.read<int>('available_movie_count'),
+        );
+      }).toList();
+    });
+  }
+
+  /// Get TMDB collections / franchises grouped across movies in the user's library.
+  Future<List<FranchiseLibraryItem>> getDiscoveredFranchises() async {
+    final rows = await customSelect(
+      '''
+SELECT 
+  m.tmdb_collection_id AS id,
+  m.tmdb_collection_name AS name,
+  MAX(m.tmdb_collection_poster_path) AS poster_path,
+  MAX(m.tmdb_collection_backdrop_path) AS backdrop_path,
+  COUNT(DISTINCT m.id) AS movie_count,
+  COUNT(DISTINCT CASE WHEN ms.available = 1 AND (ms.source_type = 'localDevice' OR st.available = 1) THEN m.id ELSE NULL END) AS available_movie_count
+FROM movies m
+LEFT JOIN media_sources ms ON ms.movie_id = m.id
+LEFT JOIN storages st ON st.id = ms.storage_id
+WHERE m.tmdb_collection_id IS NOT NULL AND m.tmdb_collection_name IS NOT NULL
+GROUP BY m.tmdb_collection_id, m.tmdb_collection_name
+ORDER BY m.tmdb_collection_name ASC
+''',
+      readsFrom: {movies, mediaSources, storages},
+    ).get();
+
+    return rows.map((row) {
+      return FranchiseLibraryItem(
+        id: row.read<int>('id'),
+        name: row.read<String>('name'),
+        posterPath: row.readNullable<String>('poster_path'),
+        backdropPath: row.readNullable<String>('backdrop_path'),
+        movieCount: row.read<int>('movie_count'),
+        availableMovieCount: row.read<int>('available_movie_count'),
+      );
+    }).toList();
   }
 
   /// Update identification status of a movie.

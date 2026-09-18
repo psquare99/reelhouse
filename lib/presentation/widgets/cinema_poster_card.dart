@@ -16,6 +16,7 @@ class CinemaPosterCard extends StatelessWidget {
   final String? posterPath;
   final AvailabilityStatus? availabilityStatus;
   final bool isFavorite;
+  final bool isWatchlist;
   final String watchState; // 'UNWATCHED' | 'IN_PROGRESS' | 'WATCHED'
   final double? watchProgress; // 0.0 to 1.0 (for in-progress)
   final VoidCallback onTap;
@@ -27,13 +28,15 @@ class CinemaPosterCard extends StatelessWidget {
     this.year,
     this.subtitle,
     this.posterPath,
-    this.availabilityStatus,
+    AvailabilityStatus? availabilityStatus,
+    AvailabilityStatus? availability,
     this.isFavorite = false,
+    this.isWatchlist = false,
     this.watchState = 'UNWATCHED',
     this.watchProgress,
     required this.onTap,
     this.fallbackIcon = Icons.movie_filter,
-  });
+  }) : availabilityStatus = availabilityStatus ?? availability;
 
   @override
   Widget build(BuildContext context) {

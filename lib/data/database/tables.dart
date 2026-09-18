@@ -43,6 +43,12 @@ class Movies extends Table {
       text().nullable()(); // 'TMDB' | 'OMDb' | 'TVmaze'
   TextColumn get providerItemId => text().nullable()();
   DateTimeColumn get metadataUpdatedAt => dateTime().nullable()();
+  TextColumn get genres =>
+      text().nullable()(); // Comma-separated canonical genres
+  IntColumn get tmdbCollectionId => integer().nullable()();
+  TextColumn get tmdbCollectionName => text().nullable()();
+  TextColumn get tmdbCollectionPosterPath => text().nullable()();
+  TextColumn get tmdbCollectionBackdropPath => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -78,6 +84,8 @@ class TvShows extends Table {
   TextColumn get metadataProvider => text().nullable()(); // 'TMDB' | 'TVmaze'
   TextColumn get providerItemId => text().nullable()();
   DateTimeColumn get metadataUpdatedAt => dateTime().nullable()();
+  TextColumn get genres =>
+      text().nullable()(); // Comma-separated canonical genres
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
   BoolColumn get isWatchlist => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime()();

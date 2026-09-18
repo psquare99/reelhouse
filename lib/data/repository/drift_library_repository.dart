@@ -197,6 +197,22 @@ class DriftLibraryRepository implements LibraryRepository {
         .map((res) => res.items.firstOrNull);
   }
 
+  // --- System Curation & Franchises ---
+
+  @override
+  Future<List<FranchiseLibraryItem>> getFranchises() =>
+      db.getDiscoveredFranchises();
+
+  @override
+  Stream<List<FranchiseLibraryItem>> watchFranchises() =>
+      db.watchDiscoveredFranchises();
+
+  @override
+  Future<List<String>> getDiscoveredGenres() => db.getDiscoveredGenres();
+
+  @override
+  Stream<List<String>> watchDiscoveredGenres() => db.watchDiscoveredGenres();
+
   // --- Diagnostics & Counts ---
 
   @override

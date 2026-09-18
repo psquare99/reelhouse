@@ -223,6 +223,26 @@ class MovieQueryEngine {
       }
     }
 
+    // 11. Genre filter
+    if (filter.genre != null && filter.genre!.isNotEmpty) {
+      whereClauses.add('(m.genres LIKE ? OR LOWER(m.genres) LIKE ?)');
+      whereVariables.add(Variable<String>('%${filter.genre}%'));
+      whereVariables.add(Variable<String>('%${filter.genre!.toLowerCase()}%'));
+    }
+
+    // 12. TMDB Collection ID filter
+    if (filter.tmdbCollectionId != null) {
+      whereClauses.add('m.tmdb_collection_id = ?');
+      whereVariables.add(Variable<int>(filter.tmdbCollectionId!));
+    }
+
+    // 13. TMDB Collection Name filter
+    if (filter.tmdbCollectionName != null &&
+        filter.tmdbCollectionName!.isNotEmpty) {
+      whereClauses.add('m.tmdb_collection_name = ?');
+      whereVariables.add(Variable<String>(filter.tmdbCollectionName!));
+    }
+
     final whereSql = whereClauses.isNotEmpty
         ? 'WHERE ${whereClauses.join(' AND ')}'
         : '';
@@ -268,6 +288,9 @@ SELECT
   m.overview,
   m.rating,
   m.runtime,
+  m.genres,
+  m.tmdb_collection_id,
+  m.tmdb_collection_name,
   m.is_favorite,
   m.is_watchlist,
   m.watch_state,
@@ -331,6 +354,15 @@ $paginationSql
       availability = AvailabilityStatus.unavailable;
     }
 
+    final rawGenres = row.readNullable<String>('genres');
+    final genresList = rawGenres != null && rawGenres.isNotEmpty
+        ? rawGenres
+              .split(',')
+              .map((g) => g.trim())
+              .where((g) => g.isNotEmpty)
+              .toList()
+        : const <String>[];
+
     return MovieLibraryItem(
       id: row.read<String>('id'),
       title: row.readNullable<String>('title'),
@@ -343,6 +375,9 @@ $paginationSql
       overview: row.readNullable<String>('overview'),
       rating: row.readNullable<double>('rating'),
       runtime: row.readNullable<int>('runtime'),
+      genres: genresList,
+      tmdbCollectionId: row.readNullable<int>('tmdb_collection_id'),
+      tmdbCollectionName: row.readNullable<String>('tmdb_collection_name'),
       isFavorite: row.read<bool>('is_favorite'),
       isWatchlist: row.read<bool>('is_watchlist'),
       watchState: WatchState.fromString(row.read<String>('watch_state')),

@@ -700,6 +700,59 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _genresMeta = const VerificationMeta('genres');
+  @override
+  late final GeneratedColumn<String> genres = GeneratedColumn<String>(
+    'genres',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tmdbCollectionIdMeta = const VerificationMeta(
+    'tmdbCollectionId',
+  );
+  @override
+  late final GeneratedColumn<int> tmdbCollectionId = GeneratedColumn<int>(
+    'tmdb_collection_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tmdbCollectionNameMeta =
+      const VerificationMeta('tmdbCollectionName');
+  @override
+  late final GeneratedColumn<String> tmdbCollectionName =
+      GeneratedColumn<String>(
+        'tmdb_collection_name',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _tmdbCollectionPosterPathMeta =
+      const VerificationMeta('tmdbCollectionPosterPath');
+  @override
+  late final GeneratedColumn<String> tmdbCollectionPosterPath =
+      GeneratedColumn<String>(
+        'tmdb_collection_poster_path',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _tmdbCollectionBackdropPathMeta =
+      const VerificationMeta('tmdbCollectionBackdropPath');
+  @override
+  late final GeneratedColumn<String> tmdbCollectionBackdropPath =
+      GeneratedColumn<String>(
+        'tmdb_collection_backdrop_path',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -798,6 +851,11 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
     metadataProvider,
     providerItemId,
     metadataUpdatedAt,
+    genres,
+    tmdbCollectionId,
+    tmdbCollectionName,
+    tmdbCollectionPosterPath,
+    tmdbCollectionBackdropPath,
     createdAt,
     updatedAt,
     isFavorite,
@@ -965,6 +1023,48 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
         ),
       );
     }
+    if (data.containsKey('genres')) {
+      context.handle(
+        _genresMeta,
+        genres.isAcceptableOrUnknown(data['genres']!, _genresMeta),
+      );
+    }
+    if (data.containsKey('tmdb_collection_id')) {
+      context.handle(
+        _tmdbCollectionIdMeta,
+        tmdbCollectionId.isAcceptableOrUnknown(
+          data['tmdb_collection_id']!,
+          _tmdbCollectionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('tmdb_collection_name')) {
+      context.handle(
+        _tmdbCollectionNameMeta,
+        tmdbCollectionName.isAcceptableOrUnknown(
+          data['tmdb_collection_name']!,
+          _tmdbCollectionNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('tmdb_collection_poster_path')) {
+      context.handle(
+        _tmdbCollectionPosterPathMeta,
+        tmdbCollectionPosterPath.isAcceptableOrUnknown(
+          data['tmdb_collection_poster_path']!,
+          _tmdbCollectionPosterPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('tmdb_collection_backdrop_path')) {
+      context.handle(
+        _tmdbCollectionBackdropPathMeta,
+        tmdbCollectionBackdropPath.isAcceptableOrUnknown(
+          data['tmdb_collection_backdrop_path']!,
+          _tmdbCollectionBackdropPathMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1100,6 +1200,26 @@ class $MoviesTable extends Movies with TableInfo<$MoviesTable, Movie> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}metadata_updated_at'],
       ),
+      genres: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}genres'],
+      ),
+      tmdbCollectionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tmdb_collection_id'],
+      ),
+      tmdbCollectionName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tmdb_collection_name'],
+      ),
+      tmdbCollectionPosterPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tmdb_collection_poster_path'],
+      ),
+      tmdbCollectionBackdropPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tmdb_collection_backdrop_path'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1154,6 +1274,11 @@ class Movie extends DataClass implements Insertable<Movie> {
   final String? metadataProvider;
   final String? providerItemId;
   final DateTime? metadataUpdatedAt;
+  final String? genres;
+  final int? tmdbCollectionId;
+  final String? tmdbCollectionName;
+  final String? tmdbCollectionPosterPath;
+  final String? tmdbCollectionBackdropPath;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isFavorite;
@@ -1181,6 +1306,11 @@ class Movie extends DataClass implements Insertable<Movie> {
     this.metadataProvider,
     this.providerItemId,
     this.metadataUpdatedAt,
+    this.genres,
+    this.tmdbCollectionId,
+    this.tmdbCollectionName,
+    this.tmdbCollectionPosterPath,
+    this.tmdbCollectionBackdropPath,
     required this.createdAt,
     required this.updatedAt,
     required this.isFavorite,
@@ -1245,6 +1375,25 @@ class Movie extends DataClass implements Insertable<Movie> {
     if (!nullToAbsent || metadataUpdatedAt != null) {
       map['metadata_updated_at'] = Variable<DateTime>(metadataUpdatedAt);
     }
+    if (!nullToAbsent || genres != null) {
+      map['genres'] = Variable<String>(genres);
+    }
+    if (!nullToAbsent || tmdbCollectionId != null) {
+      map['tmdb_collection_id'] = Variable<int>(tmdbCollectionId);
+    }
+    if (!nullToAbsent || tmdbCollectionName != null) {
+      map['tmdb_collection_name'] = Variable<String>(tmdbCollectionName);
+    }
+    if (!nullToAbsent || tmdbCollectionPosterPath != null) {
+      map['tmdb_collection_poster_path'] = Variable<String>(
+        tmdbCollectionPosterPath,
+      );
+    }
+    if (!nullToAbsent || tmdbCollectionBackdropPath != null) {
+      map['tmdb_collection_backdrop_path'] = Variable<String>(
+        tmdbCollectionBackdropPath,
+      );
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['is_favorite'] = Variable<bool>(isFavorite);
@@ -1308,6 +1457,22 @@ class Movie extends DataClass implements Insertable<Movie> {
       metadataUpdatedAt: metadataUpdatedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(metadataUpdatedAt),
+      genres: genres == null && nullToAbsent
+          ? const Value.absent()
+          : Value(genres),
+      tmdbCollectionId: tmdbCollectionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tmdbCollectionId),
+      tmdbCollectionName: tmdbCollectionName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tmdbCollectionName),
+      tmdbCollectionPosterPath: tmdbCollectionPosterPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tmdbCollectionPosterPath),
+      tmdbCollectionBackdropPath:
+          tmdbCollectionBackdropPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tmdbCollectionBackdropPath),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       isFavorite: Value(isFavorite),
@@ -1347,6 +1512,17 @@ class Movie extends DataClass implements Insertable<Movie> {
       metadataUpdatedAt: serializer.fromJson<DateTime?>(
         json['metadataUpdatedAt'],
       ),
+      genres: serializer.fromJson<String?>(json['genres']),
+      tmdbCollectionId: serializer.fromJson<int?>(json['tmdbCollectionId']),
+      tmdbCollectionName: serializer.fromJson<String?>(
+        json['tmdbCollectionName'],
+      ),
+      tmdbCollectionPosterPath: serializer.fromJson<String?>(
+        json['tmdbCollectionPosterPath'],
+      ),
+      tmdbCollectionBackdropPath: serializer.fromJson<String?>(
+        json['tmdbCollectionBackdropPath'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
@@ -1381,6 +1557,15 @@ class Movie extends DataClass implements Insertable<Movie> {
       'metadataProvider': serializer.toJson<String?>(metadataProvider),
       'providerItemId': serializer.toJson<String?>(providerItemId),
       'metadataUpdatedAt': serializer.toJson<DateTime?>(metadataUpdatedAt),
+      'genres': serializer.toJson<String?>(genres),
+      'tmdbCollectionId': serializer.toJson<int?>(tmdbCollectionId),
+      'tmdbCollectionName': serializer.toJson<String?>(tmdbCollectionName),
+      'tmdbCollectionPosterPath': serializer.toJson<String?>(
+        tmdbCollectionPosterPath,
+      ),
+      'tmdbCollectionBackdropPath': serializer.toJson<String?>(
+        tmdbCollectionBackdropPath,
+      ),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'isFavorite': serializer.toJson<bool>(isFavorite),
@@ -1413,6 +1598,11 @@ class Movie extends DataClass implements Insertable<Movie> {
     Value<String?> metadataProvider = const Value.absent(),
     Value<String?> providerItemId = const Value.absent(),
     Value<DateTime?> metadataUpdatedAt = const Value.absent(),
+    Value<String?> genres = const Value.absent(),
+    Value<int?> tmdbCollectionId = const Value.absent(),
+    Value<String?> tmdbCollectionName = const Value.absent(),
+    Value<String?> tmdbCollectionPosterPath = const Value.absent(),
+    Value<String?> tmdbCollectionBackdropPath = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isFavorite,
@@ -1448,6 +1638,19 @@ class Movie extends DataClass implements Insertable<Movie> {
     metadataUpdatedAt: metadataUpdatedAt.present
         ? metadataUpdatedAt.value
         : this.metadataUpdatedAt,
+    genres: genres.present ? genres.value : this.genres,
+    tmdbCollectionId: tmdbCollectionId.present
+        ? tmdbCollectionId.value
+        : this.tmdbCollectionId,
+    tmdbCollectionName: tmdbCollectionName.present
+        ? tmdbCollectionName.value
+        : this.tmdbCollectionName,
+    tmdbCollectionPosterPath: tmdbCollectionPosterPath.present
+        ? tmdbCollectionPosterPath.value
+        : this.tmdbCollectionPosterPath,
+    tmdbCollectionBackdropPath: tmdbCollectionBackdropPath.present
+        ? tmdbCollectionBackdropPath.value
+        : this.tmdbCollectionBackdropPath,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     isFavorite: isFavorite ?? this.isFavorite,
@@ -1500,6 +1703,19 @@ class Movie extends DataClass implements Insertable<Movie> {
       metadataUpdatedAt: data.metadataUpdatedAt.present
           ? data.metadataUpdatedAt.value
           : this.metadataUpdatedAt,
+      genres: data.genres.present ? data.genres.value : this.genres,
+      tmdbCollectionId: data.tmdbCollectionId.present
+          ? data.tmdbCollectionId.value
+          : this.tmdbCollectionId,
+      tmdbCollectionName: data.tmdbCollectionName.present
+          ? data.tmdbCollectionName.value
+          : this.tmdbCollectionName,
+      tmdbCollectionPosterPath: data.tmdbCollectionPosterPath.present
+          ? data.tmdbCollectionPosterPath.value
+          : this.tmdbCollectionPosterPath,
+      tmdbCollectionBackdropPath: data.tmdbCollectionBackdropPath.present
+          ? data.tmdbCollectionBackdropPath.value
+          : this.tmdbCollectionBackdropPath,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isFavorite: data.isFavorite.present
@@ -1540,6 +1756,11 @@ class Movie extends DataClass implements Insertable<Movie> {
           ..write('metadataProvider: $metadataProvider, ')
           ..write('providerItemId: $providerItemId, ')
           ..write('metadataUpdatedAt: $metadataUpdatedAt, ')
+          ..write('genres: $genres, ')
+          ..write('tmdbCollectionId: $tmdbCollectionId, ')
+          ..write('tmdbCollectionName: $tmdbCollectionName, ')
+          ..write('tmdbCollectionPosterPath: $tmdbCollectionPosterPath, ')
+          ..write('tmdbCollectionBackdropPath: $tmdbCollectionBackdropPath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isFavorite: $isFavorite, ')
@@ -1572,6 +1793,11 @@ class Movie extends DataClass implements Insertable<Movie> {
     metadataProvider,
     providerItemId,
     metadataUpdatedAt,
+    genres,
+    tmdbCollectionId,
+    tmdbCollectionName,
+    tmdbCollectionPosterPath,
+    tmdbCollectionBackdropPath,
     createdAt,
     updatedAt,
     isFavorite,
@@ -1603,6 +1829,11 @@ class Movie extends DataClass implements Insertable<Movie> {
           other.metadataProvider == this.metadataProvider &&
           other.providerItemId == this.providerItemId &&
           other.metadataUpdatedAt == this.metadataUpdatedAt &&
+          other.genres == this.genres &&
+          other.tmdbCollectionId == this.tmdbCollectionId &&
+          other.tmdbCollectionName == this.tmdbCollectionName &&
+          other.tmdbCollectionPosterPath == this.tmdbCollectionPosterPath &&
+          other.tmdbCollectionBackdropPath == this.tmdbCollectionBackdropPath &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.isFavorite == this.isFavorite &&
@@ -1632,6 +1863,11 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
   final Value<String?> metadataProvider;
   final Value<String?> providerItemId;
   final Value<DateTime?> metadataUpdatedAt;
+  final Value<String?> genres;
+  final Value<int?> tmdbCollectionId;
+  final Value<String?> tmdbCollectionName;
+  final Value<String?> tmdbCollectionPosterPath;
+  final Value<String?> tmdbCollectionBackdropPath;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> isFavorite;
@@ -1660,6 +1896,11 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     this.metadataProvider = const Value.absent(),
     this.providerItemId = const Value.absent(),
     this.metadataUpdatedAt = const Value.absent(),
+    this.genres = const Value.absent(),
+    this.tmdbCollectionId = const Value.absent(),
+    this.tmdbCollectionName = const Value.absent(),
+    this.tmdbCollectionPosterPath = const Value.absent(),
+    this.tmdbCollectionBackdropPath = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isFavorite = const Value.absent(),
@@ -1689,6 +1930,11 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     this.metadataProvider = const Value.absent(),
     this.providerItemId = const Value.absent(),
     this.metadataUpdatedAt = const Value.absent(),
+    this.genres = const Value.absent(),
+    this.tmdbCollectionId = const Value.absent(),
+    this.tmdbCollectionName = const Value.absent(),
+    this.tmdbCollectionPosterPath = const Value.absent(),
+    this.tmdbCollectionBackdropPath = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.isFavorite = const Value.absent(),
@@ -1721,6 +1967,11 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     Expression<String>? metadataProvider,
     Expression<String>? providerItemId,
     Expression<DateTime>? metadataUpdatedAt,
+    Expression<String>? genres,
+    Expression<int>? tmdbCollectionId,
+    Expression<String>? tmdbCollectionName,
+    Expression<String>? tmdbCollectionPosterPath,
+    Expression<String>? tmdbCollectionBackdropPath,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? isFavorite,
@@ -1751,6 +2002,14 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
       if (metadataProvider != null) 'metadata_provider': metadataProvider,
       if (providerItemId != null) 'provider_item_id': providerItemId,
       if (metadataUpdatedAt != null) 'metadata_updated_at': metadataUpdatedAt,
+      if (genres != null) 'genres': genres,
+      if (tmdbCollectionId != null) 'tmdb_collection_id': tmdbCollectionId,
+      if (tmdbCollectionName != null)
+        'tmdb_collection_name': tmdbCollectionName,
+      if (tmdbCollectionPosterPath != null)
+        'tmdb_collection_poster_path': tmdbCollectionPosterPath,
+      if (tmdbCollectionBackdropPath != null)
+        'tmdb_collection_backdrop_path': tmdbCollectionBackdropPath,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isFavorite != null) 'is_favorite': isFavorite,
@@ -1783,6 +2042,11 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     Value<String?>? metadataProvider,
     Value<String?>? providerItemId,
     Value<DateTime?>? metadataUpdatedAt,
+    Value<String?>? genres,
+    Value<int?>? tmdbCollectionId,
+    Value<String?>? tmdbCollectionName,
+    Value<String?>? tmdbCollectionPosterPath,
+    Value<String?>? tmdbCollectionBackdropPath,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<bool>? isFavorite,
@@ -1812,6 +2076,13 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
       metadataProvider: metadataProvider ?? this.metadataProvider,
       providerItemId: providerItemId ?? this.providerItemId,
       metadataUpdatedAt: metadataUpdatedAt ?? this.metadataUpdatedAt,
+      genres: genres ?? this.genres,
+      tmdbCollectionId: tmdbCollectionId ?? this.tmdbCollectionId,
+      tmdbCollectionName: tmdbCollectionName ?? this.tmdbCollectionName,
+      tmdbCollectionPosterPath:
+          tmdbCollectionPosterPath ?? this.tmdbCollectionPosterPath,
+      tmdbCollectionBackdropPath:
+          tmdbCollectionBackdropPath ?? this.tmdbCollectionBackdropPath,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isFavorite: isFavorite ?? this.isFavorite,
@@ -1888,6 +2159,25 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
     if (metadataUpdatedAt.present) {
       map['metadata_updated_at'] = Variable<DateTime>(metadataUpdatedAt.value);
     }
+    if (genres.present) {
+      map['genres'] = Variable<String>(genres.value);
+    }
+    if (tmdbCollectionId.present) {
+      map['tmdb_collection_id'] = Variable<int>(tmdbCollectionId.value);
+    }
+    if (tmdbCollectionName.present) {
+      map['tmdb_collection_name'] = Variable<String>(tmdbCollectionName.value);
+    }
+    if (tmdbCollectionPosterPath.present) {
+      map['tmdb_collection_poster_path'] = Variable<String>(
+        tmdbCollectionPosterPath.value,
+      );
+    }
+    if (tmdbCollectionBackdropPath.present) {
+      map['tmdb_collection_backdrop_path'] = Variable<String>(
+        tmdbCollectionBackdropPath.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1937,6 +2227,11 @@ class MoviesCompanion extends UpdateCompanion<Movie> {
           ..write('metadataProvider: $metadataProvider, ')
           ..write('providerItemId: $providerItemId, ')
           ..write('metadataUpdatedAt: $metadataUpdatedAt, ')
+          ..write('genres: $genres, ')
+          ..write('tmdbCollectionId: $tmdbCollectionId, ')
+          ..write('tmdbCollectionName: $tmdbCollectionName, ')
+          ..write('tmdbCollectionPosterPath: $tmdbCollectionPosterPath, ')
+          ..write('tmdbCollectionBackdropPath: $tmdbCollectionBackdropPath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isFavorite: $isFavorite, ')
@@ -2122,6 +2417,15 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _genresMeta = const VerificationMeta('genres');
+  @override
+  late final GeneratedColumn<String> genres = GeneratedColumn<String>(
+    'genres',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
     'isFavorite',
   );
@@ -2192,6 +2496,7 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
     metadataProvider,
     providerItemId,
     metadataUpdatedAt,
+    genres,
     isFavorite,
     isWatchlist,
     createdAt,
@@ -2330,6 +2635,12 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
         ),
       );
     }
+    if (data.containsKey('genres')) {
+      context.handle(
+        _genresMeta,
+        genres.isAcceptableOrUnknown(data['genres']!, _genresMeta),
+      );
+    }
     if (data.containsKey('is_favorite')) {
       context.handle(
         _isFavoriteMeta,
@@ -2434,6 +2745,10 @@ class $TvShowsTable extends TvShows with TableInfo<$TvShowsTable, TvShow> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}metadata_updated_at'],
       ),
+      genres: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}genres'],
+      ),
       isFavorite: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_favorite'],
@@ -2476,6 +2791,7 @@ class TvShow extends DataClass implements Insertable<TvShow> {
   final String? metadataProvider;
   final String? providerItemId;
   final DateTime? metadataUpdatedAt;
+  final String? genres;
   final bool isFavorite;
   final bool isWatchlist;
   final DateTime createdAt;
@@ -2497,6 +2813,7 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     this.metadataProvider,
     this.providerItemId,
     this.metadataUpdatedAt,
+    this.genres,
     required this.isFavorite,
     required this.isWatchlist,
     required this.createdAt,
@@ -2546,6 +2863,9 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     }
     if (!nullToAbsent || metadataUpdatedAt != null) {
       map['metadata_updated_at'] = Variable<DateTime>(metadataUpdatedAt);
+    }
+    if (!nullToAbsent || genres != null) {
+      map['genres'] = Variable<String>(genres);
     }
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['is_watchlist'] = Variable<bool>(isWatchlist);
@@ -2598,6 +2918,9 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       metadataUpdatedAt: metadataUpdatedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(metadataUpdatedAt),
+      genres: genres == null && nullToAbsent
+          ? const Value.absent()
+          : Value(genres),
       isFavorite: Value(isFavorite),
       isWatchlist: Value(isWatchlist),
       createdAt: Value(createdAt),
@@ -2631,6 +2954,7 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       metadataUpdatedAt: serializer.fromJson<DateTime?>(
         json['metadataUpdatedAt'],
       ),
+      genres: serializer.fromJson<String?>(json['genres']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       isWatchlist: serializer.fromJson<bool>(json['isWatchlist']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -2657,6 +2981,7 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       'metadataProvider': serializer.toJson<String?>(metadataProvider),
       'providerItemId': serializer.toJson<String?>(providerItemId),
       'metadataUpdatedAt': serializer.toJson<DateTime?>(metadataUpdatedAt),
+      'genres': serializer.toJson<String?>(genres),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'isWatchlist': serializer.toJson<bool>(isWatchlist),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -2681,6 +3006,7 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     Value<String?> metadataProvider = const Value.absent(),
     Value<String?> providerItemId = const Value.absent(),
     Value<DateTime?> metadataUpdatedAt = const Value.absent(),
+    Value<String?> genres = const Value.absent(),
     bool? isFavorite,
     bool? isWatchlist,
     DateTime? createdAt,
@@ -2710,6 +3036,7 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     metadataUpdatedAt: metadataUpdatedAt.present
         ? metadataUpdatedAt.value
         : this.metadataUpdatedAt,
+    genres: genres.present ? genres.value : this.genres,
     isFavorite: isFavorite ?? this.isFavorite,
     isWatchlist: isWatchlist ?? this.isWatchlist,
     createdAt: createdAt ?? this.createdAt,
@@ -2753,6 +3080,7 @@ class TvShow extends DataClass implements Insertable<TvShow> {
       metadataUpdatedAt: data.metadataUpdatedAt.present
           ? data.metadataUpdatedAt.value
           : this.metadataUpdatedAt,
+      genres: data.genres.present ? data.genres.value : this.genres,
       isFavorite: data.isFavorite.present
           ? data.isFavorite.value
           : this.isFavorite,
@@ -2783,6 +3111,7 @@ class TvShow extends DataClass implements Insertable<TvShow> {
           ..write('metadataProvider: $metadataProvider, ')
           ..write('providerItemId: $providerItemId, ')
           ..write('metadataUpdatedAt: $metadataUpdatedAt, ')
+          ..write('genres: $genres, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isWatchlist: $isWatchlist, ')
           ..write('createdAt: $createdAt, ')
@@ -2792,7 +3121,7 @@ class TvShow extends DataClass implements Insertable<TvShow> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     metadataId,
     title,
@@ -2809,11 +3138,12 @@ class TvShow extends DataClass implements Insertable<TvShow> {
     metadataProvider,
     providerItemId,
     metadataUpdatedAt,
+    genres,
     isFavorite,
     isWatchlist,
     createdAt,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2834,6 +3164,7 @@ class TvShow extends DataClass implements Insertable<TvShow> {
           other.metadataProvider == this.metadataProvider &&
           other.providerItemId == this.providerItemId &&
           other.metadataUpdatedAt == this.metadataUpdatedAt &&
+          other.genres == this.genres &&
           other.isFavorite == this.isFavorite &&
           other.isWatchlist == this.isWatchlist &&
           other.createdAt == this.createdAt &&
@@ -2857,6 +3188,7 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
   final Value<String?> metadataProvider;
   final Value<String?> providerItemId;
   final Value<DateTime?> metadataUpdatedAt;
+  final Value<String?> genres;
   final Value<bool> isFavorite;
   final Value<bool> isWatchlist;
   final Value<DateTime> createdAt;
@@ -2879,6 +3211,7 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     this.metadataProvider = const Value.absent(),
     this.providerItemId = const Value.absent(),
     this.metadataUpdatedAt = const Value.absent(),
+    this.genres = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isWatchlist = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2902,6 +3235,7 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     this.metadataProvider = const Value.absent(),
     this.providerItemId = const Value.absent(),
     this.metadataUpdatedAt = const Value.absent(),
+    this.genres = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isWatchlist = const Value.absent(),
     required DateTime createdAt,
@@ -2928,6 +3262,7 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     Expression<String>? metadataProvider,
     Expression<String>? providerItemId,
     Expression<DateTime>? metadataUpdatedAt,
+    Expression<String>? genres,
     Expression<bool>? isFavorite,
     Expression<bool>? isWatchlist,
     Expression<DateTime>? createdAt,
@@ -2952,6 +3287,7 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
       if (metadataProvider != null) 'metadata_provider': metadataProvider,
       if (providerItemId != null) 'provider_item_id': providerItemId,
       if (metadataUpdatedAt != null) 'metadata_updated_at': metadataUpdatedAt,
+      if (genres != null) 'genres': genres,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (isWatchlist != null) 'is_watchlist': isWatchlist,
       if (createdAt != null) 'created_at': createdAt,
@@ -2977,6 +3313,7 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     Value<String?>? metadataProvider,
     Value<String?>? providerItemId,
     Value<DateTime?>? metadataUpdatedAt,
+    Value<String?>? genres,
     Value<bool>? isFavorite,
     Value<bool>? isWatchlist,
     Value<DateTime>? createdAt,
@@ -3000,6 +3337,7 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
       metadataProvider: metadataProvider ?? this.metadataProvider,
       providerItemId: providerItemId ?? this.providerItemId,
       metadataUpdatedAt: metadataUpdatedAt ?? this.metadataUpdatedAt,
+      genres: genres ?? this.genres,
       isFavorite: isFavorite ?? this.isFavorite,
       isWatchlist: isWatchlist ?? this.isWatchlist,
       createdAt: createdAt ?? this.createdAt,
@@ -3061,6 +3399,9 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
     if (metadataUpdatedAt.present) {
       map['metadata_updated_at'] = Variable<DateTime>(metadataUpdatedAt.value);
     }
+    if (genres.present) {
+      map['genres'] = Variable<String>(genres.value);
+    }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
@@ -3098,6 +3439,7 @@ class TvShowsCompanion extends UpdateCompanion<TvShow> {
           ..write('metadataProvider: $metadataProvider, ')
           ..write('providerItemId: $providerItemId, ')
           ..write('metadataUpdatedAt: $metadataUpdatedAt, ')
+          ..write('genres: $genres, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isWatchlist: $isWatchlist, ')
           ..write('createdAt: $createdAt, ')
@@ -7586,6 +7928,11 @@ typedef $$MoviesTableCreateCompanionBuilder = MoviesCompanion Function({
   Value<String?> metadataProvider,
   Value<String?> providerItemId,
   Value<DateTime?> metadataUpdatedAt,
+  Value<String?> genres,
+  Value<int?> tmdbCollectionId,
+  Value<String?> tmdbCollectionName,
+  Value<String?> tmdbCollectionPosterPath,
+  Value<String?> tmdbCollectionBackdropPath,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<bool> isFavorite,
@@ -7615,6 +7962,11 @@ typedef $$MoviesTableUpdateCompanionBuilder = MoviesCompanion Function({
   Value<String?> metadataProvider,
   Value<String?> providerItemId,
   Value<DateTime?> metadataUpdatedAt,
+  Value<String?> genres,
+  Value<int?> tmdbCollectionId,
+  Value<String?> tmdbCollectionName,
+  Value<String?> tmdbCollectionPosterPath,
+  Value<String?> tmdbCollectionBackdropPath,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<bool> isFavorite,
@@ -7773,6 +8125,31 @@ class $$MoviesTableFilterComposer
 
   ColumnFilters<DateTime> get metadataUpdatedAt => $composableBuilder(
     column: $table.metadataUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get genres => $composableBuilder(
+    column: $table.genres,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get tmdbCollectionId => $composableBuilder(
+    column: $table.tmdbCollectionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tmdbCollectionName => $composableBuilder(
+    column: $table.tmdbCollectionName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tmdbCollectionPosterPath => $composableBuilder(
+    column: $table.tmdbCollectionPosterPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tmdbCollectionBackdropPath => $composableBuilder(
+    column: $table.tmdbCollectionBackdropPath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7966,6 +8343,31 @@ class $$MoviesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get genres => $composableBuilder(
+    column: $table.genres,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tmdbCollectionId => $composableBuilder(
+    column: $table.tmdbCollectionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tmdbCollectionName => $composableBuilder(
+    column: $table.tmdbCollectionName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tmdbCollectionPosterPath => $composableBuilder(
+    column: $table.tmdbCollectionPosterPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tmdbCollectionBackdropPath => $composableBuilder(
+    column: $table.tmdbCollectionBackdropPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -8085,6 +8487,29 @@ class $$MoviesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get metadataUpdatedAt => $composableBuilder(
     column: $table.metadataUpdatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get genres =>
+      $composableBuilder(column: $table.genres, builder: (column) => column);
+
+  GeneratedColumn<int> get tmdbCollectionId => $composableBuilder(
+    column: $table.tmdbCollectionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tmdbCollectionName => $composableBuilder(
+    column: $table.tmdbCollectionName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tmdbCollectionPosterPath => $composableBuilder(
+    column: $table.tmdbCollectionPosterPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tmdbCollectionBackdropPath => $composableBuilder(
+    column: $table.tmdbCollectionBackdropPath,
     builder: (column) => column,
   );
 
@@ -8216,6 +8641,12 @@ class $$MoviesTableTableManager
                 Value<String?> metadataProvider = const Value.absent(),
                 Value<String?> providerItemId = const Value.absent(),
                 Value<DateTime?> metadataUpdatedAt = const Value.absent(),
+                Value<String?> genres = const Value.absent(),
+                Value<int?> tmdbCollectionId = const Value.absent(),
+                Value<String?> tmdbCollectionName = const Value.absent(),
+                Value<String?> tmdbCollectionPosterPath = const Value.absent(),
+                Value<String?> tmdbCollectionBackdropPath =
+                    const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
@@ -8244,6 +8675,11 @@ class $$MoviesTableTableManager
                 metadataProvider: metadataProvider,
                 providerItemId: providerItemId,
                 metadataUpdatedAt: metadataUpdatedAt,
+                genres: genres,
+                tmdbCollectionId: tmdbCollectionId,
+                tmdbCollectionName: tmdbCollectionName,
+                tmdbCollectionPosterPath: tmdbCollectionPosterPath,
+                tmdbCollectionBackdropPath: tmdbCollectionBackdropPath,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 isFavorite: isFavorite,
@@ -8274,6 +8710,12 @@ class $$MoviesTableTableManager
                 Value<String?> metadataProvider = const Value.absent(),
                 Value<String?> providerItemId = const Value.absent(),
                 Value<DateTime?> metadataUpdatedAt = const Value.absent(),
+                Value<String?> genres = const Value.absent(),
+                Value<int?> tmdbCollectionId = const Value.absent(),
+                Value<String?> tmdbCollectionName = const Value.absent(),
+                Value<String?> tmdbCollectionPosterPath = const Value.absent(),
+                Value<String?> tmdbCollectionBackdropPath =
+                    const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<bool> isFavorite = const Value.absent(),
@@ -8302,6 +8744,11 @@ class $$MoviesTableTableManager
                 metadataProvider: metadataProvider,
                 providerItemId: providerItemId,
                 metadataUpdatedAt: metadataUpdatedAt,
+                genres: genres,
+                tmdbCollectionId: tmdbCollectionId,
+                tmdbCollectionName: tmdbCollectionName,
+                tmdbCollectionPosterPath: tmdbCollectionPosterPath,
+                tmdbCollectionBackdropPath: tmdbCollectionBackdropPath,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 isFavorite: isFavorite,
@@ -8410,6 +8857,7 @@ typedef $$TvShowsTableCreateCompanionBuilder = TvShowsCompanion Function({
   Value<String?> metadataProvider,
   Value<String?> providerItemId,
   Value<DateTime?> metadataUpdatedAt,
+  Value<String?> genres,
   Value<bool> isFavorite,
   Value<bool> isWatchlist,
   required DateTime createdAt,
@@ -8433,6 +8881,7 @@ typedef $$TvShowsTableUpdateCompanionBuilder = TvShowsCompanion Function({
   Value<String?> metadataProvider,
   Value<String?> providerItemId,
   Value<DateTime?> metadataUpdatedAt,
+  Value<String?> genres,
   Value<bool> isFavorite,
   Value<bool> isWatchlist,
   Value<DateTime> createdAt,
@@ -8570,6 +9019,11 @@ class $$TvShowsTableFilterComposer
 
   ColumnFilters<DateTime> get metadataUpdatedAt => $composableBuilder(
     column: $table.metadataUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get genres => $composableBuilder(
+    column: $table.genres,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8733,6 +9187,11 @@ class $$TvShowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get genres => $composableBuilder(
+    column: $table.genres,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
     builder: (column) => ColumnOrderings(column),
@@ -8830,6 +9289,9 @@ class $$TvShowsTableAnnotationComposer
     column: $table.metadataUpdatedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get genres =>
+      $composableBuilder(column: $table.genres, builder: (column) => column);
 
   GeneratedColumn<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
@@ -8942,6 +9404,7 @@ class $$TvShowsTableTableManager
                 Value<String?> metadataProvider = const Value.absent(),
                 Value<String?> providerItemId = const Value.absent(),
                 Value<DateTime?> metadataUpdatedAt = const Value.absent(),
+                Value<String?> genres = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<bool> isWatchlist = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -8964,6 +9427,7 @@ class $$TvShowsTableTableManager
                 metadataProvider: metadataProvider,
                 providerItemId: providerItemId,
                 metadataUpdatedAt: metadataUpdatedAt,
+                genres: genres,
                 isFavorite: isFavorite,
                 isWatchlist: isWatchlist,
                 createdAt: createdAt,
@@ -8988,6 +9452,7 @@ class $$TvShowsTableTableManager
                 Value<String?> metadataProvider = const Value.absent(),
                 Value<String?> providerItemId = const Value.absent(),
                 Value<DateTime?> metadataUpdatedAt = const Value.absent(),
+                Value<String?> genres = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<bool> isWatchlist = const Value.absent(),
                 required DateTime createdAt,
@@ -9010,6 +9475,7 @@ class $$TvShowsTableTableManager
                 metadataProvider: metadataProvider,
                 providerItemId: providerItemId,
                 metadataUpdatedAt: metadataUpdatedAt,
+                genres: genres,
                 isFavorite: isFavorite,
                 isWatchlist: isWatchlist,
                 createdAt: createdAt,

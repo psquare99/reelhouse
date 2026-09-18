@@ -107,6 +107,9 @@ class MovieFilter {
   final String? collectionId;
   final String? storageId;
   final String? sourceId;
+  final String? genre;
+  final int? tmdbCollectionId;
+  final String? tmdbCollectionName;
 
   const MovieFilter({
     this.id,
@@ -119,6 +122,9 @@ class MovieFilter {
     this.collectionId,
     this.storageId,
     this.sourceId,
+    this.genre,
+    this.tmdbCollectionId,
+    this.tmdbCollectionName,
   });
 
   static const MovieFilter empty = MovieFilter();
@@ -133,7 +139,10 @@ class MovieFilter {
       yearRange == null &&
       collectionId == null &&
       storageId == null &&
-      sourceId == null;
+      sourceId == null &&
+      genre == null &&
+      tmdbCollectionId == null &&
+      tmdbCollectionName == null;
 
   bool get isNotEmpty => !isEmpty;
 
@@ -148,6 +157,9 @@ class MovieFilter {
     String? collectionId,
     String? storageId,
     String? sourceId,
+    String? genre,
+    int? tmdbCollectionId,
+    String? tmdbCollectionName,
   }) {
     return MovieFilter(
       id: id ?? this.id,
@@ -160,6 +172,9 @@ class MovieFilter {
       collectionId: collectionId ?? this.collectionId,
       storageId: storageId ?? this.storageId,
       sourceId: sourceId ?? this.sourceId,
+      genre: genre ?? this.genre,
+      tmdbCollectionId: tmdbCollectionId ?? this.tmdbCollectionId,
+      tmdbCollectionName: tmdbCollectionName ?? this.tmdbCollectionName,
     );
   }
 
@@ -176,6 +191,9 @@ class MovieFilter {
           collectionId == other.collectionId &&
           storageId == other.storageId &&
           sourceId == other.sourceId &&
+          genre == other.genre &&
+          tmdbCollectionId == other.tmdbCollectionId &&
+          tmdbCollectionName == other.tmdbCollectionName &&
           _setEquals(watchStates, other.watchStates) &&
           _setEquals(metadataStatuses, other.metadataStatuses);
 
@@ -191,11 +209,14 @@ class MovieFilter {
     collectionId,
     storageId,
     sourceId,
+    genre,
+    tmdbCollectionId,
+    tmdbCollectionName,
   );
 
   @override
   String toString() =>
-      'MovieFilter(id: $id, watch: $watchStates, fav: $isFavorite, watchl: $isWatchlist, avail: $availability, meta: $metadataStatuses, year: $yearRange, col: $collectionId, storage: $storageId, src: $sourceId)';
+      'MovieFilter(id: $id, watch: $watchStates, fav: $isFavorite, watchl: $isWatchlist, avail: $availability, meta: $metadataStatuses, year: $yearRange, col: $collectionId, storage: $storageId, src: $sourceId, genre: $genre, tmdbCol: $tmdbCollectionId/$tmdbCollectionName)';
 
   static bool _setEquals<E>(Set<E>? a, Set<E>? b) {
     if (a == null && b == null) return true;
@@ -220,6 +241,7 @@ class TvShowFilter {
   final String? collectionId;
   final String? storageId;
   final String? sourceId;
+  final String? genre;
 
   const TvShowFilter({
     this.id,
@@ -232,6 +254,7 @@ class TvShowFilter {
     this.collectionId,
     this.storageId,
     this.sourceId,
+    this.genre,
   });
 
   static const TvShowFilter empty = TvShowFilter();
@@ -246,7 +269,8 @@ class TvShowFilter {
       yearRange == null &&
       collectionId == null &&
       storageId == null &&
-      sourceId == null;
+      sourceId == null &&
+      genre == null;
 
   bool get isNotEmpty => !isEmpty;
 
@@ -261,6 +285,7 @@ class TvShowFilter {
     String? collectionId,
     String? storageId,
     String? sourceId,
+    String? genre,
   }) {
     return TvShowFilter(
       id: id ?? this.id,
@@ -273,6 +298,7 @@ class TvShowFilter {
       collectionId: collectionId ?? this.collectionId,
       storageId: storageId ?? this.storageId,
       sourceId: sourceId ?? this.sourceId,
+      genre: genre ?? this.genre,
     );
   }
 
@@ -289,6 +315,7 @@ class TvShowFilter {
           collectionId == other.collectionId &&
           storageId == other.storageId &&
           sourceId == other.sourceId &&
+          genre == other.genre &&
           MovieFilter._setEquals(watchStates, other.watchStates) &&
           MovieFilter._setEquals(metadataStatuses, other.metadataStatuses);
 
@@ -304,11 +331,12 @@ class TvShowFilter {
     collectionId,
     storageId,
     sourceId,
+    genre,
   );
 
   @override
   String toString() =>
-      'TvShowFilter(id: $id, watch: $watchStates, fav: $isFavorite, watchl: $isWatchlist, avail: $availability, meta: $metadataStatuses, year: $yearRange, col: $collectionId, storage: $storageId, src: $sourceId)';
+      'TvShowFilter(id: $id, watch: $watchStates, fav: $isFavorite, watchl: $isWatchlist, avail: $availability, meta: $metadataStatuses, year: $yearRange, col: $collectionId, storage: $storageId, src: $sourceId, genre: $genre)';
 }
 
 /// Filter criteria for Season queries.

@@ -14,7 +14,6 @@ import '../collections/collections_screen.dart';
 import '../home/home_screen.dart';
 import '../movies/movies_screen.dart';
 import '../offline/offline_screen.dart';
-import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
 import '../tv_shows/tv_shows_screen.dart';
 
@@ -93,17 +92,16 @@ class _CinemaShellState extends State<CinemaShell> {
         database: widget.database,
         onNavigateToMovies: () => _onDestinationSelected(1),
         onNavigateToTv: () => _onDestinationSelected(2),
-        onNavigateToOffline: () => _onDestinationSelected(3),
-        onNavigateToSettings: () => _onDestinationSelected(6),
+        onNavigateToOffline: () => _onDestinationSelected(4),
+        onNavigateToSettings: () => _onDestinationSelected(5),
       ),
       MoviesScreen(repository: widget.repository, database: widget.database),
       TvShowsScreen(repository: widget.repository, database: widget.database),
-      OfflineScreen(repository: widget.repository, database: widget.database),
       CollectionsScreen(
         repository: widget.repository,
         database: widget.database,
       ),
-      SearchScreen(repository: widget.repository, database: widget.database),
+      OfflineScreen(repository: widget.repository, database: widget.database),
       SettingsScreen(
         database: widget.database,
         repository: widget.repository,
@@ -165,19 +163,14 @@ class _CinemaShellState extends State<CinemaShell> {
                 label: 'TV',
               ),
               NavigationDestination(
-                icon: Icon(Icons.offline_pin_outlined),
-                selectedIcon: Icon(Icons.offline_pin),
-                label: 'Offline',
-              ),
-              NavigationDestination(
                 icon: Icon(Icons.collections_bookmark_outlined),
                 selectedIcon: Icon(Icons.collections_bookmark),
                 label: 'Collections',
               ),
               NavigationDestination(
-                icon: Icon(Icons.search_outlined),
-                selectedIcon: Icon(Icons.search),
-                label: 'Search',
+                icon: Icon(Icons.offline_pin_outlined),
+                selectedIcon: Icon(Icons.offline_pin),
+                label: 'Offline',
               ),
               NavigationDestination(
                 icon: Icon(Icons.settings_outlined),
@@ -219,7 +212,7 @@ class _CollapsibleCinemaRail extends StatelessWidget {
     required this.onToggleCollapse,
   });
 
-  static const _browseGroup = [
+  static const _libraryGroup = [
     _RailDestinationData(
       index: 0,
       label: 'Home',
@@ -240,30 +233,24 @@ class _CollapsibleCinemaRail extends StatelessWidget {
     ),
   ];
 
-  static const _libraryGroup = [
+  static const _curationGroup = [
     _RailDestinationData(
       index: 3,
-      label: 'Offline',
-      icon: Icons.offline_pin_outlined,
-      selectedIcon: Icons.offline_pin,
-    ),
-    _RailDestinationData(
-      index: 4,
       label: 'Collections',
       icon: Icons.collections_bookmark_outlined,
       selectedIcon: Icons.collections_bookmark,
     ),
   ];
 
-  static const _utilityGroup = [
+  static const _systemGroup = [
     _RailDestinationData(
-      index: 5,
-      label: 'Search',
-      icon: Icons.search_outlined,
-      selectedIcon: Icons.search,
+      index: 4,
+      label: 'Offline',
+      icon: Icons.offline_pin_outlined,
+      selectedIcon: Icons.offline_pin,
     ),
     _RailDestinationData(
-      index: 6,
+      index: 5,
       label: 'Settings',
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings,
@@ -396,20 +383,20 @@ class _CollapsibleCinemaRail extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          // Group 1: Browse
-          ..._buildGroup(context, _browseGroup),
+          // Group 1: Library
+          ..._buildGroup(context, _libraryGroup),
 
           // Divider 1
           _buildGroupDivider(tokens),
 
-          // Group 2: Library
-          ..._buildGroup(context, _libraryGroup),
+          // Group 2: Curation
+          ..._buildGroup(context, _curationGroup),
 
           // Divider 2
           _buildGroupDivider(tokens),
 
-          // Group 3: Utility
-          ..._buildGroup(context, _utilityGroup),
+          // Group 3: System
+          ..._buildGroup(context, _systemGroup),
         ],
       ),
     );

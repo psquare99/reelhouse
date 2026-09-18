@@ -44,6 +44,11 @@ class ProviderMovieDetails {
   final double? rating;
   final int? voteCount;
   final String? imdbId;
+  final List<String> genres;
+  final int? tmdbCollectionId;
+  final String? tmdbCollectionName;
+  final String? tmdbCollectionPosterPath;
+  final String? tmdbCollectionBackdropPath;
 
   const ProviderMovieDetails({
     required this.providerId,
@@ -59,6 +64,11 @@ class ProviderMovieDetails {
     this.rating,
     this.voteCount,
     this.imdbId,
+    this.genres = const [],
+    this.tmdbCollectionId,
+    this.tmdbCollectionName,
+    this.tmdbCollectionPosterPath,
+    this.tmdbCollectionBackdropPath,
   });
 }
 
@@ -74,6 +84,7 @@ class ProviderTvDetails {
   final String? backdropUrl;
   final double? rating;
   final String? imdbId;
+  final List<String> genres;
 
   const ProviderTvDetails({
     required this.providerId,
@@ -86,6 +97,7 @@ class ProviderTvDetails {
     this.backdropUrl,
     this.rating,
     this.imdbId,
+    this.genres = const [],
   });
 }
 

@@ -96,6 +96,20 @@ abstract interface class LibraryRepository {
   /// Streams a single collection reactively by its unique [id].
   Stream<CollectionLibraryItem?> watchCollectionById(String id);
 
+  // --- System Curation & Franchises ---
+
+  /// Retrieves all discovered canonical TMDB franchises / collections.
+  Future<List<FranchiseLibraryItem>> getFranchises();
+
+  /// Streams all discovered canonical TMDB franchises / collections reactively.
+  Stream<List<FranchiseLibraryItem>> watchFranchises();
+
+  /// Retrieves all discovered canonical genres present across the user's library.
+  Future<List<String>> getDiscoveredGenres();
+
+  /// Streams all discovered canonical genres present across the user's library reactively.
+  Stream<List<String>> watchDiscoveredGenres();
+
   // --- Library Diagnostics & Counts ---
 
   /// Streams total count of unmatched media requiring user verification.

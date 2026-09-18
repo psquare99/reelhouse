@@ -61,6 +61,11 @@ class TmdbMovieDetails {
   final double? voteAverage;
   final int? voteCount;
   final String? imdbId;
+  final List<String> genres;
+  final int? tmdbCollectionId;
+  final String? tmdbCollectionName;
+  final String? tmdbCollectionPosterPath;
+  final String? tmdbCollectionBackdropPath;
 
   const TmdbMovieDetails({
     required this.id,
@@ -75,6 +80,11 @@ class TmdbMovieDetails {
     this.voteAverage,
     this.voteCount,
     this.imdbId,
+    this.genres = const [],
+    this.tmdbCollectionId,
+    this.tmdbCollectionName,
+    this.tmdbCollectionPosterPath,
+    this.tmdbCollectionBackdropPath,
   });
 
   factory TmdbMovieDetails.fromJson(Map<String, dynamic> json) {
@@ -91,6 +101,29 @@ class TmdbMovieDetails {
       imdb = json['imdb_id'] as String?;
     }
 
+    final parsedGenres = <String>[];
+    if (json['genres'] is List) {
+      for (final g in json['genres'] as List) {
+        if (g is Map &&
+            g['name'] is String &&
+            (g['name'] as String).isNotEmpty) {
+          parsedGenres.add(g['name'] as String);
+        }
+      }
+    }
+
+    int? colId;
+    String? colName;
+    String? colPoster;
+    String? colBackdrop;
+    if (json['belongs_to_collection'] is Map) {
+      final col = json['belongs_to_collection'] as Map;
+      colId = col['id'] as int?;
+      colName = col['name'] as String?;
+      colPoster = col['poster_path'] as String?;
+      colBackdrop = col['backdrop_path'] as String?;
+    }
+
     return TmdbMovieDetails(
       id: json['id'] as int,
       title: json['title'] as String? ?? '',
@@ -104,6 +137,11 @@ class TmdbMovieDetails {
       voteAverage: (json['vote_average'] as num?)?.toDouble(),
       voteCount: json['vote_count'] as int?,
       imdbId: imdb,
+      genres: parsedGenres,
+      tmdbCollectionId: colId,
+      tmdbCollectionName: colName,
+      tmdbCollectionPosterPath: colPoster,
+      tmdbCollectionBackdropPath: colBackdrop,
     );
   }
 }
@@ -169,6 +207,7 @@ class TmdbTvShowDetails {
   final String? imdbId;
   final int numberOfSeasons;
   final int numberOfEpisodes;
+  final List<String> genres;
 
   const TmdbTvShowDetails({
     required this.id,
@@ -184,6 +223,7 @@ class TmdbTvShowDetails {
     this.imdbId,
     this.numberOfSeasons = 0,
     this.numberOfEpisodes = 0,
+    this.genres = const [],
   });
 
   factory TmdbTvShowDetails.fromJson(Map<String, dynamic> json) {
@@ -196,6 +236,17 @@ class TmdbTvShowDetails {
     String? imdb;
     if (json['external_ids'] is Map) {
       imdb = json['external_ids']['imdb_id'] as String?;
+    }
+
+    final parsedGenres = <String>[];
+    if (json['genres'] is List) {
+      for (final g in json['genres'] as List) {
+        if (g is Map &&
+            g['name'] is String &&
+            (g['name'] as String).isNotEmpty) {
+          parsedGenres.add(g['name'] as String);
+        }
+      }
     }
 
     return TmdbTvShowDetails(
@@ -212,6 +263,7 @@ class TmdbTvShowDetails {
       imdbId: imdb,
       numberOfSeasons: json['number_of_seasons'] as int? ?? 0,
       numberOfEpisodes: json['number_of_episodes'] as int? ?? 0,
+      genres: parsedGenres,
     );
   }
 }

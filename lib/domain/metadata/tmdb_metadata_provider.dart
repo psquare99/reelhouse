@@ -84,6 +84,15 @@ class TmdbMetadataProvider implements MetadataProvider {
       rating: details.voteAverage,
       voteCount: details.voteCount,
       imdbId: details.imdbId,
+      genres: details.genres,
+      tmdbCollectionId: details.tmdbCollectionId,
+      tmdbCollectionName: details.tmdbCollectionName,
+      tmdbCollectionPosterPath: apiClient.getPosterUrl(
+        details.tmdbCollectionPosterPath,
+      ),
+      tmdbCollectionBackdropPath: apiClient.getBackdropUrl(
+        details.tmdbCollectionBackdropPath,
+      ),
     );
   }
 
@@ -111,6 +120,7 @@ class TmdbMetadataProvider implements MetadataProvider {
       backdropUrl: apiClient.getBackdropUrl(details.backdropPath),
       rating: details.voteAverage,
       imdbId: details.imdbId,
+      genres: details.genres,
     );
   }
 }
