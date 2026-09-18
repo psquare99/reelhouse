@@ -160,6 +160,65 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
+  // --- Transfer Jobs Queries (Milestone 5) ---
+
+  /// Insert or update a transfer job record.
+  Future<int> upsertTransferJob(TransferJobsCompanion job) =>
+      into(transferJobs).insertOnConflictUpdate(job);
+
+  /// Find a transfer job by its unique ID.
+  Future<TransferJob?> getTransferJobById(String id) =>
+      (select(transferJobs)..where((j) => j.id.equals(id))).getSingleOrNull();
+
+  /// Find the active transfer job for a given media ID (movie or episode), if one exists.
+  Future<TransferJob?> getActiveTransferJobForMedia(String mediaId) =>
+      (select(transferJobs)..where(
+            (j) =>
+                j.mediaId.equals(mediaId) &
+                j.status.isNotIn(const ['COMPLETED', 'FAILED', 'CANCELLED']),
+          ))
+          .getSingleOrNull();
+
+  /// Get all transfer jobs for a specific media item.
+  Future<List<TransferJob>> getTransferJobsForMedia(String mediaId) =>
+      (select(transferJobs)..where((j) => j.mediaId.equals(mediaId))).get();
+
+  /// Get all transfer jobs.
+  Future<List<TransferJob>> getAllTransferJobs() => select(transferJobs).get();
+
+  /// Updates transfer job progress and status.
+  Future<int> updateTransferJobProgress(
+    String id, {
+    required String status,
+    int? bytesTransferred,
+    String? error,
+    DateTime? completedAt,
+  }) {
+    return (update(transferJobs)..where((j) => j.id.equals(id))).write(
+      TransferJobsCompanion(
+        status: Value(status),
+        bytesTransferred: bytesTransferred != null
+            ? Value(BigInt.from(bytesTransferred))
+            : const Value.absent(),
+        error: error != null ? Value(error) : const Value.absent(),
+        completedAt: completedAt != null
+            ? Value(completedAt)
+            : const Value.absent(),
+      ),
+    );
+  }
+
+  /// Watch a transfer job by its ID.
+  Stream<TransferJob?> watchTransferJobById(String id) =>
+      (select(transferJobs)..where((j) => j.id.equals(id))).watchSingleOrNull();
+
+  /// Watch all active (non-terminal) transfer jobs.
+  Stream<List<TransferJob>> watchActiveTransferJobs() =>
+      (select(transferJobs)..where(
+            (j) => j.status.isNotIn(const ['COMPLETED', 'FAILED', 'CANCELLED']),
+          ))
+          .watch();
+
   /// Get all active media sources for a movie.
   Future<List<MediaSource>> getSourcesForMovie(String movieId) =>
       (select(mediaSources)..where((s) => s.movieId.equals(movieId))).get();
@@ -236,6 +295,10 @@ class AppDatabase extends _$AppDatabase {
                 s.showId.equals(showId) & s.seasonNumber.equals(seasonNumber),
           ))
           .getSingleOrNull();
+
+  /// Find a season by its unique ID.
+  Future<Season?> findSeasonById(String seasonId) =>
+      (select(seasons)..where((s) => s.id.equals(seasonId))).getSingleOrNull();
 
   /// Find an episode by season ID and episode number.
   Future<Episode?> findEpisode(String seasonId, int episodeNumber) =>
