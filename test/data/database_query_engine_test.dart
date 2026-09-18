@@ -708,6 +708,97 @@ void main() {
       expect(comedyResult.totalCount, equals(1));
       expect(comedyResult.items.first.id, equals('tv-com'));
     });
+
+    test('queryTvShows Title mode searches title identity only while All Fields includes overview', () async {
+      final now = DateTime(2026, 1, 1);
+
+      // Show 1: 'From'
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-from',
+              detectedTitle: 'From',
+              title: const drift.Value('From'),
+              overview: const drift.Value(
+                'Unravel the mystery of a nightmarish town.',
+              ),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Show 2: 'Friends' (overview contains 'from')
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-friends',
+              detectedTitle: 'Friends',
+              title: const drift.Value('Friends'),
+              overview: const drift.Value(
+                'Six friends navigate life from their Manhattan apartment.',
+              ),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Show 3: 'Spartacus' (overview contains 'from')
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-spartacus',
+              detectedTitle: 'Spartacus',
+              title: const drift.Value('Spartacus'),
+              overview: const drift.Value(
+                'A Thracian gladiator leads a rebellion from slavery.',
+              ),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Show 4: 'The Walking Dead' (overview contains 'from')
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-twd',
+              detectedTitle: 'The Walking Dead',
+              title: const drift.Value('The Walking Dead'),
+              overview: const drift.Value(
+                'Survivors struggle to stay safe from walkers.',
+              ),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // 1. Title mode (default): searching 'from' returns ONLY 'From'
+      final titleSearch = await db.queryTvShows(
+        TvShowQuery.search('from', mode: SearchMode.title),
+      );
+      expect(titleSearch.totalCount, equals(1));
+      expect(titleSearch.items.first.id, equals('tv-from'));
+
+      // 2. Default factory also uses Title mode:
+      final defaultSearch = await db.queryTvShows(TvShowQuery.search('from'));
+      expect(defaultSearch.totalCount, equals(1));
+      expect(defaultSearch.items.first.id, equals('tv-from'));
+
+      // 3. All Fields mode: searching 'from' broadens and matches all 4 shows
+      final allSearch = await db.queryTvShows(
+        TvShowQuery.search('from', mode: SearchMode.all),
+      );
+      expect(allSearch.totalCount, equals(4));
+      final allIds = allSearch.items.map((i) => i.id).toSet();
+      expect(
+        allIds,
+        containsAll({'tv-from', 'tv-friends', 'tv-spartacus', 'tv-twd'}),
+      );
+    });
   });
 
   group('Database Query Engine — Season & Episode Queries', () {

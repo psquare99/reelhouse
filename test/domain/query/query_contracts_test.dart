@@ -33,12 +33,13 @@ void main() {
 
   group('SearchSpec', () {
     test('construction, default mode, and trimming', () {
-      const spec = SearchSpec(query: '  inception  ', mode: SearchMode.title);
-      expect(spec.query, equals('  inception  '));
-      expect(spec.trimmedQuery, equals('inception'));
-      expect(spec.mode, equals(SearchMode.title));
-      expect(spec.isEmpty, isFalse);
-      expect(spec.isNotEmpty, isTrue);
+      const defaultSpec = SearchSpec(query: '  inception  ');
+      expect(defaultSpec.query, equals('  inception  '));
+      expect(defaultSpec.trimmedQuery, equals('inception'));
+      expect(defaultSpec.mode, equals(SearchMode.title));
+      expect(defaultSpec.isEmpty, isFalse);
+      expect(defaultSpec.isNotEmpty, isTrue);
+      expect(SearchSpec.empty.mode, equals(SearchMode.title));
     });
 
     test('all mode and copyWith', () {

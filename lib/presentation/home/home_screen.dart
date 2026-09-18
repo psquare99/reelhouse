@@ -49,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounceTimer;
   String _searchQuery = '';
-  SearchMode _searchMode = SearchMode.all;
+  SearchMode _searchMode = SearchMode.title;
 
   @override
   void dispose() {

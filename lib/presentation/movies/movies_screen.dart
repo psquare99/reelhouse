@@ -92,6 +92,23 @@ class _MoviesScreenState extends State<MoviesScreen> {
     return Scaffold(
       backgroundColor: tokens.background,
       appBar: AppBar(
+        leading: _isSearchOpen
+            ? IconButton(
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  color: tokens.textSecondary,
+                ),
+                tooltip: 'Close search',
+                onPressed: () {
+                  _searchController.clear();
+                  _searchDebounceTimer?.cancel();
+                  setState(() {
+                    _isSearchOpen = false;
+                    _searchQuery = '';
+                  });
+                },
+              )
+            : null,
         title: _isSearchOpen
             ? TextField(
                 controller: _searchController,
@@ -118,18 +135,6 @@ class _MoviesScreenState extends State<MoviesScreen> {
                   setState(() => _searchQuery = '');
                 },
               ),
-            IconButton(
-              icon: Icon(Icons.close_rounded, color: tokens.textSecondary),
-              tooltip: 'Close search',
-              onPressed: () {
-                _searchController.clear();
-                _searchDebounceTimer?.cancel();
-                setState(() {
-                  _isSearchOpen = false;
-                  _searchQuery = '';
-                });
-              },
-            ),
           ] else ...[
             IconButton(
               icon: Icon(Icons.search_rounded, color: tokens.accent),

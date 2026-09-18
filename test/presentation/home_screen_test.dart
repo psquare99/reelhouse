@@ -8,6 +8,7 @@ import 'package:reelhouse/data/repository/drift_library_repository.dart';
 import 'package:reelhouse/presentation/home/home_screen.dart';
 import 'package:reelhouse/presentation/movies/movie_detail_screen.dart';
 import 'package:reelhouse/presentation/tv_shows/tv_show_detail_screen.dart';
+import 'package:reelhouse/presentation/widgets/cinema_poster_card.dart';
 
 void main() {
   late AppDatabase db;
@@ -335,4 +336,74 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+    'HomeScreen global search searches Movies, TV Shows, and Episodes in Title mode with single clear X',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await seedTestData();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: HomeScreen(
+            repository: repository,
+            database: db,
+            onNavigateToMovies: () {},
+            onNavigateToTv: () {},
+            onNavigateToOffline: () {},
+            onNavigateToSettings: () {},
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final searchInput = find.byType(TextField);
+      expect(searchInput, findsOneWidget);
+
+      // Initial state: Title mode default indicator
+      expect(find.text('Title'), findsOneWidget);
+
+      // Search 'Oppenheimer'
+      await tester.enterText(searchInput, 'Oppenheimer');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      // Verify single clear X button
+      final clearButtons = find.byTooltip('Clear search');
+      expect(clearButtons, findsOneWidget);
+
+      // Verify results show Movies section
+      expect(find.text('MOVIES (1)'), findsOneWidget);
+      expect(
+        find.widgetWithText(CinemaPosterCard, 'Oppenheimer'),
+        findsOneWidget,
+      );
+
+      // Search 'Severance' (matches TV show)
+      await tester.enterText(searchInput, 'Severance');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      expect(find.text('TV SHOWS (1)'), findsOneWidget);
+      expect(
+        find.widgetWithText(CinemaPosterCard, 'Severance'),
+        findsOneWidget,
+      );
+
+      // Clear search with single clear X
+      await tester.tap(find.byTooltip('Clear search'));
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      expect(find.text('CONTINUE WATCHING'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
 }

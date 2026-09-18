@@ -25,10 +25,10 @@ class SearchSpec {
   final String query;
   final SearchMode mode;
 
-  const SearchSpec({required this.query, this.mode = SearchMode.all});
+  const SearchSpec({required this.query, this.mode = SearchMode.title});
 
   /// Factory for empty search.
-  static const SearchSpec empty = SearchSpec(query: '', mode: SearchMode.all);
+  static const SearchSpec empty = SearchSpec(query: '', mode: SearchMode.title);
 
   /// Whether this search specification has a non-empty trimmed query string.
   bool get isNotEmpty => query.trim().isNotEmpty;

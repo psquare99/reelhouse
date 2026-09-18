@@ -47,7 +47,7 @@ class CinemaSearchResultsView extends StatefulWidget {
     required this.repository,
     this.database,
     required this.query,
-    this.searchMode = SearchMode.all,
+    this.searchMode = SearchMode.title,
     this.onDismiss,
   });
 
@@ -63,7 +63,7 @@ class _CinemaSearchResultsViewState extends State<CinemaSearchResultsView> {
   List<EpisodeLibraryItem> _episodeResults = [];
   bool _isLoading = false;
   String _activeQuery = '';
-  SearchMode _activeMode = SearchMode.all;
+  SearchMode _activeMode = SearchMode.title;
 
   @override
   void initState() {

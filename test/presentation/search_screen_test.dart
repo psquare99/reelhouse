@@ -158,23 +158,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
 
-    // In All Fields mode (default), finds Blade Runner Original Cut
-    expect(find.text('Blade Runner Original Cut'), findsOneWidget);
+    // In Title mode (default), 'replicants' is not in title -> no results
+    expect(find.text('Blade Runner Original Cut'), findsNothing);
+    expect(find.text('No matches for "replicants"'), findsOneWidget);
 
-    // Switch SearchMode to Title Only
+    // Switch SearchMode to All Fields
     await tester.tap(find.byIcon(Icons.tune_rounded));
     await tester.pumpAndSettle();
 
     expect(find.text('All Fields'), findsOneWidget);
     expect(find.text('Title'), findsOneWidget);
 
-    await tester.tap(find.text('Title'));
+    await tester.tap(find.text('All Fields'));
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
 
-    // In Title Only mode, 'replicants' is not in title -> no results
-    expect(find.text('Blade Runner Original Cut'), findsNothing);
-    expect(find.text('No matches for "replicants"'), findsOneWidget);
+    // In All Fields mode, finds Blade Runner Original Cut because 'replicants' is in overview
+    expect(find.text('Blade Runner Original Cut'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();

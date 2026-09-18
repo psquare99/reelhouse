@@ -63,7 +63,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
   Timer? _debounceTimer;
   String _query = '';
-  SearchMode _searchMode = SearchMode.all;
+  SearchMode _searchMode = SearchMode.title;
   SearchResultTypeFilter _typeFilter = SearchResultTypeFilter.all;
 
   List<MovieLibraryItem> _movieResults = [];

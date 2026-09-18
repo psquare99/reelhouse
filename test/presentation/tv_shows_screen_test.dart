@@ -6,6 +6,7 @@ import 'package:reelhouse/core/theme/cinema_theme.dart';
 import 'package:reelhouse/data/database/database.dart';
 import 'package:reelhouse/data/repository/drift_library_repository.dart';
 import 'package:reelhouse/presentation/tv_shows/tv_shows_screen.dart';
+import 'package:reelhouse/presentation/widgets/cinema_poster_card.dart';
 
 void main() {
   late AppDatabase db;
@@ -392,4 +393,78 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+    'TvShowsScreen contextual search filters titles and shows single clear X',
+    (tester) async {
+      await seedTvShows();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: TvShowsScreen(repository: repository, database: db),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // 1. Open search
+      await tester.tap(find.byIcon(Icons.search_rounded));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+
+      // Enter query 'Severance'
+      await tester.enterText(find.byType(TextField), 'Severance');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      // Verify single clear X button exists (no duplicate)
+      expect(find.byIcon(Icons.clear_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.close_rounded), findsNothing);
+
+      expect(
+        find.widgetWithText(CinemaPosterCard, 'Severance'),
+        findsOneWidget,
+      );
+      expect(
+        find.widgetWithText(CinemaPosterCard, 'Better Call Saul'),
+        findsNothing,
+      );
+      expect(
+        find.widgetWithText(CinemaPosterCard, 'Breaking Bad'),
+        findsNothing,
+      );
+
+      // Tap clear button -> clears query
+      await tester.tap(find.byIcon(Icons.clear_rounded));
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.clear_rounded), findsNothing);
+      expect(
+        find.widgetWithText(CinemaPosterCard, 'Better Call Saul'),
+        findsOneWidget,
+      );
+      expect(
+        find.widgetWithText(CinemaPosterCard, 'Breaking Bad'),
+        findsOneWidget,
+      );
+      expect(
+        find.widgetWithText(CinemaPosterCard, 'Severance'),
+        findsOneWidget,
+      );
+
+      // Tap back arrow -> closes search
+      await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextField), findsNothing);
+      expect(find.byIcon(Icons.search_rounded), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
 }
