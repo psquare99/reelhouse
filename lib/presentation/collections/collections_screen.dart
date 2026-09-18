@@ -268,7 +268,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
             _buildSectionHeader(context, tokens, title: 'GENRES'),
             const SizedBox(height: 14),
 
-            // Horizontal text-first genre chip strip with edge fade & scroll affordance
+            // Horizontal text-first genre chip strip with explicit left/right navigation controls
             _GenreChipStrip(
               genres: discoveredGenres,
               selectedGenre: _selectedGenre,
@@ -277,15 +277,12 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
                   _selectedGenre = genre;
                 });
 
-                final prominentMatch = activeGenres.firstWhere(
-                  (g) => g.toLowerCase() == genre.toLowerCase(),
-                  orElse: () => '',
-                );
+                final shelfKey = _genreKeys[genre.toLowerCase()];
+                final shelfContext = shelfKey?.currentContext;
 
-                if (prominentMatch.isNotEmpty &&
-                    _genreKeys[prominentMatch]?.currentContext != null) {
+                if (shelfContext != null && shelfContext.mounted) {
                   Scrollable.ensureVisible(
-                    _genreKeys[prominentMatch]!.currentContext!,
+                    shelfContext,
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
                   );
@@ -313,14 +310,15 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: 28),
               itemBuilder: (context, index) {
                 final genre = activeGenres[index];
-                final key = _genreKeys.putIfAbsent(genre, () => GlobalKey());
-                return Container(
-                  key: key,
-                  child: _GenreDiscoveryRow(
-                    genre: genre,
-                    repository: widget.repository,
-                    database: widget.database,
-                  ),
+                final shelfKey = _genreKeys.putIfAbsent(
+                  genre.toLowerCase(),
+                  () => GlobalKey(),
+                );
+                return _GenreDiscoveryRow(
+                  shelfKey: shelfKey,
+                  genre: genre,
+                  repository: widget.repository,
+                  database: widget.database,
                 );
               },
             ),
@@ -622,11 +620,13 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
 
 /// A responsive horizontal poster row presenting a subset of films in a specific genre.
 class _GenreDiscoveryRow extends StatelessWidget {
+  final GlobalKey? shelfKey;
   final String genre;
   final LibraryRepository repository;
   final AppDatabase? database;
 
   const _GenreDiscoveryRow({
+    this.shelfKey,
     required this.genre,
     required this.repository,
     this.database,
@@ -653,98 +653,101 @@ class _GenreDiscoveryRow extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Text(
-                    genre.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: tokens.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => SystemCurationGridScreen(
-                          title: genre,
-                          genre: genre,
-                          repository: repository,
-                          database: database,
-                        ),
+        return Container(
+          key: shelfKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      genre.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: tokens.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
                       ),
-                    );
-                  },
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
                     ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'View All',
-                        style: TextStyle(
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => SystemCurationGridScreen(
+                            title: genre,
+                            genre: genre,
+                            repository: repository,
+                            database: database,
+                          ),
+                        ),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'View All',
+                          style: TextStyle(
+                            color: tokens.accent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_rounded,
                           color: tokens.accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                          size: 14,
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.arrow_forward_rounded,
-                        color: tokens.accent,
-                        size: 14,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ResponsiveCardRow(
-              itemCount: movies.length,
-              itemBuilder: (context, index) {
-                final movie = movies[index];
-                return CinemaPosterCard(
-                  title: movie.displayTitle,
-                  year: movie.displayYear,
-                  posterPath: movie.posterPath,
-                  availabilityStatus: movie.availability,
-                  isFavorite: movie.isFavorite,
-                  isWatchlist: movie.isWatchlist,
-                  watchState: movie.watchState.toDbString(),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => MovieDetailScreen(
-                          movieId: movie.id,
-                          repository: repository,
-                          database: database,
+                ],
+              ),
+              const SizedBox(height: 12),
+              ResponsiveCardRow(
+                itemCount: movies.length,
+                itemBuilder: (context, index) {
+                  final movie = movies[index];
+                  return CinemaPosterCard(
+                    title: movie.displayTitle,
+                    year: movie.displayYear,
+                    posterPath: movie.posterPath,
+                    availabilityStatus: movie.availability,
+                    isFavorite: movie.isFavorite,
+                    isWatchlist: movie.isWatchlist,
+                    watchState: movie.watchState.toDbString(),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => MovieDetailScreen(
+                            movieId: movie.id,
+                            repository: repository,
+                            database: database,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
         );
       },
     );

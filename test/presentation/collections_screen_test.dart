@@ -573,4 +573,135 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+
+  testWidgets(
+    'Genre chip navigation correctly differentiates between rendered shelves and SystemCurationGridScreen navigation',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final now = DateTime.now();
+
+      // 1. Rendered shelf genre 1 (Action movie)
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-die-hard',
+              detectedTitle: 'Die Hard',
+              title: const drift.Value('Die Hard'),
+              year: const drift.Value(1988),
+              genres: const drift.Value('Action'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // 2. Rendered shelf genre 2 (Science Fiction movie)
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-interstellar',
+              detectedTitle: 'Interstellar',
+              title: const drift.Value('Interstellar'),
+              year: const drift.Value(2014),
+              genres: const drift.Value('Science Fiction'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // 3. Prominent genre with ONLY TV Shows (0 movies in library) - reproduces regression case
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-breaking-bad',
+              detectedTitle: 'Breaking Bad',
+              title: const drift.Value('Breaking Bad'),
+              genres: const drift.Value('Drama'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // 4. Long-tail genre without dedicated shelf (Animation movie)
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-spirited-away',
+              detectedTitle: 'Spirited Away',
+              title: const drift.Value('Spirited Away'),
+              year: const drift.Value(2001),
+              genres: const drift.Value('Animation'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: CollectionsScreen(database: db),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify discovered genre chips are rendered
+      expect(find.text('Action'), findsWidgets);
+      expect(find.text('Science Fiction'), findsWidgets);
+      expect(find.text('Drama'), findsOneWidget);
+      expect(find.text('Animation'), findsOneWidget);
+
+      // Verify ONLY Action and Science Fiction have dedicated rendered shelves
+      expect(find.text('ACTION'), findsOneWidget);
+      expect(find.text('SCIENCE FICTION'), findsOneWidget);
+      expect(find.text('DRAMA'), findsNothing);
+      expect(find.text('ANIMATION'), findsNothing);
+
+      // Path A: Tapping Action chip (has dedicated shelf) -> scrolls in-page without pushing SystemCurationGridScreen
+      final actionChip = find.text('Action').first;
+      await tester.tap(actionChip);
+      await tester.pumpAndSettle();
+      expect(find.byType(SystemCurationGridScreen), findsNothing);
+
+      // Path A2: Tapping Science Fiction chip (has dedicated shelf) -> scrolls in-page without pushing SystemCurationGridScreen
+      final sciFiChip = find.text('Science Fiction').first;
+      await tester.tap(sciFiChip);
+      await tester.pumpAndSettle();
+      expect(find.byType(SystemCurationGridScreen), findsNothing);
+
+      // Path B1: Tapping Drama chip (prominent genre, but TV-only with NO rendered shelf) -> navigates to SystemCurationGridScreen
+      final dramaChip = find.text('Drama');
+      await tester.tap(dramaChip);
+      await tester.pumpAndSettle();
+      expect(find.byType(SystemCurationGridScreen), findsOneWidget);
+      expect(find.text('Drama'), findsWidgets);
+      expect(find.text('Breaking Bad'), findsOneWidget);
+
+      // Return to CollectionsScreen
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(SystemCurationGridScreen), findsNothing);
+
+      // Path B2: Tapping Animation chip (long-tail genre with NO rendered shelf) -> navigates to SystemCurationGridScreen
+      final animChip = find.text('Animation');
+      await tester.tap(animChip);
+      await tester.pumpAndSettle();
+      expect(find.byType(SystemCurationGridScreen), findsOneWidget);
+      expect(find.text('Animation'), findsWidgets);
+      expect(find.text('Spirited Away'), findsOneWidget);
+
+      // Return to CollectionsScreen
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(SystemCurationGridScreen), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
 }
