@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 import '../../data/database/database.dart';
 import '../../data/repository/drift_library_repository.dart';
 import '../../domain/models/availability_status.dart';
@@ -44,7 +44,10 @@ class _OfflineScreenState extends State<OfflineScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
+
     return Scaffold(
+      backgroundColor: tokens.background,
       body: StreamBuilder<LibraryResult<MovieLibraryItem>>(
         stream: widget.repository.watchMovies(MovieQuery.offline()),
         builder: (context, moviesSnapshot) {
@@ -100,12 +103,12 @@ class _OfflineScreenState extends State<OfflineScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: CinemaColors.amberSubtle,
+                                  color: tokens.accent.withValues(alpha: 0.14),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.offline_pin,
-                                  color: CinemaColors.amber,
+                                  color: tokens.accent,
                                   size: 22,
                                 ),
                               ),
@@ -113,20 +116,19 @@ class _OfflineScreenState extends State<OfflineScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'OFFLINE LIBRARY',
-                                    style: TextStyle(
-                                      color: CinemaColors.textPrimary,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.5,
+                                    style: CinemaTheme.heading(
+                                      context,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     '$totalCount ${totalCount == 1 ? 'title' : 'titles'} stored locally on this device',
-                                    style: const TextStyle(
-                                      color: CinemaColors.textSecondary,
+                                    style: TextStyle(
+                                      color: tokens.textSecondary,
                                       fontSize: 13,
                                     ),
                                   ),
@@ -140,12 +142,18 @@ class _OfflineScreenState extends State<OfflineScreen> {
                           Wrap(
                             spacing: 10,
                             children: [
-                              _buildFilterChip('all', 'All ($totalCount)'),
                               _buildFilterChip(
+                                tokens,
+                                'all',
+                                'All ($totalCount)',
+                              ),
+                              _buildFilterChip(
+                                tokens,
                                 'movies',
                                 'Movies (${offlineMovies.length})',
                               ),
                               _buildFilterChip(
+                                tokens,
                                 'tv',
                                 'TV Shows (${offlineShows.length})',
                               ),
@@ -170,35 +178,33 @@ class _OfflineScreenState extends State<OfflineScreen> {
                                 width: 72,
                                 height: 72,
                                 decoration: BoxDecoration(
-                                  color: CinemaColors.surface,
+                                  color: tokens.surface1,
                                   shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: CinemaColors.borderSubtle,
-                                  ),
+                                  border: Border.all(color: tokens.border),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.offline_pin_outlined,
                                   size: 36,
-                                  color: CinemaColors.textMuted,
+                                  color: tokens.textMuted,
                                 ),
                               ),
                               const SizedBox(height: 20),
-                              const Text(
+                              Text(
                                 'No Offline Media on This Device',
                                 style: TextStyle(
-                                  color: CinemaColors.textPrimary,
+                                  color: tokens.textPrimary,
                                   fontSize: 18,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              const SizedBox(
+                              SizedBox(
                                 width: 440,
                                 child: Text(
                                   'Media files downloaded or copied to device-local storage will appear here for untethered viewing without external disks.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: CinemaColors.textSecondary,
+                                    color: tokens.textSecondary,
                                     fontSize: 13,
                                     height: 1.5,
                                   ),
@@ -213,17 +219,12 @@ class _OfflineScreenState extends State<OfflineScreen> {
                     // Movies Section
                     if (showMovies && offlineMovies.isNotEmpty) ...[
                       if (_filter == 'all')
-                        const SliverToBoxAdapter(
+                        SliverToBoxAdapter(
                           child: Padding(
-                            padding: EdgeInsets.fromLTRB(32, 16, 32, 12),
+                            padding: const EdgeInsets.fromLTRB(32, 16, 32, 12),
                             child: Text(
                               'MOVIES',
-                              style: TextStyle(
-                                color: CinemaColors.amber,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.5,
-                              ),
+                              style: CinemaTheme.eyebrow(context, fontSize: 12),
                             ),
                           ),
                         ),
@@ -273,17 +274,12 @@ class _OfflineScreenState extends State<OfflineScreen> {
                     // TV Shows Section
                     if (showShows && offlineShows.isNotEmpty) ...[
                       if (_filter == 'all')
-                        const SliverToBoxAdapter(
+                        SliverToBoxAdapter(
                           child: Padding(
-                            padding: EdgeInsets.fromLTRB(32, 28, 32, 12),
+                            padding: const EdgeInsets.fromLTRB(32, 28, 32, 12),
                             child: Text(
                               'TV SHOWS',
-                              style: TextStyle(
-                                color: CinemaColors.amber,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.5,
-                              ),
+                              style: CinemaTheme.eyebrow(context, fontSize: 12),
                             ),
                           ),
                         ),
@@ -340,7 +336,11 @@ class _OfflineScreenState extends State<OfflineScreen> {
     );
   }
 
-  Widget _buildFilterChip(String filterKey, String label) {
+  Widget _buildFilterChip(
+    CinemaThemeData tokens,
+    String filterKey,
+    String label,
+  ) {
     final isSelected = _filter == filterKey;
     return ChoiceChip(
       label: Text(label),
@@ -350,17 +350,18 @@ class _OfflineScreenState extends State<OfflineScreen> {
           setState(() => _filter = filterKey);
         }
       },
-      selectedColor: CinemaColors.surfaceElevated,
-      backgroundColor: CinemaColors.surface,
+      selectedColor: tokens.accent.withValues(alpha: 0.14),
+      backgroundColor: tokens.surface1,
       labelStyle: TextStyle(
-        color: isSelected ? CinemaColors.amber : CinemaColors.textSecondary,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        color: isSelected ? tokens.accent : tokens.textSecondary,
+        fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
         fontSize: 12,
       ),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         side: BorderSide(
-          color: isSelected ? CinemaColors.amber : CinemaColors.borderSubtle,
+          color: isSelected ? tokens.accent : tokens.border,
+          width: 1,
         ),
       ),
     );

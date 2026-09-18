@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 import '../../domain/models/availability_status.dart';
 import 'cinema_poster_image.dart';
 
 /// Poster-first cinema card for movies and TV shows.
 ///
 /// Restrained, artwork-driven presentation with subtle availability
-/// and user watch-state indicators.
+/// and user watch-state indicators adhering to the 12px radius, 1px border,
+/// flat elevation, and semantic state token rules.
 class CinemaPosterCard extends StatelessWidget {
   final String title;
   final int? year;
@@ -36,14 +37,16 @@ class CinemaPosterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
-          color: CinemaColors.ofCard(context),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: CinemaColors.ofBorderSubtle(context)),
+          color: tokens.surface1,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: tokens.border, width: 1),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -65,27 +68,27 @@ class CinemaPosterCard extends StatelessWidget {
                       top: 8,
                       right: 8,
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(
-                          color: CinemaColors.ofCanvas(context)
-                              .withValues(alpha: 0.75),
+                          color: tokens.background.withValues(alpha: 0.80),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.favorite,
-                          color: CinemaColors.amber,
-                          size: 14,
+                          color: tokens.accent,
+                          size: 13,
                         ),
                       ),
                     ),
 
-                  // Availability micro-indicator (top-left) - understated so artwork dominates
+                  // Availability micro-indicator (top-left)
                   if (availabilityStatus != null)
                     Positioned(
                       top: 8,
                       left: 8,
                       child: _buildAvailabilityIndicator(
                         context,
+                        tokens,
                         availabilityStatus!,
                       ),
                     ),
@@ -98,11 +101,12 @@ class CinemaPosterCard extends StatelessWidget {
                       right: 0,
                       child: LinearProgressIndicator(
                         value: watchProgress ?? 0.4,
-                        minHeight: 2.5,
-                        backgroundColor: CinemaColors.ofCanvas(context)
-                            .withValues(alpha: 0.7),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          CinemaColors.amber,
+                        minHeight: 3,
+                        backgroundColor: tokens.background.withValues(
+                          alpha: 0.8,
+                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          tokens.stateProgress,
                         ),
                       ),
                     )
@@ -113,13 +117,12 @@ class CinemaPosterCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: CinemaColors.ofCanvas(context)
-                              .withValues(alpha: 0.75),
+                          color: tokens.background.withValues(alpha: 0.80),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.check_circle,
-                          color: CinemaColors.amber,
+                          color: tokens.accent,
                           size: 13,
                         ),
                       ),
@@ -140,8 +143,8 @@ class CinemaPosterCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: CinemaColors.ofTextPrimary(context),
-                      fontWeight: FontWeight.w600,
+                      color: tokens.textPrimary,
+                      fontWeight: FontWeight.w500,
                       fontSize: 14,
                       letterSpacing: 0.2,
                     ),
@@ -152,8 +155,9 @@ class CinemaPosterCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: CinemaColors.ofTextSecondary(context),
+                      color: tokens.textSecondary,
                       fontSize: 12,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ],
@@ -165,32 +169,38 @@ class CinemaPosterCard extends StatelessWidget {
     );
   }
 
-  /// Understated micro-indicator to avoid competing with poster artwork.
+  /// Understated micro-indicator with semantic state tokens.
   Widget _buildAvailabilityIndicator(
     BuildContext context,
+    CinemaThemeData tokens,
     AvailabilityStatus status,
   ) {
     Color dotColor;
     IconData? icon;
     String tooltip;
+    String badgeText;
 
     switch (status) {
       case AvailabilityStatus.availableLocally:
-        dotColor = CinemaColors.amber;
+        dotColor = tokens.stateOffline;
         icon = Icons.offline_pin_outlined;
         tooltip = 'Downloaded locally';
+        badgeText = 'OFFLINE';
       case AvailabilityStatus.availableOnRemovableStorage:
-        dotColor = CinemaColors.ofTextSecondary(context);
+        dotColor = tokens.stateAvailable;
         icon = Icons.album_outlined;
         tooltip = 'On connected disk';
+        badgeText = 'DISK';
       case AvailabilityStatus.availableOnMultipleSources:
-        dotColor = CinemaColors.amber;
+        dotColor = tokens.stateAvailable;
         icon = Icons.done_all;
         tooltip = 'Available locally and on disk';
+        badgeText = 'READY';
       case AvailabilityStatus.unavailable:
-        dotColor = CinemaColors.ofTextMuted(context);
+        dotColor = tokens.stateUnavailable;
         icon = Icons.cloud_off_outlined;
         tooltip = 'Storage disk disconnected';
+        badgeText = 'CONNECT';
     }
 
     return Tooltip(
@@ -198,12 +208,9 @@ class CinemaPosterCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(
-          color: CinemaColors.ofCanvas(context).withValues(alpha: 0.75),
+          color: tokens.surface1.withValues(alpha: 0.90),
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: dotColor.withValues(alpha: 0.25),
-            width: 0.8,
-          ),
+          border: Border.all(color: dotColor.withValues(alpha: 0.35), width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -211,17 +218,11 @@ class CinemaPosterCard extends StatelessWidget {
             Icon(icon, color: dotColor, size: 10),
             const SizedBox(width: 4),
             Text(
-              status == AvailabilityStatus.availableLocally
-                  ? 'OFFLINE'
-                  : status == AvailabilityStatus.availableOnRemovableStorage
-                  ? 'DISK'
-                  : status == AvailabilityStatus.unavailable
-                  ? 'OFFLINE'
-                  : 'READY',
+              badgeText,
               style: TextStyle(
                 color: dotColor,
                 fontSize: 9,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
                 letterSpacing: 0.5,
               ),
             ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 import '../../data/database/database.dart';
 import '../../data/network/tmdb_models.dart';
 import '../../data/repository/drift_library_repository.dart';
@@ -69,10 +69,14 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
         metadataService: widget.metadataService,
         onMatchApplied: () {
           if (mounted) {
+            final theme = CinemaTheme.of(context);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Verified and updated "$detectedTitle"'),
-                backgroundColor: CinemaColors.surface,
+                content: Text(
+                  'Verified and updated "$detectedTitle"',
+                  style: TextStyle(color: theme.textPrimary),
+                ),
+                backgroundColor: theme.surface2,
               ),
             );
             setState(() {});
@@ -84,14 +88,16 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = CinemaTheme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Needs Verification'),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: CinemaColors.amber,
-          labelColor: CinemaColors.amber,
-          unselectedLabelColor: CinemaColors.textSecondary,
+          indicatorColor: theme.accent,
+          labelColor: theme.accent,
+          unselectedLabelColor: theme.textSecondary,
           tabs: const [
             Tab(text: 'Movies'),
             Tab(text: 'TV Shows'),
@@ -110,6 +116,7 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
               final unmatched = snapshot.data?.items ?? [];
               if (unmatched.isEmpty) {
                 return _buildEmptyState(
+                  context: context,
                   title: 'No Movies Need Verification',
                   message: 'All discovered movies have verified metadata and artwork.',
                 );
@@ -125,6 +132,7 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
                     builder: (context, sourceSnap) {
                       final source = sourceSnap.data?.firstOrNull;
                       return _buildItemCard(
+                        context: context,
                         title: movie.title ?? movie.detectedTitle,
                         year: movie.year ?? movie.detectedYear,
                         filename: source?.filename,
@@ -155,6 +163,7 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
               final unmatched = snapshot.data?.items ?? [];
               if (unmatched.isEmpty) {
                 return _buildEmptyState(
+                  context: context,
                   title: 'No TV Shows Need Verification',
                   message: 'All discovered TV shows have verified metadata and artwork.',
                 );
@@ -170,6 +179,7 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
                     builder: (context, sourceSnap) {
                       final source = sourceSnap.data?.firstOrNull;
                       return _buildItemCard(
+                        context: context,
                         title: show.title ?? show.detectedTitle,
                         year: null,
                         filename: source?.filename,
@@ -195,35 +205,37 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
     );
   }
 
-  Widget _buildEmptyState({required String title, required String message}) {
+  Widget _buildEmptyState({
+    required BuildContext context,
+    required String title,
+    required String message,
+  }) {
+    final theme = CinemaTheme.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.check_circle_outline,
               size: 56,
-              color: CinemaColors.statusAvailable,
+              color: theme.statusAvailable,
             ),
             const SizedBox(height: 16),
             Text(
               title,
-              style: const TextStyle(
-                color: CinemaColors.textPrimary,
+              style: TextStyle(
+                color: theme.textPrimary,
                 fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: CinemaColors.textSecondary,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: theme.textSecondary, fontSize: 14),
             ),
           ],
         ),
@@ -232,6 +244,7 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
   }
 
   Widget _buildItemCard({
+    required BuildContext context,
     required String title,
     required int? year,
     required String? filename,
@@ -239,6 +252,7 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
     required bool isMovie,
     required VoidCallback onResolve,
   }) {
+    final theme = CinemaTheme.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -247,7 +261,7 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
           children: [
             Icon(
               isMovie ? Icons.movie_outlined : Icons.tv_outlined,
-              color: CinemaColors.amber,
+              color: theme.accent,
               size: 32,
             ),
             const SizedBox(width: 16),
@@ -257,9 +271,9 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: CinemaColors.textPrimary,
-                      fontWeight: FontWeight.bold,
+                    style: TextStyle(
+                      color: theme.textPrimary,
+                      fontWeight: FontWeight.w500,
                       fontSize: 16,
                     ),
                   ),
@@ -267,8 +281,8 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
                     const SizedBox(height: 2),
                     Text(
                       '($year)',
-                      style: const TextStyle(
-                        color: CinemaColors.textSecondary,
+                      style: TextStyle(
+                        color: theme.textSecondary,
                         fontSize: 13,
                       ),
                     ),
@@ -277,8 +291,8 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
                     const SizedBox(height: 4),
                     Text(
                       filename,
-                      style: const TextStyle(
-                        color: CinemaColors.textMuted,
+                      style: TextStyle(
+                        color: theme.textMuted,
                         fontSize: 12,
                         fontFamily: 'monospace',
                       ),
@@ -288,10 +302,7 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
                     const SizedBox(height: 2),
                     Text(
                       relativePath,
-                      style: const TextStyle(
-                        color: CinemaColors.textMuted,
-                        fontSize: 11,
-                      ),
+                      style: TextStyle(color: theme.textMuted, fontSize: 11),
                     ),
                   ],
                 ],
@@ -301,8 +312,8 @@ class _NeedsVerificationScreenState extends State<NeedsVerificationScreen>
             ElevatedButton(
               onPressed: onResolve,
               style: ElevatedButton.styleFrom(
-                backgroundColor: CinemaColors.amber,
-                foregroundColor: CinemaColors.canvas,
+                backgroundColor: theme.accent,
+                foregroundColor: theme.onAccent,
               ),
               child: const Text('Resolve'),
             ),
@@ -455,8 +466,10 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = CinemaTheme.of(context);
+
     return Dialog(
-      backgroundColor: CinemaColors.surface,
+      backgroundColor: theme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 640, maxHeight: 680),
@@ -471,17 +484,14 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
                 children: [
                   Text(
                     'Manual Identification (${widget.isMovie ? 'Movie' : 'TV Show'})',
-                    style: const TextStyle(
-                      color: CinemaColors.textPrimary,
+                    style: TextStyle(
+                      color: theme.textPrimary,
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      color: CinemaColors.textSecondary,
-                    ),
+                    icon: Icon(Icons.close, color: theme.textSecondary),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -492,18 +502,18 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: CinemaColors.card,
+                  color: theme.surface2,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: CinemaColors.borderSubtle),
+                  border: Border.all(color: theme.borderSubtle),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Detected: "${widget.detectedTitle}" ${widget.detectedYear != null ? '(${widget.detectedYear})' : ''}',
-                      style: const TextStyle(
-                        color: CinemaColors.textPrimary,
-                        fontWeight: FontWeight.w600,
+                      style: TextStyle(
+                        color: theme.textPrimary,
+                        fontWeight: FontWeight.w500,
                         fontSize: 13,
                       ),
                     ),
@@ -511,8 +521,8 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
                       const SizedBox(height: 2),
                       Text(
                         'File: ${widget.filename}',
-                        style: const TextStyle(
-                          color: CinemaColors.textMuted,
+                        style: TextStyle(
+                          color: theme.textMuted,
                           fontSize: 11,
                           fontFamily: 'monospace',
                         ),
@@ -530,10 +540,27 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
                     flex: 3,
                     child: TextField(
                       controller: _searchController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Title',
-                        prefixIcon: Icon(Icons.search, size: 20),
+                        labelStyle: TextStyle(color: theme.textSecondary),
+                        hintStyle: TextStyle(color: theme.textMuted),
+                        filled: true,
+                        fillColor: theme.surface2,
+                        prefixIcon: Icon(
+                          Icons.search,
+                          size: 20,
+                          color: theme.textSecondary,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: theme.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: theme.accent, width: 2),
+                        ),
                       ),
+                      style: TextStyle(color: theme.textPrimary),
                       onSubmitted: (_) => _performSearch(),
                     ),
                   ),
@@ -542,7 +569,22 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
                     flex: 1,
                     child: TextField(
                       controller: _yearController,
-                      decoration: const InputDecoration(labelText: 'Year'),
+                      decoration: InputDecoration(
+                        labelText: 'Year',
+                        labelStyle: TextStyle(color: theme.textSecondary),
+                        hintStyle: TextStyle(color: theme.textMuted),
+                        filled: true,
+                        fillColor: theme.surface2,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: theme.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: theme.accent, width: 2),
+                        ),
+                      ),
+                      style: TextStyle(color: theme.textPrimary),
                       keyboardType: TextInputType.number,
                       onSubmitted: (_) => _performSearch(),
                     ),
@@ -551,18 +593,21 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
                   ElevatedButton(
                     onPressed: _isSearching ? null : _performSearch,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: CinemaColors.amber,
-                      foregroundColor: CinemaColors.canvas,
+                      backgroundColor: theme.accent,
+                      foregroundColor: theme.onAccent,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
                       ),
                     ),
                     child: _isSearching
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: theme.onAccent,
+                            ),
                           )
                         : const Text('Search'),
                   ),
@@ -575,34 +620,29 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(
-                      color: Colors.redAccent,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: theme.statusMissing, fontSize: 13),
                   ),
                 ),
 
               // Results List
               Expanded(
                 child: _isApplying
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
+                            CircularProgressIndicator(color: theme.accent),
+                            const SizedBox(height: 16),
                             Text(
                               'Downloading metadata & caching artwork...',
-                              style: TextStyle(
-                                color: CinemaColors.textSecondary,
-                              ),
+                              style: TextStyle(color: theme.textSecondary),
                             ),
                           ],
                         ),
                       )
                     : widget.isMovie
-                    ? _buildMovieResults()
-                    : _buildTvResults(),
+                    ? _buildMovieResults(context)
+                    : _buildTvResults(context),
               ),
             ],
           ),
@@ -611,12 +651,13 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
     );
   }
 
-  Widget _buildMovieResults() {
+  Widget _buildMovieResults(BuildContext context) {
+    final theme = CinemaTheme.of(context);
     if (_movieCandidates.isEmpty && !_isSearching) {
-      return const Center(
+      return Center(
         child: Text(
           'No matching movies found on TMDB.',
-          style: TextStyle(color: CinemaColors.textMuted),
+          style: TextStyle(color: theme.textMuted),
         ),
       );
     }
@@ -627,29 +668,26 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
         final c = _movieCandidates[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
-          color: CinemaColors.card,
+          color: theme.surface2,
           child: ListTile(
             title: Text(
               c.title,
-              style: const TextStyle(
-                color: CinemaColors.textPrimary,
-                fontWeight: FontWeight.w600,
+              style: TextStyle(
+                color: theme.textPrimary,
+                fontWeight: FontWeight.w500,
               ),
             ),
             subtitle: Text(
               '${c.releaseDate ?? 'Unknown'} • Rating: ${c.voteAverage?.toStringAsFixed(1) ?? 'N/A'}\n${c.overview ?? ''}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: CinemaColors.textSecondary,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: theme.textSecondary, fontSize: 12),
             ),
             trailing: ElevatedButton(
               onPressed: () => _applyMovieMatch(c),
               style: ElevatedButton.styleFrom(
-                backgroundColor: CinemaColors.amberSubtle,
-                foregroundColor: CinemaColors.amber,
+                backgroundColor: theme.accentMuted,
+                foregroundColor: theme.accent,
               ),
               child: const Text('Select'),
             ),
@@ -659,12 +697,13 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
     );
   }
 
-  Widget _buildTvResults() {
+  Widget _buildTvResults(BuildContext context) {
+    final theme = CinemaTheme.of(context);
     if (_tvCandidates.isEmpty && !_isSearching) {
-      return const Center(
+      return Center(
         child: Text(
           'No matching TV shows found on TMDB.',
-          style: TextStyle(color: CinemaColors.textMuted),
+          style: TextStyle(color: theme.textMuted),
         ),
       );
     }
@@ -675,29 +714,26 @@ class _ManualMatchDialogState extends State<_ManualMatchDialog> {
         final c = _tvCandidates[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
-          color: CinemaColors.card,
+          color: theme.surface2,
           child: ListTile(
             title: Text(
               c.name,
-              style: const TextStyle(
-                color: CinemaColors.textPrimary,
-                fontWeight: FontWeight.w600,
+              style: TextStyle(
+                color: theme.textPrimary,
+                fontWeight: FontWeight.w500,
               ),
             ),
             subtitle: Text(
               '${c.firstAirDate ?? 'Unknown'} • Rating: ${c.voteAverage?.toStringAsFixed(1) ?? 'N/A'}\n${c.overview ?? ''}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: CinemaColors.textSecondary,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: theme.textSecondary, fontSize: 12),
             ),
             trailing: ElevatedButton(
               onPressed: () => _applyTvMatch(c),
               style: ElevatedButton.styleFrom(
-                backgroundColor: CinemaColors.amberSubtle,
-                foregroundColor: CinemaColors.amber,
+                backgroundColor: theme.accentMuted,
+                foregroundColor: theme.accent,
               ),
               child: const Text('Select'),
             ),

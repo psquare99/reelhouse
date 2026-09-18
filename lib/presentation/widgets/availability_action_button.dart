@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 import '../../domain/models/playback_resolution.dart';
 
 /// Cinematic action button dynamically reflecting physical source availability
@@ -25,40 +25,43 @@ class AvailabilityActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
+
     if (isDownloading) {
       final percentStr = downloadProgress != null
           ? '${(downloadProgress! * 100).toInt()}%'
           : '...';
       return ElevatedButton.icon(
         onPressed: null,
-        icon: const SizedBox(
+        icon: SizedBox(
           width: 14,
           height: 14,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(CinemaColors.amber),
+            valueColor: AlwaysStoppedAnimation<Color>(tokens.stateProgress),
           ),
         ),
         label: Text(
           'DOWNLOADING $percentStr',
           style: TextStyle(
             fontSize: isCompact ? 11 : 13,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
             letterSpacing: 1.0,
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: CinemaColors.surface,
-          foregroundColor: CinemaColors.amber,
-          disabledBackgroundColor: CinemaColors.surface,
-          disabledForegroundColor: CinemaColors.amber,
+          backgroundColor: tokens.surface1,
+          foregroundColor: tokens.stateProgress,
+          disabledBackgroundColor: tokens.surface1,
+          disabledForegroundColor: tokens.stateProgress,
+          elevation: 0,
           padding: EdgeInsets.symmetric(
             horizontal: isCompact ? 10 : 18,
             vertical: isCompact ? 8 : 14,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: CinemaColors.amberSubtle),
+            side: BorderSide(color: tokens.border, width: 1),
           ),
         ),
       );
@@ -73,13 +76,14 @@ class AvailabilityActionButton extends StatelessWidget {
             'PLAY OFFLINE',
             style: TextStyle(
               fontSize: isCompact ? 11 : 13,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
               letterSpacing: 1.0,
             ),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: CinemaColors.terracotta,
-            foregroundColor: Colors.white,
+            backgroundColor: tokens.stateOffline,
+            foregroundColor: tokens.onAccent,
+            elevation: 0,
             padding: EdgeInsets.symmetric(
               horizontal: isCompact ? 10 : 18,
               vertical: isCompact ? 8 : 14,
@@ -98,13 +102,14 @@ class AvailabilityActionButton extends StatelessWidget {
             'PLAY',
             style: TextStyle(
               fontSize: isCompact ? 11 : 13,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
               letterSpacing: 1.0,
             ),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: CinemaColors.terracotta,
-            foregroundColor: Colors.white,
+            backgroundColor: tokens.accent,
+            foregroundColor: tokens.onAccent,
+            elevation: 0,
             padding: EdgeInsets.symmetric(
               horizontal: isCompact ? 10 : 18,
               vertical: isCompact ? 8 : 14,
@@ -126,13 +131,13 @@ class AvailabilityActionButton extends StatelessWidget {
             diskLabel,
             style: TextStyle(
               fontSize: isCompact ? 10 : 12,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
               letterSpacing: 0.8,
             ),
           ),
           style: OutlinedButton.styleFrom(
-            foregroundColor: CinemaColors.ofTextSecondary(context),
-            side: BorderSide(color: CinemaColors.ofBorderSubtle(context)),
+            foregroundColor: tokens.stateUnavailable,
+            side: BorderSide(color: tokens.border, width: 1),
             padding: EdgeInsets.symmetric(
               horizontal: isCompact ? 8 : 14,
               vertical: isCompact ? 8 : 14,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 
 /// Full-surface cinematic error display with retry capability.
 class CinemaErrorState extends StatelessWidget {
@@ -19,6 +19,8 @@ class CinemaErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -29,22 +31,23 @@ class CinemaErrorState extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: CinemaColors.ofAccentSubtle(context),
+                color: tokens.accent.withValues(alpha: 0.14),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: CinemaColors.statusError.withValues(alpha: 0.3),
+                  color: tokens.accent.withValues(alpha: 0.3),
+                  width: 1,
                 ),
               ),
-              child: Icon(icon, size: 32, color: CinemaColors.statusError),
+              child: Icon(icon, size: 32, color: tokens.accent),
             ),
             const SizedBox(height: 18),
             Text(
               title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: CinemaColors.ofTextPrimary(context),
+                color: tokens.textPrimary,
                 fontSize: 18,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
               ),
             ),
             if (message != null && message!.isNotEmpty) ...[
@@ -55,7 +58,7 @@ class CinemaErrorState extends StatelessWidget {
                   message!,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: CinemaColors.ofTextSecondary(context),
+                    color: tokens.textSecondary,
                     fontSize: 13,
                     height: 1.4,
                   ),
@@ -69,8 +72,8 @@ class CinemaErrorState extends StatelessWidget {
                 icon: const Icon(Icons.refresh, size: 16),
                 label: const Text('Retry'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: CinemaColors.amber,
-                  side: const BorderSide(color: CinemaColors.amber),
+                  foregroundColor: tokens.accent,
+                  side: BorderSide(color: tokens.accent, width: 1),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 10,
@@ -100,34 +103,26 @@ class CinemaErrorSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: CinemaColors.amber,
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 2.0,
-          ),
-        ),
+        Text(title, style: CinemaTheme.eyebrow(context, fontSize: 12)),
         const SizedBox(height: 12),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: CinemaColors.ofCard(context),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: CinemaColors.statusError.withValues(alpha: 0.25),
-            ),
+            color: tokens.surface1,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: tokens.border, width: 1),
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.warning_amber_rounded,
-                color: CinemaColors.statusWarning,
+                color: tokens.stateProgress,
                 size: 24,
               ),
               const SizedBox(width: 14),
@@ -138,9 +133,9 @@ class CinemaErrorSection extends StatelessWidget {
                     Text(
                       'Failed to load section',
                       style: TextStyle(
-                        color: CinemaColors.ofTextPrimary(context),
+                        color: tokens.textPrimary,
                         fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     if (message != null && message!.isNotEmpty) ...[
@@ -150,7 +145,7 @@ class CinemaErrorSection extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: CinemaColors.ofTextSecondary(context),
+                          color: tokens.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -165,10 +160,10 @@ class CinemaErrorSection extends StatelessWidget {
                   icon: const Icon(Icons.refresh, size: 14),
                   label: const Text('Retry'),
                   style: TextButton.styleFrom(
-                    foregroundColor: CinemaColors.amber,
+                    foregroundColor: tokens.accent,
                     textStyle: const TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),

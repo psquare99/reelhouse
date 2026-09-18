@@ -129,4 +129,16 @@ class SettingsService extends ChangeNotifier {
     await _save();
     notifyListeners();
   }
+
+  /// Whether the desktop navigation rail is collapsed (72px) vs expanded (220px).
+  bool get isNavRailCollapsed {
+    return _settings['isNavRailCollapsed'] as bool? ?? false;
+  }
+
+  /// Updates and persists the navigation rail collapse state.
+  Future<void> setNavRailCollapsed(bool collapsed) async {
+    _settings['isNavRailCollapsed'] = collapsed;
+    await _save();
+    notifyListeners();
+  }
 }

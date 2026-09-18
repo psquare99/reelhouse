@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 import '../../data/database/database.dart';
 import '../../domain/query/query.dart';
 import '../../domain/repository/library_repository.dart';
@@ -58,9 +58,11 @@ class _MoviesScreenState extends State<MoviesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
     final query = _buildQuery();
 
     return Scaffold(
+      backgroundColor: tokens.background,
       appBar: AppBar(
         title: const Text('Movies'),
         actions: [
@@ -69,7 +71,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
               _sortDirection.isAscending
                   ? Icons.arrow_upward_rounded
                   : Icons.arrow_downward_rounded,
-              color: CinemaColors.amber,
+              color: tokens.accent,
               size: 20,
             ),
             tooltip: _sortDirection.isAscending ? 'Ascending' : 'Descending',
@@ -82,9 +84,9 @@ class _MoviesScreenState extends State<MoviesScreen> {
             },
           ),
           PopupMenuButton<MovieSortField>(
-            icon: const Icon(Icons.sort_rounded, color: CinemaColors.amber),
+            icon: Icon(Icons.sort_rounded, color: tokens.accent),
             tooltip: 'Sort by',
-            color: CinemaColors.card,
+            color: tokens.surface2,
             initialValue: _sortField,
             onSelected: (field) {
               setState(() {
@@ -92,10 +94,14 @@ class _MoviesScreenState extends State<MoviesScreen> {
               });
             },
             itemBuilder: (context) => [
-              _buildSortMenuItem(MovieSortField.title, 'Title'),
-              _buildSortMenuItem(MovieSortField.year, 'Release Year'),
-              _buildSortMenuItem(MovieSortField.rating, 'Rating'),
-              _buildSortMenuItem(MovieSortField.createdAt, 'Date Added'),
+              _buildSortMenuItem(context, MovieSortField.title, 'Title'),
+              _buildSortMenuItem(context, MovieSortField.year, 'Release Year'),
+              _buildSortMenuItem(context, MovieSortField.rating, 'Rating'),
+              _buildSortMenuItem(
+                context,
+                MovieSortField.createdAt,
+                'Date Added',
+              ),
             ],
           ),
           const SizedBox(width: 8),
@@ -116,7 +122,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
               !snapshot.hasData) {
             return Column(
               children: [
-                _buildFilterBar(),
+                _buildFilterBar(context, tokens),
                 const Expanded(child: CinemaGridSkeleton()),
               ],
             );
@@ -132,26 +138,26 @@ class _MoviesScreenState extends State<MoviesScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.movie_outlined,
                         size: 56,
-                        color: CinemaColors.textMuted,
+                        color: tokens.textMuted,
                       ),
                       const SizedBox(height: 16),
-                      const Text(
+                      Text(
                         'No movies discovered yet.',
                         style: TextStyle(
-                          color: CinemaColors.textPrimary,
+                          color: tokens.textPrimary,
                           fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Register and scan a storage location to populate your movie cinema.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: CinemaColors.textSecondary,
+                          color: tokens.textSecondary,
                           fontSize: 14,
                         ),
                       ),
@@ -163,15 +169,15 @@ class _MoviesScreenState extends State<MoviesScreen> {
 
             return Column(
               children: [
-                _buildFilterBar(),
+                _buildFilterBar(context, tokens),
                 Expanded(
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
+                        Text(
                           'No movies matching this filter.',
-                          style: TextStyle(color: CinemaColors.textMuted),
+                          style: TextStyle(color: tokens.textMuted),
                         ),
                         const SizedBox(height: 12),
                         TextButton.icon(
@@ -189,7 +195,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
 
           return Column(
             children: [
-              _buildFilterBar(),
+              _buildFilterBar(context, tokens),
               Expanded(
                 child: GridView.builder(
                   padding: const EdgeInsets.symmetric(
@@ -235,7 +241,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
     );
   }
 
-  Widget _buildFilterBar() {
+  Widget _buildFilterBar(BuildContext context, CinemaThemeData tokens) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       alignment: Alignment.centerLeft,
@@ -243,19 +249,19 @@ class _MoviesScreenState extends State<MoviesScreen> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildFilterChip('ALL', 'All'),
+            _buildFilterChip(tokens, 'ALL', 'All'),
             const SizedBox(width: 8),
-            _buildFilterChip('FAVORITES', 'Favorites'),
+            _buildFilterChip(tokens, 'FAVORITES', 'Favorites'),
             const SizedBox(width: 8),
-            _buildFilterChip('WATCHLIST', 'Watchlist'),
+            _buildFilterChip(tokens, 'WATCHLIST', 'Watchlist'),
             const SizedBox(width: 8),
-            _buildFilterChip('IN_PROGRESS', 'In Progress'),
+            _buildFilterChip(tokens, 'IN_PROGRESS', 'In Progress'),
             const SizedBox(width: 8),
-            _buildFilterChip('UNWATCHED', 'Unwatched'),
+            _buildFilterChip(tokens, 'UNWATCHED', 'Unwatched'),
             const SizedBox(width: 8),
-            _buildFilterChip('AVAILABLE', 'Available'),
+            _buildFilterChip(tokens, 'AVAILABLE', 'Available'),
             const SizedBox(width: 8),
-            _buildFilterChip('UNAVAILABLE', 'Unavailable'),
+            _buildFilterChip(tokens, 'UNAVAILABLE', 'Unavailable'),
           ],
         ),
       ),
@@ -263,9 +269,11 @@ class _MoviesScreenState extends State<MoviesScreen> {
   }
 
   PopupMenuItem<MovieSortField> _buildSortMenuItem(
+    BuildContext context,
     MovieSortField field,
     String label,
   ) {
+    final tokens = CinemaTheme.of(context);
     final isSelected = _sortField == field;
     return PopupMenuItem<MovieSortField>(
       value: field,
@@ -275,18 +283,21 @@ class _MoviesScreenState extends State<MoviesScreen> {
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? CinemaColors.amber : CinemaColors.textPrimary,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+              color: isSelected ? tokens.accent : tokens.textPrimary,
+              fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
             ),
           ),
-          if (isSelected)
-            const Icon(Icons.check, color: CinemaColors.amber, size: 18),
+          if (isSelected) Icon(Icons.check, color: tokens.accent, size: 18),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String filterKey, String label) {
+  Widget _buildFilterChip(
+    CinemaThemeData tokens,
+    String filterKey,
+    String label,
+  ) {
     final isSelected = _filter == filterKey;
     return ChoiceChip(
       label: Text(label),
@@ -296,17 +307,18 @@ class _MoviesScreenState extends State<MoviesScreen> {
           setState(() => _filter = filterKey);
         }
       },
-      selectedColor: CinemaColors.surfaceElevated,
-      backgroundColor: CinemaColors.surface,
+      selectedColor: tokens.accent.withValues(alpha: 0.14),
+      backgroundColor: tokens.surface1,
       labelStyle: TextStyle(
-        color: isSelected ? CinemaColors.amber : CinemaColors.textSecondary,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        color: isSelected ? tokens.accent : tokens.textSecondary,
+        fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
         fontSize: 12,
       ),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         side: BorderSide(
-          color: isSelected ? CinemaColors.amber : CinemaColors.borderSubtle,
+          color: isSelected ? tokens.accent : tokens.border,
+          width: 1,
         ),
       ),
     );

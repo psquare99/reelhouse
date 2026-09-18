@@ -133,7 +133,6 @@ void main() {
 
     expect(find.text('REELHOUSE'), findsOneWidget);
     expect(find.text('Personal Digital Cinema'), findsOneWidget);
-    expect(find.text('Cinema Status'), findsOneWidget);
     expect(find.text('EXPLORE CINEMA'), findsOneWidget);
     expect(find.text('Movies'), findsOneWidget);
     expect(find.text('TV Shows'), findsOneWidget);

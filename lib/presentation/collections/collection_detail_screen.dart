@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 import '../../data/database/database.dart';
 import '../../data/repository/drift_library_repository.dart';
 import '../../domain/query/library_result.dart';
@@ -33,6 +33,7 @@ class CollectionDetailScreen extends StatelessWidget {
        database = database;
 
   void _showAddMediaDialog(BuildContext context) async {
+    final tokens = CinemaTheme.of(context);
     final allMovies = await repository.getMovies(MovieQuery.all());
     final allShows = await repository.getTvShows(TvShowQuery.all());
     final currentMovies = await repository.getMovies(
@@ -48,7 +49,7 @@ class CollectionDetailScreen extends StatelessWidget {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: CinemaColors.surface,
+      backgroundColor: tokens.surface2,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -85,18 +86,18 @@ class CollectionDetailScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Add Media to Collection',
                             style: TextStyle(
-                              color: CinemaColors.textPrimary,
+                              color: tokens.textPrimary,
                               fontSize: 18,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.close,
-                              color: CinemaColors.textSecondary,
+                              color: tokens.textSecondary,
                             ),
                             onPressed: () => Navigator.of(ctx).pop(),
                           ),
@@ -104,44 +105,41 @@ class CollectionDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       TextField(
-                        style: const TextStyle(
-                          color: CinemaColors.textPrimary,
+                        style: TextStyle(
+                          color: tokens.textPrimary,
                           fontSize: 14,
                         ),
-                        cursorColor: CinemaColors.amber,
+                        cursorColor: tokens.accent,
                         decoration: InputDecoration(
                           hintText: 'Search library to add...',
-                          hintStyle: const TextStyle(
-                            color: CinemaColors.textMuted,
+                          hintStyle: TextStyle(
+                            color: tokens.textMuted,
                             fontSize: 14,
                           ),
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.search,
-                            color: CinemaColors.textSecondary,
+                            color: tokens.textSecondary,
                             size: 20,
                           ),
                           filled: true,
-                          fillColor: CinemaColors.surfaceElevated,
+                          fillColor: tokens.surface1,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 8,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: CinemaColors.borderSubtle,
-                            ),
+                            borderSide: BorderSide(color: tokens.border),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: CinemaColors.borderSubtle,
-                            ),
+                            borderSide: BorderSide(color: tokens.border),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: CinemaColors.amber,
+                            borderSide: BorderSide(
+                              color: tokens.accent,
+                              width: 1.5,
                             ),
                           ),
                         ),
@@ -152,7 +150,7 @@ class CollectionDetailScreen extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 12),
-                      const Divider(color: CinemaColors.borderSubtle),
+                      Divider(color: tokens.border),
                       Expanded(
                         child: (filteredMovies.isEmpty && filteredShows.isEmpty)
                             ? Center(
@@ -161,18 +159,18 @@ class CollectionDetailScreen extends StatelessWidget {
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.search_off,
                                         size: 40,
-                                        color: CinemaColors.textMuted,
+                                        color: tokens.textMuted,
                                       ),
                                       const SizedBox(height: 12),
                                       Text(
                                         searchQuery.isNotEmpty
                                             ? 'No items matching "$searchQuery"'
                                             : 'No media available to add',
-                                        style: const TextStyle(
-                                          color: CinemaColors.textSecondary,
+                                        style: TextStyle(
+                                          color: tokens.textSecondary,
                                           fontSize: 14,
                                         ),
                                       ),
@@ -184,17 +182,15 @@ class CollectionDetailScreen extends StatelessWidget {
                                 controller: scrollController,
                                 children: [
                                   if (filteredMovies.isNotEmpty) ...[
-                                    const Padding(
-                                      padding: EdgeInsets.symmetric(
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
                                         vertical: 8,
                                       ),
                                       child: Text(
                                         'MOVIES',
-                                        style: TextStyle(
-                                          color: CinemaColors.amber,
-                                          fontWeight: FontWeight.w700,
+                                        style: CinemaTheme.eyebrow(
+                                          context,
                                           fontSize: 12,
-                                          letterSpacing: 1.2,
                                         ),
                                       ),
                                     ),
@@ -204,27 +200,26 @@ class CollectionDetailScreen extends StatelessWidget {
                                       return ListTile(
                                         title: Text(
                                           m.title ?? m.detectedTitle,
-                                          style: const TextStyle(
-                                            color: CinemaColors.textPrimary,
+                                          style: TextStyle(
+                                            color: tokens.textPrimary,
                                           ),
                                         ),
                                         subtitle: Text(
                                           (m.year ?? m.detectedYear) != null
                                               ? '${m.year ?? m.detectedYear}'
                                               : '',
-                                          style: const TextStyle(
-                                            color: CinemaColors.textSecondary,
+                                          style: TextStyle(
+                                            color: tokens.textSecondary,
                                           ),
                                         ),
                                         trailing: alreadyAdded
-                                            ? const Icon(
+                                            ? Icon(
                                                 Icons.check,
-                                                color: CinemaColors.amber,
+                                                color: tokens.accent,
                                               )
-                                            : const Icon(
+                                            : Icon(
                                                 Icons.add,
-                                                color:
-                                                    CinemaColors.textSecondary,
+                                                color: tokens.textSecondary,
                                               ),
                                         onTap: alreadyAdded
                                             ? null
@@ -240,17 +235,15 @@ class CollectionDetailScreen extends StatelessWidget {
                                     }),
                                   ],
                                   if (filteredShows.isNotEmpty) ...[
-                                    const Padding(
-                                      padding: EdgeInsets.symmetric(
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
                                         vertical: 8,
                                       ),
                                       child: Text(
                                         'TV SHOWS',
-                                        style: TextStyle(
-                                          color: CinemaColors.amber,
-                                          fontWeight: FontWeight.w700,
+                                        style: CinemaTheme.eyebrow(
+                                          context,
                                           fontSize: 12,
-                                          letterSpacing: 1.2,
                                         ),
                                       ),
                                     ),
@@ -260,19 +253,18 @@ class CollectionDetailScreen extends StatelessWidget {
                                       return ListTile(
                                         title: Text(
                                           s.title ?? s.detectedTitle,
-                                          style: const TextStyle(
-                                            color: CinemaColors.textPrimary,
+                                          style: TextStyle(
+                                            color: tokens.textPrimary,
                                           ),
                                         ),
                                         trailing: alreadyAdded
-                                            ? const Icon(
+                                            ? Icon(
                                                 Icons.check,
-                                                color: CinemaColors.amber,
+                                                color: tokens.accent,
                                               )
-                                            : const Icon(
+                                            : Icon(
                                                 Icons.add,
-                                                color:
-                                                    CinemaColors.textSecondary,
+                                                color: tokens.textSecondary,
                                               ),
                                         onTap: alreadyAdded
                                             ? null
@@ -302,24 +294,25 @@ class CollectionDetailScreen extends StatelessWidget {
   }
 
   void _confirmDeleteCollection(BuildContext context, String collectionName) {
+    final tokens = CinemaTheme.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: CinemaColors.card,
+        backgroundColor: tokens.surface2,
         title: Text(
           'Delete "$collectionName"?',
-          style: const TextStyle(color: CinemaColors.textPrimary),
+          style: TextStyle(color: tokens.textPrimary),
         ),
-        content: const Text(
+        content: Text(
           'This will delete the curated collection list.\n\nYour movies and TV shows will remain untouched in your library.',
-          style: TextStyle(color: CinemaColors.textSecondary, height: 1.4),
+          style: TextStyle(color: tokens.textSecondary, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(color: CinemaColors.textSecondary),
+              style: TextStyle(color: tokens.textSecondary),
             ),
           ),
           ElevatedButton(
@@ -331,8 +324,8 @@ class CollectionDetailScreen extends StatelessWidget {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade800,
-              foregroundColor: Colors.white,
+              backgroundColor: tokens.stateUnavailable,
+              foregroundColor: tokens.onAccent,
             ),
             child: const Text('Delete Collection'),
           ),
@@ -343,19 +336,22 @@ class CollectionDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
+
     return StreamBuilder<CollectionLibraryItem?>(
       stream: repository.watchCollectionById(collectionId),
       builder: (context, snapshot) {
         final collection = snapshot.data;
         if (collection == null) {
-          return const Scaffold(
+          return Scaffold(
+            backgroundColor: tokens.background,
             body: Center(
               child: SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
                   value: 0.0,
-                  color: CinemaColors.amber,
+                  color: tokens.accent,
                 ),
               ),
             ),
@@ -363,19 +359,17 @@ class CollectionDetailScreen extends StatelessWidget {
         }
 
         return Scaffold(
+          backgroundColor: tokens.background,
           appBar: AppBar(
             title: Text(collection.name),
             actions: [
               IconButton(
-                icon: const Icon(Icons.add, color: CinemaColors.amber),
+                icon: Icon(Icons.add, color: tokens.accent),
                 tooltip: 'Add Media',
                 onPressed: () => _showAddMediaDialog(context),
               ),
               IconButton(
-                icon: const Icon(
-                  Icons.delete_outline,
-                  color: CinemaColors.textSecondary,
-                ),
+                icon: Icon(Icons.delete_outline, color: tokens.textSecondary),
                 tooltip: 'Delete Collection',
                 onPressed: () =>
                     _confirmDeleteCollection(context, collection.name),
@@ -404,26 +398,26 @@ class CollectionDetailScreen extends StatelessWidget {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.collections_bookmark_outlined,
                               size: 56,
-                              color: CinemaColors.textMuted,
+                              color: tokens.textMuted,
                             ),
                             const SizedBox(height: 16),
-                            const Text(
+                            Text(
                               'Collection is empty',
                               style: TextStyle(
-                                color: CinemaColors.textPrimary,
+                                color: tokens.textPrimary,
                                 fontSize: 18,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text(
+                            Text(
                               'Curate this collection by adding movies or TV shows from your library.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: CinemaColors.textSecondary,
+                                color: tokens.textSecondary,
                                 fontSize: 14,
                               ),
                             ),
@@ -442,17 +436,12 @@ class CollectionDetailScreen extends StatelessWidget {
                   return CustomScrollView(
                     slivers: [
                       if (movies.isNotEmpty) ...[
-                        const SliverToBoxAdapter(
+                        SliverToBoxAdapter(
                           child: Padding(
-                            padding: EdgeInsets.fromLTRB(24, 20, 24, 12),
+                            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
                             child: Text(
                               'MOVIES',
-                              style: TextStyle(
-                                color: CinemaColors.amber,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 12,
-                                letterSpacing: 1.5,
-                              ),
+                              style: CinemaTheme.eyebrow(context, fontSize: 12),
                             ),
                           ),
                         ),
@@ -494,17 +483,12 @@ class CollectionDetailScreen extends StatelessWidget {
                         ),
                       ],
                       if (shows.isNotEmpty) ...[
-                        const SliverToBoxAdapter(
+                        SliverToBoxAdapter(
                           child: Padding(
-                            padding: EdgeInsets.fromLTRB(24, 28, 24, 12),
+                            padding: const EdgeInsets.fromLTRB(24, 28, 24, 12),
                             child: Text(
                               'TV SHOWS',
-                              style: TextStyle(
-                                color: CinemaColors.amber,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 12,
-                                letterSpacing: 1.5,
-                              ),
+                              style: CinemaTheme.eyebrow(context, fontSize: 12),
                             ),
                           ),
                         ),

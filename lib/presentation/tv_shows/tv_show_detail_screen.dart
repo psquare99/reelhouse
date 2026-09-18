@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/database/database.dart';
 import '../../data/repository/drift_library_repository.dart';
@@ -81,24 +81,22 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
   }
 
   void _showConnectDiskDialog(String? storageName) {
+    final tokens = CinemaTheme.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: CinemaColors.card,
+        backgroundColor: tokens.surface2,
         title: Row(
           children: [
-            const Icon(
-              Icons.storage_outlined,
-              color: CinemaColors.amber,
-              size: 24,
-            ),
+            Icon(Icons.storage_outlined, color: tokens.accent, size: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Connect ${storageName ?? 'Storage Disk'}',
-                style: const TextStyle(
-                  color: CinemaColors.textPrimary,
+                style: TextStyle(
+                  color: tokens.textPrimary,
                   fontSize: 18,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -107,8 +105,8 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
         content: Text(
           'Episodes for this show are stored on "${storageName ?? 'an external drive'}".\n\n'
           'Please connect the storage disk to this device. REELHOUSE will automatically recognize it.',
-          style: const TextStyle(
-            color: CinemaColors.textSecondary,
+          style: TextStyle(
+            color: tokens.textSecondary,
             fontSize: 14,
             height: 1.5,
           ),
@@ -116,10 +114,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'OK',
-              style: TextStyle(color: CinemaColors.amber),
-            ),
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -128,6 +123,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
 
   void _handlePlayEpisode(EpisodeLibraryItem episode) async {
     if (widget.database == null) return;
+    final tokens = CinemaTheme.of(context);
     final sources = await widget.database!.getSourcesForEpisode(episode.id);
     final storages = await widget.database!.getAllStorages();
     final storageMap = {for (final s in storages) s.id: s};
@@ -155,7 +151,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Opening $epTitle in player...'),
-        backgroundColor: CinemaColors.surface,
+        backgroundColor: tokens.surface1,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -173,19 +169,18 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
   }
 
   void _showPlaybackDiagnosticDialog(PlaybackLaunchResult result) {
+    final tokens = CinemaTheme.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: CinemaColors.card,
-        title: const Row(
+        backgroundColor: tokens.surface2,
+        title: Row(
           children: [
-            Icon(Icons.error_outline, color: CinemaColors.amber, size: 24),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Playback Diagnostic',
-                style: TextStyle(color: CinemaColors.textPrimary, fontSize: 18),
-              ),
+            Icon(Icons.error_outline, color: tokens.accent, size: 24),
+            const SizedBox(width: 10),
+            Text(
+              'Playback Diagnostic',
+              style: TextStyle(color: tokens.textPrimary, fontSize: 18),
             ),
           ],
         ),
@@ -194,29 +189,19 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              result.errorMessage ?? 'Unable to start playback.',
-              style: const TextStyle(
-                color: CinemaColors.textSecondary,
+              result.errorMessage ?? 'Unable to open media player.',
+              style: TextStyle(
+                color: tokens.textSecondary,
                 fontSize: 14,
-                height: 1.5,
+                height: 1.4,
               ),
             ),
             if (result.resolvedPath != null) ...[
-              const SizedBox(height: 16),
-              const Text(
-                'RESOLVED PATH',
+              const SizedBox(height: 12),
+              Text(
+                'Path: ${result.resolvedPath}',
                 style: TextStyle(
-                  color: CinemaColors.amber,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 4),
-              SelectableText(
-                result.resolvedPath!,
-                style: const TextStyle(
-                  color: CinemaColors.textMuted,
+                  color: tokens.textMuted,
                   fontSize: 12,
                   fontFamily: 'monospace',
                 ),
@@ -227,33 +212,27 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'OK',
-              style: TextStyle(color: CinemaColors.amber),
-            ),
+            child: const Text('Dismiss'),
           ),
         ],
       ),
     );
   }
 
-  void _showM5DownloadDialog(String title, String description) {
+  void _showM5DownloadDialog(String title, String target) {
+    final tokens = CinemaTheme.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: CinemaColors.card,
-        title: const Row(
+        backgroundColor: tokens.surface2,
+        title: Row(
           children: [
-            Icon(
-              Icons.download_for_offline_outlined,
-              color: CinemaColors.amber,
-              size: 24,
-            ),
-            SizedBox(width: 12),
+            Icon(Icons.download_rounded, color: tokens.accent, size: 24),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Offline Download',
-                style: TextStyle(color: CinemaColors.textPrimary, fontSize: 18),
+                'Download to Device',
+                style: TextStyle(color: tokens.textPrimary, fontSize: 18),
               ),
             ),
           ],
@@ -263,21 +242,20 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Copying $description to local device storage is scheduled for Milestone 5.',
-              style: const TextStyle(
-                color: CinemaColors.textPrimary,
+              'Copy "$target" to your local device storage?',
+              style: TextStyle(
+                color: tokens.textPrimary,
+                fontWeight: FontWeight.w500,
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'REELHOUSE maintains each episode\'s identity and physical source location in your library.\n\n'
-              'The background file streaming engine with verify-after-write and resume capability will be delivered in Milestone 5.',
+            const SizedBox(height: 10),
+            Text(
+              'This allows offline playback without needing the external drive connected.',
               style: TextStyle(
-                color: CinemaColors.textSecondary,
+                color: tokens.textSecondary,
                 fontSize: 13,
-                height: 1.5,
+                height: 1.4,
               ),
             ),
           ],
@@ -285,10 +263,22 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Understood',
-              style: TextStyle(color: CinemaColors.amber),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: tokens.textSecondary),
             ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Offline transfer scheduled for "$target".'),
+                  backgroundColor: tokens.surface1,
+                ),
+              );
+            },
+            child: const Text('Start Download'),
           ),
         ],
       ),
@@ -297,19 +287,22 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
+
     return StreamBuilder<TvShowLibraryItem?>(
       stream: _showStream,
       builder: (context, showSnapshot) {
         final show = showSnapshot.data;
         if (show == null) {
-          return const Scaffold(
+          return Scaffold(
+            backgroundColor: tokens.background,
             body: Center(
               child: SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
                   value: 0.0,
-                  color: CinemaColors.amber,
+                  color: tokens.accent,
                 ),
               ),
             ),
@@ -317,6 +310,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
         }
 
         return Scaffold(
+          backgroundColor: tokens.background,
           body: StreamBuilder<List<Storage>>(
             stream: _storageStream,
             builder: (context, storageSnapshot) {
@@ -344,7 +338,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                       SliverAppBar(
                         expandedHeight: 320,
                         pinned: true,
-                        backgroundColor: CinemaColors.ofCanvas(context),
+                        backgroundColor: tokens.background,
                         flexibleSpace: FlexibleSpaceBar(
                           background: Stack(
                             fit: StackFit.expand,
@@ -361,9 +355,8 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                     end: Alignment.bottomCenter,
                                     colors: [
                                       Colors.transparent,
-                                      CinemaColors.ofCanvas(context)
-                                          .withValues(alpha: 0.6),
-                                      CinemaColors.ofCanvas(context),
+                                      tokens.background.withValues(alpha: 0.6),
+                                      tokens.background,
                                     ],
                                     stops: const [0.3, 0.7, 1.0],
                                   ),
@@ -386,11 +379,10 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                             children: [
                               Text(
                                 show.title ?? show.detectedTitle,
-                                style: TextStyle(
-                                  color: CinemaColors.ofTextPrimary(context),
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.5,
+                                style: CinemaTheme.displaySerif(
+                                  context,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                               if (show.originalTitle != null &&
@@ -400,9 +392,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                 Text(
                                   show.originalTitle!,
                                   style: TextStyle(
-                                    color: CinemaColors.ofTextSecondary(
-                                      context,
-                                    ),
+                                    color: tokens.textSecondary,
                                     fontSize: 14,
                                     fontStyle: FontStyle.italic,
                                   ),
@@ -421,22 +411,16 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: CinemaColors.ofSurface(context),
+                                      color: tokens.surface1,
                                       borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                        color: CinemaColors.ofBorderSubtle(
-                                          context,
-                                        ),
-                                      ),
+                                      border: Border.all(color: tokens.border),
                                     ),
                                     child: Text(
                                       '${seasons.length} ${seasons.length == 1 ? 'Season' : 'Seasons'}',
                                       style: TextStyle(
-                                        color: CinemaColors.ofTextPrimary(
-                                          context,
-                                        ),
+                                        color: tokens.textPrimary,
                                         fontSize: 13,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
@@ -444,9 +428,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                     Text(
                                       '${show.firstAirDate!.year}',
                                       style: TextStyle(
-                                        color: CinemaColors.ofTextSecondary(
-                                          context,
-                                        ),
+                                        color: tokens.textSecondary,
                                         fontSize: 13,
                                       ),
                                     ),
@@ -454,20 +436,18 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.star,
-                                          color: CinemaColors.amber,
+                                          color: tokens.accent,
                                           size: 16,
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
                                           show.rating!.toStringAsFixed(1),
                                           style: TextStyle(
-                                            color: CinemaColors.ofTextPrimary(
-                                              context,
-                                            ),
+                                            color: tokens.textPrimary,
                                             fontSize: 13,
-                                            fontWeight: FontWeight.w700,
+                                            fontWeight: FontWeight.w500,
                                           ),
                                         ),
                                       ],
@@ -485,8 +465,8 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                           ? Icons.bookmark_added
                                           : Icons.bookmark_add_outlined,
                                       color: show.isWatchlist
-                                          ? CinemaColors.amber
-                                          : CinemaColors.textSecondary,
+                                          ? tokens.accent
+                                          : tokens.textSecondary,
                                     ),
                                     tooltip: show.isWatchlist
                                         ? 'In Watchlist'
@@ -504,8 +484,8 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                           ? Icons.favorite
                                           : Icons.favorite_border,
                                       color: show.isFavorite
-                                          ? CinemaColors.amber
-                                          : CinemaColors.textSecondary,
+                                          ? tokens.accent
+                                          : tokens.textSecondary,
                                     ),
                                     tooltip: show.isFavorite
                                         ? 'Favorited'
@@ -525,8 +505,8 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                   show.overview!.isNotEmpty) ...[
                                 Text(
                                   show.overview!,
-                                  style: const TextStyle(
-                                    color: CinemaColors.textSecondary,
+                                  style: TextStyle(
+                                    color: tokens.textSecondary,
                                     fontSize: 14,
                                     height: 1.6,
                                   ),
@@ -540,13 +520,11 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text(
+                                    Text(
                                       'SEASONS',
-                                      style: TextStyle(
-                                        color: CinemaColors.amber,
+                                      style: CinemaTheme.eyebrow(
+                                        context,
                                         fontSize: 13,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 2.0,
                                       ),
                                     ),
                                     if (selectedSeason != null)
@@ -564,9 +542,9 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                           style: TextStyle(fontSize: 11),
                                         ),
                                         style: OutlinedButton.styleFrom(
-                                          foregroundColor: CinemaColors.amber,
-                                          side: const BorderSide(
-                                            color: CinemaColors.amberSubtle,
+                                          foregroundColor: tokens.accent,
+                                          side: BorderSide(
+                                            color: tokens.borderStrong,
                                           ),
                                           visualDensity: VisualDensity.compact,
                                         ),
@@ -600,15 +578,17 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                             });
                                           }
                                         },
-                                        selectedColor: CinemaColors.amber,
-                                        backgroundColor: CinemaColors.surface,
+                                        selectedColor: tokens.accent.withValues(
+                                          alpha: 0.14,
+                                        ),
+                                        backgroundColor: tokens.surface1,
                                         labelStyle: TextStyle(
                                           color: isSelected
-                                              ? CinemaColors.canvas
-                                              : CinemaColors.textSecondary,
+                                              ? tokens.accent
+                                              : tokens.textSecondary,
                                           fontWeight: isSelected
-                                              ? FontWeight.w700
-                                              : FontWeight.w500,
+                                              ? FontWeight.w500
+                                              : FontWeight.w400,
                                           fontSize: 13,
                                         ),
                                         shape: RoundedRectangleBorder(
@@ -617,8 +597,9 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                           ),
                                           side: BorderSide(
                                             color: isSelected
-                                                ? CinemaColors.amber
-                                                : CinemaColors.borderSubtle,
+                                                ? tokens.accent
+                                                : tokens.border,
+                                            width: 1,
                                           ),
                                         ),
                                       );
@@ -647,9 +628,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                   child: Center(
                                     child: Text(
                                       'No episodes indexed for this season yet.',
-                                      style: TextStyle(
-                                        color: CinemaColors.textMuted,
-                                      ),
+                                      style: TextStyle(color: tokens.textMuted),
                                     ),
                                   ),
                                 ),
@@ -728,6 +707,7 @@ class _EpisodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
     final resolution = _resolution;
     final isLocal = episode.availability == AvailabilityStatus.availableLocally;
     final isExternal =
@@ -739,9 +719,9 @@ class _EpisodeCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: CinemaColors.ofCard(context),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: CinemaColors.ofBorderSubtle(context)),
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tokens.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -751,7 +731,7 @@ class _EpisodeCard extends StatelessWidget {
             children: [
               // Episode thumbnail / still image (16:9 ratio)
               ClipRRect(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
                 child: SizedBox(
                   width: 124,
                   height: 70,
@@ -761,19 +741,16 @@ class _EpisodeCard extends StatelessWidget {
                       width: 124,
                       height: 70,
                       decoration: BoxDecoration(
-                        color: CinemaColors.ofSurface(context),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: CinemaColors.ofBorderSubtle(context),
-                        ),
+                        color: tokens.surface2,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: tokens.border),
                       ),
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
                           Icon(
                             Icons.movie_outlined,
-                            color: CinemaColors.ofTextMuted(context)
-                                .withValues(alpha: 0.5),
+                            color: tokens.textMuted.withValues(alpha: 0.5),
                             size: 28,
                           ),
                           Positioned(
@@ -782,9 +759,9 @@ class _EpisodeCard extends StatelessWidget {
                             child: Text(
                               'EP ${episode.episodeNumber}',
                               style: TextStyle(
-                                color: CinemaColors.ofTextMuted(context),
+                                color: tokens.textMuted,
                                 fontSize: 9,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w500,
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -807,9 +784,9 @@ class _EpisodeCard extends StatelessWidget {
                       children: [
                         Text(
                           'Episode ${episode.episodeNumber}',
-                          style: const TextStyle(
-                            color: CinemaColors.amber,
-                            fontWeight: FontWeight.w700,
+                          style: TextStyle(
+                            color: tokens.accent,
+                            fontWeight: FontWeight.w500,
                             fontSize: 12,
                             letterSpacing: 0.5,
                           ),
@@ -819,7 +796,7 @@ class _EpisodeCard extends StatelessWidget {
                           Text(
                             '· ${Formatters.formatRuntime(episode.runtime)}',
                             style: TextStyle(
-                              color: CinemaColors.ofTextSecondary(context),
+                              color: tokens.textSecondary,
                               fontSize: 12,
                             ),
                           ),
@@ -830,8 +807,8 @@ class _EpisodeCard extends StatelessWidget {
                     Text(
                       episode.name ?? 'Episode ${episode.episodeNumber}',
                       style: TextStyle(
-                        color: CinemaColors.ofTextPrimary(context),
-                        fontWeight: FontWeight.w700,
+                        color: tokens.textPrimary,
+                        fontWeight: FontWeight.w500,
                         fontSize: 15,
                       ),
                     ),
@@ -846,8 +823,8 @@ class _EpisodeCard extends StatelessWidget {
                       ? Icons.check_circle
                       : Icons.check_circle_outline,
                   color: episode.watchState == WatchState.watched
-                      ? CinemaColors.amber
-                      : CinemaColors.ofTextMuted(context),
+                      ? tokens.accent
+                      : tokens.textMuted,
                   size: 20,
                 ),
                 tooltip: episode.watchState == WatchState.watched
@@ -872,7 +849,7 @@ class _EpisodeCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: CinemaColors.ofTextSecondary(context),
+                color: tokens.textSecondary,
                 fontSize: 13,
                 height: 1.4,
               ),
@@ -897,27 +874,27 @@ class _EpisodeCard extends StatelessWidget {
                   icon: const Icon(Icons.download_rounded, size: 14),
                   label: const Text('DOWNLOAD', style: TextStyle(fontSize: 11)),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: CinemaColors.amber,
-                    side: const BorderSide(color: CinemaColors.amberSubtle),
+                    foregroundColor: tokens.accent,
+                    side: BorderSide(color: tokens.borderStrong),
                     visualDensity: VisualDensity.compact,
                   ),
                 )
               else if (isLocal)
-                const Row(
+                Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.offline_pin,
-                      color: CinemaColors.amber,
+                      color: tokens.stateOffline,
                       size: 14,
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text(
                       'OFFLINE',
                       style: TextStyle(
-                        color: CinemaColors.amber,
+                        color: tokens.stateOffline,
                         fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],

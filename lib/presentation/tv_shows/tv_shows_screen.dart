@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 import '../../data/database/database.dart';
 import '../../domain/query/query.dart';
 import '../../domain/repository/library_repository.dart';
@@ -58,9 +58,11 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
     final query = _buildQuery();
 
     return Scaffold(
+      backgroundColor: tokens.background,
       appBar: AppBar(
         title: const Text('TV Shows'),
         actions: [
@@ -69,7 +71,7 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
               _sortDirection.isAscending
                   ? Icons.arrow_upward_rounded
                   : Icons.arrow_downward_rounded,
-              color: CinemaColors.amber,
+              color: tokens.accent,
               size: 20,
             ),
             tooltip: _sortDirection.isAscending ? 'Ascending' : 'Descending',
@@ -82,9 +84,9 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
             },
           ),
           PopupMenuButton<TvShowSortField>(
-            icon: const Icon(Icons.sort_rounded, color: CinemaColors.amber),
+            icon: Icon(Icons.sort_rounded, color: tokens.accent),
             tooltip: 'Sort by',
-            color: CinemaColors.card,
+            color: tokens.surface2,
             initialValue: _sortField,
             onSelected: (field) {
               setState(() {
@@ -92,13 +94,18 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
               });
             },
             itemBuilder: (context) => [
-              _buildSortMenuItem(TvShowSortField.title, 'Title'),
+              _buildSortMenuItem(context, TvShowSortField.title, 'Title'),
               _buildSortMenuItem(
+                context,
                 TvShowSortField.firstAirDate,
                 'First Air Date',
               ),
-              _buildSortMenuItem(TvShowSortField.rating, 'Rating'),
-              _buildSortMenuItem(TvShowSortField.createdAt, 'Date Added'),
+              _buildSortMenuItem(context, TvShowSortField.rating, 'Rating'),
+              _buildSortMenuItem(
+                context,
+                TvShowSortField.createdAt,
+                'Date Added',
+              ),
             ],
           ),
           const SizedBox(width: 8),
@@ -119,7 +126,7 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
               !snapshot.hasData) {
             return Column(
               children: [
-                _buildFilterBar(),
+                _buildFilterBar(context, tokens),
                 const Expanded(child: CinemaGridSkeleton()),
               ],
             );
@@ -135,26 +142,26 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.tv_outlined,
                         size: 56,
-                        color: CinemaColors.textMuted,
+                        color: tokens.textMuted,
                       ),
                       const SizedBox(height: 16),
-                      const Text(
+                      Text(
                         'No TV shows discovered yet.',
                         style: TextStyle(
-                          color: CinemaColors.textPrimary,
+                          color: tokens.textPrimary,
                           fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Scan a storage location containing TV series and season folders.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: CinemaColors.textSecondary,
+                          color: tokens.textSecondary,
                           fontSize: 14,
                         ),
                       ),
@@ -166,15 +173,15 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
 
             return Column(
               children: [
-                _buildFilterBar(),
+                _buildFilterBar(context, tokens),
                 Expanded(
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
+                        Text(
                           'No TV shows matching this filter.',
-                          style: TextStyle(color: CinemaColors.textMuted),
+                          style: TextStyle(color: tokens.textMuted),
                         ),
                         const SizedBox(height: 12),
                         TextButton.icon(
@@ -192,7 +199,7 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
 
           return Column(
             children: [
-              _buildFilterBar(),
+              _buildFilterBar(context, tokens),
               Expanded(
                 child: GridView.builder(
                   padding: const EdgeInsets.symmetric(
@@ -237,7 +244,7 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
     );
   }
 
-  Widget _buildFilterBar() {
+  Widget _buildFilterBar(BuildContext context, CinemaThemeData tokens) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       alignment: Alignment.centerLeft,
@@ -245,19 +252,19 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildFilterChip('ALL', 'All'),
+            _buildFilterChip(tokens, 'ALL', 'All'),
             const SizedBox(width: 8),
-            _buildFilterChip('FAVORITES', 'Favorites'),
+            _buildFilterChip(tokens, 'FAVORITES', 'Favorites'),
             const SizedBox(width: 8),
-            _buildFilterChip('WATCHLIST', 'Watchlist'),
+            _buildFilterChip(tokens, 'WATCHLIST', 'Watchlist'),
             const SizedBox(width: 8),
-            _buildFilterChip('IN_PROGRESS', 'In Progress'),
+            _buildFilterChip(tokens, 'IN_PROGRESS', 'In Progress'),
             const SizedBox(width: 8),
-            _buildFilterChip('UNWATCHED', 'Unwatched'),
+            _buildFilterChip(tokens, 'UNWATCHED', 'Unwatched'),
             const SizedBox(width: 8),
-            _buildFilterChip('AVAILABLE', 'Available'),
+            _buildFilterChip(tokens, 'AVAILABLE', 'Available'),
             const SizedBox(width: 8),
-            _buildFilterChip('UNAVAILABLE', 'Unavailable'),
+            _buildFilterChip(tokens, 'UNAVAILABLE', 'Unavailable'),
           ],
         ),
       ),
@@ -265,9 +272,11 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
   }
 
   PopupMenuItem<TvShowSortField> _buildSortMenuItem(
+    BuildContext context,
     TvShowSortField field,
     String label,
   ) {
+    final tokens = CinemaTheme.of(context);
     final isSelected = _sortField == field;
     return PopupMenuItem<TvShowSortField>(
       value: field,
@@ -277,18 +286,21 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? CinemaColors.amber : CinemaColors.textPrimary,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+              color: isSelected ? tokens.accent : tokens.textPrimary,
+              fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
             ),
           ),
-          if (isSelected)
-            const Icon(Icons.check, color: CinemaColors.amber, size: 18),
+          if (isSelected) Icon(Icons.check, color: tokens.accent, size: 18),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String filterKey, String label) {
+  Widget _buildFilterChip(
+    CinemaThemeData tokens,
+    String filterKey,
+    String label,
+  ) {
     final isSelected = _filter == filterKey;
     return ChoiceChip(
       label: Text(label),
@@ -298,17 +310,18 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
           setState(() => _filter = filterKey);
         }
       },
-      selectedColor: CinemaColors.surfaceElevated,
-      backgroundColor: CinemaColors.surface,
+      selectedColor: tokens.accent.withValues(alpha: 0.14),
+      backgroundColor: tokens.surface1,
       labelStyle: TextStyle(
-        color: isSelected ? CinemaColors.amber : CinemaColors.textSecondary,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        color: isSelected ? tokens.accent : tokens.textSecondary,
+        fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
         fontSize: 12,
       ),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         side: BorderSide(
-          color: isSelected ? CinemaColors.amber : CinemaColors.borderSubtle,
+          color: isSelected ? tokens.accent : tokens.border,
+          width: 1,
         ),
       ),
     );

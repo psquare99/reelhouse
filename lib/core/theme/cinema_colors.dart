@@ -1,132 +1,171 @@
 import 'package:flutter/material.dart';
 
-/// Palette for REELHOUSE: Personal Digital Cinema.
+import 'cinema_theme.dart';
+
+/// 3-Layer Token Palette for REELHOUSE: Personal Digital Cinema.
 ///
-/// Designed with an authentic, warm, refined cinema visual identity:
-/// - Primary Accent: Warm Terracotta / Vintage Copper / Cinema Sienna
-/// - Dark Mode (The Screening Room): Deep obsidian charcoal canvas, elevated surfaces, and warm ivory typography
-/// - Light Mode (The Exhibition / Gallery Linen): Warm gallery linen canvas, crisp white card surfaces, visible structural borders, and deep slate typography
+/// Follows REELHOUSE UI & Theme System Specification:
+/// - Layer 1 (Palette): Raw hex definitions.
+/// - Layer 2 (Theme): Screening Room (Dark) and Gallery Linen (Light) mappings.
+/// - Layer 3 (Semantic Roles): Resolved dynamically via `CinemaTheme.of(context)`
+///   or `CinemaColors.of*(context)`.
+///
+/// **Rule: No UI/presentation code may use raw `Color(0xFF...)` or `Colors.*`.**
+/// All UI surfaces must resolve through dynamic semantic roles.
 class CinemaColors {
   CinemaColors._();
 
-  // --- Cinema Terracotta / Vintage Copper / Sienna Accents ---
-  static const Color terracotta = Color(0xFFE07A5F);
+  // ==========================================
+  // Layer 1 — Raw Palette Definitions
+  // ==========================================
+
+  // --- Screening Room (Dark) Palette ---
+  static const Color darkBackground = Color(0xFF0B0C0E);
+  static const Color darkSurface1 = Color(0xFF16181C);
+  static const Color darkSurface2 = Color(0xFF1E2126);
+  static const Color darkBorder = Color(0xFF2A2D33);
+  static const Color darkBorderStrong = Color(0xFF3A3E45);
+  static const Color darkTextPrimary = Color(0xFFF2F0EC);
+  static const Color darkTextSecondary = Color(0xFFA8A6A0);
+  static const Color darkTextMuted = Color(0xFF6E6C68);
+  static const Color darkAccent = Color(0xFFE2703A);
+  static const Color darkOnAccent = Color(0xFF1A0D06);
+  static const Color darkStateAvailable = Color(0xFFE2703A);
+  static const Color darkStateOffline = Color(0xFF5DCAA5);
+  static const Color darkStateUnavailable = Color(0xFF6E6C68);
+  static const Color darkStateProgress = Color(0xFFEF9F27);
+
+  // --- Gallery Linen (Light) Palette ---
+  static const Color lightBackground = Color(0xFFF3EEE3);
+  static const Color lightSurface1 = Color(0xFFFBF9F4);
+  static const Color lightSurface2 = Color(0xFFFFFFFF);
+  static const Color lightBorder = Color(0xFFE1DAC9);
+  static const Color lightBorderStrong = Color(0xFFC9BFA6);
+  static const Color lightTextPrimary = Color(0xFF241F19);
+  static const Color lightTextSecondary = Color(0xFF5C564C);
+  static const Color lightTextMuted = Color(0xFF8B8579);
+  static const Color lightAccent = Color(0xFFC24E28);
+  static const Color lightOnAccent = Color(0xFFFFFFFF);
+  static const Color lightStateAvailable = Color(0xFFC24E28);
+  static const Color lightStateOffline = Color(0xFF0F6E56);
+  static const Color lightStateUnavailable = Color(0xFF8B8579);
+  static const Color lightStateProgress = Color(0xFF854F0B);
+
+  // --- Static Aliases for backward compatibility in non-presentation code ---
+  static const Color terracotta = darkAccent;
   static const Color terracottaLight = Color(0xFFF29E85);
-  static const Color terracottaDark = Color(0xFFB84A28);
-  static const Color terracottaSubtle = Color(0x1FE07A5F);
-  static const Color terracottaGlow = Color(0x33E07A5F);
-  static const Color copper = Color(0xFFD96B43);
-  static const Color sienna = Color(0xFFB84A28);
-
-  // Accent aliases for existing codebase references
-  static const Color amber = terracotta;
+  static const Color terracottaDark = lightAccent;
+  static const Color terracottaSubtle = Color(0x24E2703A);
+  static const Color amber = darkAccent;
   static const Color amberLight = terracottaLight;
-  static const Color amberDark = terracottaDark;
+  static const Color amberDark = lightAccent;
   static const Color amberSubtle = terracottaSubtle;
+  static const Color copper = darkAccent;
+  static const Color sienna = lightAccent;
 
-  // --- Dark Mode: The Screening Room ---
-  static const Color darkCanvas = Color(0xFF0F1115);
-  static const Color darkSurface = Color(0xFF17191E);
-  static const Color darkSurfaceElevated = Color(0xFF1E2127);
-  static const Color darkCard = Color(0xFF1A1D23);
-  static const Color darkCardHover = Color(0xFF22262E);
-  static const Color darkInteractive = Color(0xFF2A2F38);
-  static const Color darkBorder = Color(0xFF333842);
-  static const Color darkBorderSubtle = Color(0xFF242830);
-  static const Color darkTextPrimary = Color(0xFFF2EFE9);
-  static const Color darkTextSecondary = Color(0xFFA0A5AD);
-  static const Color darkTextMuted = Color(0xFF6E747F);
+  static const Color darkCanvas = darkBackground;
+  static const Color darkSurface = darkSurface1;
+  static const Color darkSurfaceElevated = darkSurface2;
+  static const Color darkCard = darkSurface1;
+  static const Color darkCardHover = darkSurface2;
+  static const Color darkInteractive = darkSurface2;
+  static const Color darkBorderSubtle = darkBorder;
 
-  // --- Light Mode: The Exhibition / Gallery Linen ---
-  static const Color lightCanvas = Color(0xFFF7F5F0);
-  static const Color lightSurface = Color(0xFFECE6DC);
-  static const Color lightSurfaceElevated = Color(0xFFE3DCCF);
-  static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightCardHover = Color(0xFFF0EBE1);
-  static const Color lightInteractive = Color(0xFFE5DEC0);
-  static const Color lightBorder = Color(0xFFB8ADA0);
-  static const Color lightBorderSubtle = Color(0xFFD2C7B8);
-  static const Color lightDivider = Color(0xFFD0C5B5);
-  static const Color lightTextPrimary = Color(0xFF141619);
-  static const Color lightTextSecondary = Color(0xFF3F454E);
-  static const Color lightTextMuted = Color(0xFF606672);
+  static const Color lightCanvas = lightBackground;
+  static const Color lightSurface = lightSurface1;
+  static const Color lightSurfaceElevated = lightSurface2;
+  static const Color lightCard = lightSurface2;
+  static const Color lightCardHover = lightSurface1;
+  static const Color lightInteractive = lightSurface1;
+  static const Color lightBorderSubtle = lightBorder;
+  static const Color lightDivider = lightBorder;
 
-  // --- Default Static Aliases ---
-  static const Color canvas = darkCanvas;
-  static const Color surface = darkSurface;
-  static const Color surfaceElevated = darkSurfaceElevated;
-  static const Color card = darkCard;
-  static const Color cardHover = darkCardHover;
-  static const Color interactive = darkInteractive;
+  static const Color canvas = darkBackground;
+  static const Color surface = darkSurface1;
+  static const Color surfaceElevated = darkSurface2;
+  static const Color card = darkSurface1;
+  static const Color cardHover = darkSurface2;
+  static const Color interactive = darkSurface2;
   static const Color border = darkBorder;
-  static const Color borderSubtle = darkBorderSubtle;
+  static const Color borderSubtle = darkBorder;
   static const Color textPrimary = darkTextPrimary;
   static const Color textSecondary = darkTextSecondary;
   static const Color textMuted = darkTextMuted;
 
-  // --- Status Indicators ---
-  static const Color statusAvailable = Color(0xFF10B981);
-  static const Color statusOfflineAvailable = Color(0xFF38BDF8);
-  static const Color statusUnavailable = Color(0xFF6E747F);
-  static const Color statusWarning = Color(0xFFD97706);
+  // Status Indicators (aliases)
+  static const Color statusAvailable = darkStateAvailable;
+  static const Color statusOfflineAvailable = darkStateOffline;
+  static const Color statusUnavailable = darkStateUnavailable;
+  static const Color statusWarning = darkStateProgress;
   static const Color statusError = Color(0xFFDC2626);
 
-  // --- Theme-Aware Dynamic Resolvers ---
-  static Color ofCanvas(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light
-      ? lightCanvas
-      : darkCanvas;
+  // ==========================================
+  // Layer 3 — Semantic Dynamic Resolvers
+  // ==========================================
 
-  static Color ofSurface(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light
-      ? lightSurface
-      : darkSurface;
+  /// Page background canvas.
+  static Color ofBackground(BuildContext context) =>
+      CinemaTheme.of(context).background;
 
-  static Color ofSurfaceElevated(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light
-      ? lightSurfaceElevated
-      : darkSurfaceElevated;
+  /// Primary card and poster tile surface.
+  static Color ofSurface1(BuildContext context) =>
+      CinemaTheme.of(context).surface1;
 
-  static Color ofCard(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light ? lightCard : darkCard;
+  /// Elevated inputs, modals, elevated panels, and dialogs.
+  static Color ofSurface2(BuildContext context) =>
+      CinemaTheme.of(context).surface2;
 
-  static Color ofCardHover(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light
-      ? lightCardHover
-      : darkCardHover;
+  /// Structural hairline dividers and card outlines.
+  static Color ofBorder(BuildContext context) => CinemaTheme.of(context).border;
 
-  static Color ofBorder(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light
-      ? lightBorder
-      : darkBorder;
+  /// Emphasized border and input focus outlines.
+  static Color ofBorderStrong(BuildContext context) =>
+      CinemaTheme.of(context).borderStrong;
 
-  static Color ofBorderSubtle(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light
-      ? lightBorderSubtle
-      : darkBorderSubtle;
-
+  /// Primary titles, headings, and high-contrast labels.
   static Color ofTextPrimary(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light
-      ? lightTextPrimary
-      : darkTextPrimary;
+      CinemaTheme.of(context).textPrimary;
 
+  /// Supporting text, field values, and secondary metadata.
   static Color ofTextSecondary(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light
-      ? lightTextSecondary
-      : darkTextSecondary;
+      CinemaTheme.of(context).textSecondary;
 
+  /// Placeholders, timestamps, and subdued hints.
   static Color ofTextMuted(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light
-      ? lightTextMuted
-      : darkTextMuted;
+      CinemaTheme.of(context).textMuted;
 
-  static Color ofAccent(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light
-      ? terracottaDark
-      : terracotta;
+  /// Brand accent, active navigation, and primary actions.
+  static Color ofAccent(BuildContext context) => CinemaTheme.of(context).accent;
 
+  /// Text and icons rendered atop an accent-filled surface.
+  static Color ofOnAccent(BuildContext context) =>
+      CinemaTheme.of(context).onAccent;
+
+  /// Ready / Play / Available on disk state token.
+  static Color ofStateAvailable(BuildContext context) =>
+      CinemaTheme.of(context).stateAvailable;
+
+  /// Play offline / Available offline state token.
+  static Color ofStateOffline(BuildContext context) =>
+      CinemaTheme.of(context).stateOffline;
+
+  /// Connect disk / Storage unavailable state token.
+  static Color ofStateUnavailable(BuildContext context) =>
+      CinemaTheme.of(context).stateUnavailable;
+
+  /// In-progress / Downloading state token.
+  static Color ofStateProgress(BuildContext context) =>
+      CinemaTheme.of(context).stateProgress;
+
+  /// Accent with ~14% opacity for active pills and subtle highlights.
   static Color ofAccentSubtle(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.light
-      ? const Color(0x24B84A28)
-      : terracottaSubtle;
+      CinemaTheme.of(context).accent.withValues(alpha: 0.14);
+
+  // --- Backward-Compatible Aliases ---
+  static Color ofCanvas(BuildContext context) => ofBackground(context);
+  static Color ofSurface(BuildContext context) => ofSurface1(context);
+  static Color ofSurfaceElevated(BuildContext context) => ofSurface2(context);
+  static Color ofCard(BuildContext context) => ofSurface1(context);
+  static Color ofCardHover(BuildContext context) => ofSurface2(context);
+  static Color ofBorderSubtle(BuildContext context) => ofBorder(context);
 }

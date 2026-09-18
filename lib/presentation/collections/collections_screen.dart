@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 import '../../data/database/database.dart';
 import '../../data/repository/drift_library_repository.dart';
 import '../../domain/query/collection_query.dart';
@@ -30,30 +30,31 @@ class CollectionsScreen extends StatelessWidget {
        database = database;
 
   void _showCreateCollectionDialog(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
     final nameController = TextEditingController();
     final overviewController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: CinemaColors.card,
-        title: const Text(
+        backgroundColor: tokens.surface2,
+        title: Text(
           'New Curated Collection',
-          style: TextStyle(color: CinemaColors.textPrimary),
+          style: TextStyle(color: tokens.textPrimary),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Curate custom lists such as sagas, directors, or thematic groups.',
-              style: TextStyle(color: CinemaColors.textSecondary, fontSize: 13),
+              style: TextStyle(color: tokens.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: nameController,
               autofocus: true,
-              style: const TextStyle(color: CinemaColors.textPrimary),
+              style: TextStyle(color: tokens.textPrimary),
               decoration: const InputDecoration(
                 labelText: 'Collection Name',
                 hintText: 'e.g. Christopher Nolan, Marvel Studios',
@@ -62,7 +63,7 @@ class CollectionsScreen extends StatelessWidget {
             const SizedBox(height: 12),
             TextField(
               controller: overviewController,
-              style: const TextStyle(color: CinemaColors.textPrimary),
+              style: TextStyle(color: tokens.textPrimary),
               maxLines: 2,
               decoration: const InputDecoration(
                 labelText: 'Description (Optional)',
@@ -74,9 +75,9 @@ class CollectionsScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(color: CinemaColors.textSecondary),
+              style: TextStyle(color: tokens.textSecondary),
             ),
           ),
           ElevatedButton(
@@ -100,12 +101,15 @@ class CollectionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
+
     return Scaffold(
+      backgroundColor: tokens.background,
       appBar: AppBar(
         title: const Text('Collections'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add, color: CinemaColors.amber),
+            icon: Icon(Icons.add, color: tokens.accent),
             tooltip: 'Create Collection',
             onPressed: () => _showCreateCollectionDialog(context),
           ),
@@ -134,26 +138,26 @@ class CollectionsScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.collections_bookmark_outlined,
                       size: 56,
-                      color: CinemaColors.textMuted,
+                      color: tokens.textMuted,
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'No curated collections yet.',
                       style: TextStyle(
-                        color: CinemaColors.textPrimary,
+                        color: tokens.textPrimary,
                         fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Curated collections group related sagas, directors, and custom film lists without altering folder structures.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: CinemaColors.textSecondary,
+                        color: tokens.textSecondary,
                         fontSize: 14,
                       ),
                     ),
@@ -191,9 +195,9 @@ class CollectionsScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: CinemaColors.card,
+                    color: tokens.surface1,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: CinemaColors.borderSubtle),
+                    border: Border.all(color: tokens.border, width: 1),
                   ),
                   child: Row(
                     children: [
@@ -201,13 +205,16 @@ class CollectionsScreen extends StatelessWidget {
                         width: 52,
                         height: 52,
                         decoration: BoxDecoration(
-                          color: CinemaColors.surface,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: CinemaColors.amberSubtle),
+                          color: tokens.accent.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: tokens.accent.withValues(alpha: 0.3),
+                            width: 1,
+                          ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.collections_bookmark,
-                          color: CinemaColors.amber,
+                          color: tokens.accent,
                           size: 26,
                         ),
                       ),
@@ -218,10 +225,10 @@ class CollectionsScreen extends StatelessWidget {
                           children: [
                             Text(
                               col.name,
-                              style: const TextStyle(
-                                color: CinemaColors.textPrimary,
+                              style: TextStyle(
+                                color: tokens.textPrimary,
                                 fontSize: 16,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                             if (col.overview != null &&
@@ -231,8 +238,8 @@ class CollectionsScreen extends StatelessWidget {
                                 col.overview!,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: CinemaColors.textSecondary,
+                                style: TextStyle(
+                                  color: tokens.textSecondary,
                                   fontSize: 13,
                                 ),
                               ),
@@ -240,18 +247,15 @@ class CollectionsScreen extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               '${col.itemCount} ${col.itemCount == 1 ? 'item' : 'items'}',
-                              style: const TextStyle(
-                                color: CinemaColors.textMuted,
+                              style: TextStyle(
+                                color: tokens.textMuted,
                                 fontSize: 12,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const Icon(
-                        Icons.chevron_right,
-                        color: CinemaColors.textSecondary,
-                      ),
+                      Icon(Icons.chevron_right, color: tokens.textSecondary),
                     ],
                   ),
                 ),

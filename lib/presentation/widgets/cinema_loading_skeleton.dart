@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 
 /// Restrained, ambient cinema loading skeleton poster card placeholder.
 class CinemaPosterCardSkeleton extends StatelessWidget {
@@ -8,15 +8,13 @@ class CinemaPosterCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardColor = CinemaColors.ofCard(context);
-    final placeholderColor = CinemaColors.ofSurfaceElevated(context);
-    final borderColor = CinemaColors.ofBorderSubtle(context);
+    final tokens = CinemaTheme.of(context);
 
     return Container(
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor),
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tokens.border, width: 1),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -25,12 +23,11 @@ class CinemaPosterCardSkeleton extends StatelessWidget {
           // Poster Placeholder
           Expanded(
             child: Container(
-              color: placeholderColor,
+              color: tokens.surface2,
               child: Center(
                 child: Icon(
                   Icons.movie_outlined,
-                  color: CinemaColors.ofTextMuted(context)
-                      .withValues(alpha: 0.3),
+                  color: tokens.textMuted.withValues(alpha: 0.3),
                   size: 32,
                 ),
               ),
@@ -48,7 +45,7 @@ class CinemaPosterCardSkeleton extends StatelessWidget {
                   height: 12,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: placeholderColor,
+                    color: tokens.surface2,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -57,7 +54,7 @@ class CinemaPosterCardSkeleton extends StatelessWidget {
                   height: 10,
                   width: 50,
                   decoration: BoxDecoration(
-                    color: placeholderColor,
+                    color: tokens.surface2,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -79,25 +76,20 @@ class CinemaCarouselSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: CinemaColors.amber,
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 2.0,
-          ),
-        ),
+        Text(title, style: CinemaTheme.eyebrow(context, fontSize: 12)),
         if (subtitle != null) ...[
           const SizedBox(height: 3),
           Text(
             subtitle!,
             style: TextStyle(
-              color: CinemaColors.ofTextSecondary(context),
+              color: tokens.textSecondary,
               fontSize: 13,
+              fontWeight: FontWeight.w400,
             ),
           ),
         ],
@@ -150,22 +142,20 @@ class CinemaListSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
+
     return ListView.separated(
       padding: const EdgeInsets.all(24),
       physics: const NeverScrollableScrollPhysics(),
       itemCount: itemCount,
       separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, _) {
-        final cardColor = CinemaColors.ofCard(context);
-        final placeholderColor = CinemaColors.ofSurfaceElevated(context);
-        final borderColor = CinemaColors.ofBorderSubtle(context);
-
         return Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: cardColor,
+            color: tokens.surface1,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor),
+            border: Border.all(color: tokens.border, width: 1),
           ),
           child: Row(
             children: [
@@ -173,8 +163,8 @@ class CinemaListSkeleton extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: placeholderColor,
-                  borderRadius: BorderRadius.circular(10),
+                  color: tokens.surface2,
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
               const SizedBox(width: 16),
@@ -186,7 +176,7 @@ class CinemaListSkeleton extends StatelessWidget {
                       height: 14,
                       width: 140,
                       decoration: BoxDecoration(
-                        color: placeholderColor,
+                        color: tokens.surface2,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -195,7 +185,7 @@ class CinemaListSkeleton extends StatelessWidget {
                       height: 12,
                       width: 220,
                       decoration: BoxDecoration(
-                        color: placeholderColor,
+                        color: tokens.surface2,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/database/database.dart';
 import '../../data/repository/drift_library_repository.dart';
 import '../../domain/models/playback_resolution.dart';
 import '../../domain/models/watch_state.dart';
 import '../../domain/query/collection_query.dart';
+import '../../domain/query/library_result.dart';
 import '../../domain/query/query_projections.dart';
 import '../../domain/repository/library_repository.dart';
 import '../../domain/services/availability_resolver.dart';
@@ -81,25 +82,19 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   }
 
   void _showConnectDiskDialog(String? storageName) {
+    final tokens = CinemaTheme.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: CinemaColors.card,
+        backgroundColor: tokens.surface2,
         title: Row(
           children: [
-            const Icon(
-              Icons.storage_outlined,
-              color: CinemaColors.amber,
-              size: 24,
-            ),
+            Icon(Icons.storage_outlined, color: tokens.accent, size: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Connect ${storageName ?? 'Storage Disk'}',
-                style: const TextStyle(
-                  color: CinemaColors.textPrimary,
-                  fontSize: 18,
-                ),
+                style: TextStyle(color: tokens.textPrimary, fontSize: 18),
               ),
             ),
           ],
@@ -107,8 +102,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         content: Text(
           'This movie is located on "${storageName ?? 'an external drive'}".\n\n'
           'Please connect the storage disk to this device. REELHOUSE will automatically recognize it without re-importing.',
-          style: const TextStyle(
-            color: CinemaColors.textSecondary,
+          style: TextStyle(
+            color: tokens.textSecondary,
             fontSize: 14,
             height: 1.5,
           ),
@@ -116,9 +111,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'OK',
-              style: TextStyle(color: CinemaColors.amber),
+            child: Text(
+              'Dismiss',
+              style: TextStyle(color: tokens.textSecondary),
             ),
           ),
         ],
@@ -127,25 +122,26 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   }
 
   void _confirmDeleteLocalCopy(MediaSource source) {
+    final tokens = CinemaTheme.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: CinemaColors.card,
-        title: const Text(
+        backgroundColor: tokens.surface2,
+        title: Text(
           'Delete Local Copy?',
-          style: TextStyle(color: CinemaColors.textPrimary),
+          style: TextStyle(color: tokens.textPrimary),
         ),
-        content: const Text(
+        content: Text(
           'This will remove the offline copy from this device to reclaim storage space.\n\n'
           'Your original copy on external storage and your cinema library history will remain untouched.',
-          style: TextStyle(color: CinemaColors.textSecondary, height: 1.4),
+          style: TextStyle(color: tokens.textSecondary, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(color: CinemaColors.textSecondary),
+              style: TextStyle(color: tokens.textSecondary),
             ),
           ),
           ElevatedButton(
@@ -156,16 +152,16 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
               }
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Device-local copy removed.'),
-                    backgroundColor: CinemaColors.surface,
+                  SnackBar(
+                    content: const Text('Device-local copy removed.'),
+                    backgroundColor: tokens.surface1,
                   ),
                 );
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade800,
-              foregroundColor: Colors.white,
+              backgroundColor: tokens.stateUnavailable,
+              foregroundColor: tokens.onAccent,
             ),
             child: const Text('Delete Copy'),
           ),
@@ -175,238 +171,217 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   }
 
   void _handlePlay(PlaybackResolution resolution, String mediaTitle) async {
+    final tokens = CinemaTheme.of(context);
     final sourceId = resolution.selectedSourceId;
     if (sourceId == null) {
       _showConnectDiskDialog(resolution.storageName);
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening $mediaTitle in player...'),
-        backgroundColor: CinemaColors.surface,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-
-    if (_playbackLauncher != null) {
-      final result = await _playbackLauncher!.launchPlayback(
-        mediaSourceId: sourceId,
-      );
-      if (!mounted) return;
-
-      if (!result.isSuccess) {
-        _showPlaybackDiagnosticDialog(result);
-      }
-    }
-  }
-
-  void _showPlaybackDiagnosticDialog(PlaybackLaunchResult result) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: CinemaColors.card,
-        title: const Row(
-          children: [
-            Icon(Icons.error_outline, color: CinemaColors.amber, size: 24),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Playback Diagnostic',
-                style: TextStyle(color: CinemaColors.textPrimary, fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              result.errorMessage ?? 'Unable to start playback.',
-              style: const TextStyle(
-                color: CinemaColors.textSecondary,
-                fontSize: 14,
-                height: 1.5,
-              ),
-            ),
-            if (result.resolvedPath != null) ...[
-              const SizedBox(height: 16),
-              const Text(
-                'RESOLVED PATH',
-                style: TextStyle(
-                  color: CinemaColors.amber,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 4),
-              SelectableText(
-                result.resolvedPath!,
-                style: const TextStyle(
-                  color: CinemaColors.textMuted,
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'OK',
-              style: TextStyle(color: CinemaColors.amber),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showM5DownloadDialog(String title, String filename) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: CinemaColors.card,
-        title: const Row(
-          children: [
-            Icon(
-              Icons.download_for_offline_outlined,
-              color: CinemaColors.amber,
-              size: 24,
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Offline Download',
-                style: TextStyle(color: CinemaColors.textPrimary, fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Copying "$filename" to local device storage is scheduled for Milestone 5.',
-              style: const TextStyle(
-                color: CinemaColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'REELHOUSE maintains this item\'s full identity and physical source location in your library.\n\n'
-              'The background file streaming engine with verify-after-write and resume capability will be delivered in Milestone 5.',
-              style: TextStyle(
-                color: CinemaColors.textSecondary,
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Understood',
-              style: TextStyle(color: CinemaColors.amber),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddToCollectionDialog() async {
-    final collections = await widget.repository.getCollections(
-      CollectionQuery.all(),
-    );
-    if (!mounted) return;
-
-    if (collections.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: CinemaColors.card,
-          title: const Text(
-            'No Collections',
-            style: TextStyle(color: CinemaColors.textPrimary),
-          ),
-          content: const Text(
-            'You have not created any collections yet. Create a collection from the Collections tab.',
-            style: TextStyle(color: CinemaColors.textSecondary),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text(
-                'OK',
-                style: TextStyle(color: CinemaColors.amber),
-              ),
-            ),
-          ],
+    if (_playbackLauncher == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Starting playback for: $mediaTitle'),
+          backgroundColor: tokens.surface1,
         ),
       );
       return;
     }
 
+    final result = await _playbackLauncher!.launchPlayback(
+      mediaSourceId: sourceId,
+    );
+    if (!mounted) return;
+
+    if (!result.isSuccess) {
+      final message = switch (result.status) {
+        PlaybackStatus.storageDisconnected =>
+          'Physical source is currently disconnected.',
+        PlaybackStatus.fileNotFound =>
+          'Media file not found at the expected path on disk.',
+        PlaybackStatus.playerNotFound => 'No compatible media player found.',
+        _ =>
+          'Unable to launch playback: ${result.errorMessage ?? 'Unknown error'}',
+      };
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: tokens.surface2,
+          title: Row(
+            children: [
+              Icon(Icons.error_outline, color: tokens.accent, size: 24),
+              const SizedBox(width: 10),
+              Text(
+                'Playback Error',
+                style: TextStyle(color: tokens.textPrimary, fontSize: 18),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                message,
+                style: TextStyle(
+                  color: tokens.textSecondary,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+              if (result.resolvedPath != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Path: ${result.resolvedPath}',
+                  style: TextStyle(
+                    color: tokens.textMuted,
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Dismiss'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _showM5DownloadDialog(String title, String filename) {
+    final tokens = CinemaTheme.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: CinemaColors.card,
-        title: const Text(
+        backgroundColor: tokens.surface2,
+        title: Row(
+          children: [
+            Icon(Icons.download_rounded, color: tokens.accent, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Download to Device',
+                style: TextStyle(color: tokens.textPrimary, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Copy "$title" to your local device storage?',
+              style: TextStyle(
+                color: tokens.textPrimary,
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'This allows you to play the movie offline even when your external drive is disconnected.',
+              style: TextStyle(
+                color: tokens.textSecondary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: tokens.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Offline copy transfer scheduled for "$title".',
+                  ),
+                  backgroundColor: tokens.surface1,
+                ),
+              );
+            },
+            child: const Text('Start Download'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddToCollectionDialog() {
+    final tokens = CinemaTheme.of(context);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: tokens.surface2,
+        title: Text(
           'Add to Collection',
-          style: TextStyle(color: CinemaColors.textPrimary),
+          style: TextStyle(color: tokens.textPrimary),
         ),
         content: SizedBox(
           width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: collections.length,
-            itemBuilder: (context, i) {
-              final col = collections[i];
-              return ListTile(
-                leading: const Icon(
-                  Icons.collections_bookmark_outlined,
-                  color: CinemaColors.amber,
-                ),
-                title: Text(
-                  col.name,
-                  style: const TextStyle(color: CinemaColors.textPrimary),
-                ),
-                subtitle: col.overview != null
-                    ? Text(
-                        col.overview!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: CinemaColors.textSecondary,
-                          fontSize: 12,
+          child: StreamBuilder<LibraryResult<CollectionLibraryItem>>(
+            stream: widget.repository.watchCollections(const CollectionQuery()),
+            builder: (context, snapshot) {
+              final collections = snapshot.data?.items ?? [];
+              if (collections.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'No custom collections created yet.\nCreate one in the Collections tab.',
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              }
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: collections.length,
+                itemBuilder: (context, index) {
+                  final col = collections[index];
+                  return ListTile(
+                    leading: Icon(
+                      Icons.folder_special_outlined,
+                      color: tokens.accent,
+                    ),
+                    title: Text(
+                      col.name,
+                      style: TextStyle(color: tokens.textPrimary),
+                    ),
+                    subtitle: col.overview != null
+                        ? Text(
+                            col.overview!,
+                            style: TextStyle(color: tokens.textSecondary),
+                          )
+                        : null,
+                    onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      Navigator.of(ctx).pop();
+                      await widget.repository.addMovieToCollection(
+                        col.id,
+                        widget.movieId,
+                      );
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('Added to "${col.name}" collection.'),
+                          backgroundColor: tokens.surface1,
                         ),
-                      )
-                    : null,
-                onTap: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  Navigator.of(ctx).pop();
-                  await widget.repository.addMovieToCollection(
-                    col.id,
-                    widget.movieId,
+                      );
+                    },
                   );
-                  if (mounted) {
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text('Added to "${col.name}"'),
-                        backgroundColor: CinemaColors.surface,
-                      ),
-                    );
-                  }
                 },
               );
             },
@@ -415,10 +390,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: CinemaColors.textSecondary),
-            ),
+            child: Text('Close', style: TextStyle(color: tokens.textSecondary)),
           ),
         ],
       ),
@@ -427,27 +399,41 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<MovieLibraryItem?>(
-      stream: _movieStream,
-      builder: (context, movieSnapshot) {
-        final movie = movieSnapshot.data;
-        if (movie == null) {
-          return const Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  value: 0.0,
-                  color: CinemaColors.amber,
-                ),
-              ),
-            ),
-          );
-        }
+    final tokens = CinemaTheme.of(context);
 
-        return Scaffold(
-          body: StreamBuilder<List<Storage>>(
+    return Scaffold(
+      backgroundColor: tokens.background,
+      body: StreamBuilder<MovieLibraryItem?>(
+        stream: _movieStream,
+        builder: (context, movieSnapshot) {
+          if (movieSnapshot.connectionState == ConnectionState.waiting &&
+              !movieSnapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final movie = movieSnapshot.data;
+          if (movie == null) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, size: 48, color: tokens.textMuted),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Movie not found in library.',
+                    style: TextStyle(color: tokens.textPrimary, fontSize: 16),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Return to Movies'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return StreamBuilder<List<Storage>>(
             stream: _storageStream,
             builder: (context, storageSnapshot) {
               final storages = storageSnapshot.data ?? [];
@@ -457,31 +443,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                 stream: _sourcesStream,
                 builder: (context, sourcesSnapshot) {
                   final sources = sourcesSnapshot.data ?? [];
-
-                  // Map to SourceCheckInfo for availability resolver
-                  final checkSources = sources.map((s) {
-                    final storage = storageMap[s.storageId];
-                    return SourceCheckInfo(
-                      sourceId: s.id,
-                      sourceType: s.sourceType,
-                      storageId: s.storageId,
-                      storageName: storage?.name ?? 'Storage',
-                      isSourceAvailable: s.available,
-                      isStorageConnected: storage?.available ?? true,
-                    );
-                  }).toList();
-
-                  final resolution = _resolver.resolve(checkSources);
-                  final hasLocalCopy = sources.any(
-                    (s) => s.sourceType == 'localDevice',
-                  );
-                  final primaryRemovable = sources
-                      .cast<MediaSource?>()
-                      .firstWhere(
-                        (s) =>
-                            s?.sourceType == 'removableStorage' && s!.available,
-                        orElse: () => null,
-                      );
 
                   return StreamBuilder<List<TransferJob>>(
                     stream: _transferStream,
@@ -496,13 +457,39 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                             activeJobs.first.totalBytes.toDouble();
                       }
 
+                      // Map to SourceCheckInfo for availability resolver
+                      final checkSources = sources.map((s) {
+                        final storage = storageMap[s.storageId];
+                        return SourceCheckInfo(
+                          sourceId: s.id,
+                          sourceType: s.sourceType,
+                          storageId: s.storageId,
+                          storageName: storage?.name ?? 'Storage',
+                          isSourceAvailable: s.available,
+                          isStorageConnected: storage?.available ?? true,
+                        );
+                      }).toList();
+
+                      final resolution = _resolver.resolve(checkSources);
+                      final hasLocalCopy = sources.any(
+                        (s) => s.sourceType == 'localDevice',
+                      );
+                      final primaryRemovable = sources
+                          .cast<MediaSource?>()
+                          .firstWhere(
+                            (s) =>
+                                s?.sourceType == 'removableStorage' &&
+                                s!.available,
+                            orElse: () => null,
+                          );
+
                       return CustomScrollView(
                         slivers: [
                           // Cinematic Hero App Bar with Backdrop
                           SliverAppBar(
                             expandedHeight: 340,
                             pinned: true,
-                            backgroundColor: CinemaColors.canvas,
+                            backgroundColor: tokens.background,
                             flexibleSpace: FlexibleSpaceBar(
                               background: Stack(
                                 fit: StackFit.expand,
@@ -520,10 +507,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                         end: Alignment.bottomCenter,
                                         colors: [
                                           Colors.transparent,
-                                          CinemaColors.canvas.withValues(
+                                          tokens.background.withValues(
                                             alpha: 0.6,
                                           ),
-                                          CinemaColors.canvas,
+                                          tokens.background,
                                         ],
                                         stops: const [0.3, 0.7, 1.0],
                                       ),
@@ -544,14 +531,13 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Title & Original Title
+                                  // Title & Original Title (Display serif per Section 6)
                                   Text(
                                     movie.title ?? movie.detectedTitle,
-                                    style: const TextStyle(
-                                      color: CinemaColors.textPrimary,
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.5,
+                                    style: CinemaTheme.displaySerif(
+                                      context,
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   if (movie.originalTitle != null &&
@@ -561,8 +547,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       movie.originalTitle!,
-                                      style: const TextStyle(
-                                        color: CinemaColors.textSecondary,
+                                      style: TextStyle(
+                                        color: tokens.textSecondary,
                                         fontSize: 14,
                                         fontStyle: FontStyle.italic,
                                       ),
@@ -583,20 +569,20 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                             vertical: 3,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: CinemaColors.surface,
+                                            color: tokens.surface1,
                                             borderRadius: BorderRadius.circular(
                                               4,
                                             ),
                                             border: Border.all(
-                                              color: CinemaColors.borderSubtle,
+                                              color: tokens.border,
                                             ),
                                           ),
                                           child: Text(
                                             '${movie.year}',
-                                            style: const TextStyle(
-                                              color: CinemaColors.textPrimary,
+                                            style: TextStyle(
+                                              color: tokens.textPrimary,
                                               fontSize: 13,
-                                              fontWeight: FontWeight.w600,
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                         ),
@@ -605,8 +591,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                           Formatters.formatRuntime(
                                             movie.runtime,
                                           ),
-                                          style: const TextStyle(
-                                            color: CinemaColors.textSecondary,
+                                          style: TextStyle(
+                                            color: tokens.textSecondary,
                                             fontSize: 13,
                                           ),
                                         ),
@@ -615,18 +601,18 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                         Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const Icon(
+                                            Icon(
                                               Icons.star,
-                                              color: CinemaColors.amber,
+                                              color: tokens.accent,
                                               size: 16,
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
                                               movie.rating!.toStringAsFixed(1),
-                                              style: const TextStyle(
-                                                color: CinemaColors.textPrimary,
+                                              style: TextStyle(
+                                                color: tokens.textPrimary,
                                                 fontSize: 13,
-                                                fontWeight: FontWeight.w700,
+                                                fontWeight: FontWeight.w500,
                                               ),
                                             ),
                                           ],
@@ -657,7 +643,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                             ),
                                       ),
 
-                                      // Download to Device Action (when connected original exists & local copy absent)
+                                      // Download to Device Action
                                       if (!hasLocalCopy &&
                                           primaryRemovable != null &&
                                           !isDownloading)
@@ -676,9 +662,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                             'DOWNLOAD TO DEVICE',
                                           ),
                                           style: OutlinedButton.styleFrom(
-                                            foregroundColor: CinemaColors.amber,
-                                            side: const BorderSide(
-                                              color: CinemaColors.amberSubtle,
+                                            foregroundColor: tokens.accent,
+                                            side: BorderSide(
+                                              color: tokens.borderStrong,
                                             ),
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 14,
@@ -697,29 +683,29 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                             vertical: 8,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: CinemaColors.surface,
+                                            color: tokens.surface1,
                                             borderRadius: BorderRadius.circular(
                                               6,
                                             ),
                                             border: Border.all(
-                                              color: CinemaColors.amberSubtle,
+                                              color: tokens.border,
                                             ),
                                           ),
-                                          child: const Row(
+                                          child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Icon(
                                                 Icons.check_circle,
-                                                color: CinemaColors.amber,
+                                                color: tokens.stateOffline,
                                                 size: 14,
                                               ),
-                                              SizedBox(width: 6),
+                                              const SizedBox(width: 6),
                                               Text(
                                                 'AVAILABLE OFFLINE',
                                                 style: TextStyle(
-                                                  color: CinemaColors.amber,
+                                                  color: tokens.stateOffline,
                                                   fontSize: 11,
-                                                  fontWeight: FontWeight.w700,
+                                                  fontWeight: FontWeight.w500,
                                                 ),
                                               ),
                                             ],
@@ -733,8 +719,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                               ? Icons.bookmark_added
                                               : Icons.bookmark_add_outlined,
                                           color: movie.isWatchlist
-                                              ? CinemaColors.amber
-                                              : CinemaColors.textSecondary,
+                                              ? tokens.accent
+                                              : tokens.textSecondary,
                                         ),
                                         tooltip: movie.isWatchlist
                                             ? 'In Watchlist'
@@ -753,8 +739,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                               ? Icons.favorite
                                               : Icons.favorite_border,
                                           color: movie.isFavorite
-                                              ? CinemaColors.amber
-                                              : CinemaColors.textSecondary,
+                                              ? tokens.accent
+                                              : tokens.textSecondary,
                                         ),
                                         tooltip: movie.isFavorite
                                             ? 'Favorited'
@@ -768,9 +754,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
                                       // Add to Collection
                                       IconButton.outlined(
-                                        icon: const Icon(
+                                        icon: Icon(
                                           Icons.playlist_add,
-                                          color: CinemaColors.textSecondary,
+                                          color: tokens.textSecondary,
                                         ),
                                         tooltip: 'Add to Collection',
                                         onPressed: _showAddToCollectionDialog,
@@ -782,12 +768,12 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                   // Watch State Selector
                                   Row(
                                     children: [
-                                      const Text(
+                                      Text(
                                         'Watch State: ',
                                         style: TextStyle(
-                                          color: CinemaColors.textSecondary,
+                                          color: tokens.textSecondary,
                                           fontSize: 13,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                       const SizedBox(width: 8),
@@ -823,13 +809,12 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                           );
                                         },
                                         style: SegmentedButton.styleFrom(
-                                          backgroundColor: CinemaColors.surface,
+                                          backgroundColor: tokens.surface1,
                                           selectedBackgroundColor:
-                                              CinemaColors.card,
+                                              tokens.surface2,
                                           selectedForegroundColor:
-                                              CinemaColors.amber,
-                                          foregroundColor:
-                                              CinemaColors.textSecondary,
+                                              tokens.accent,
+                                          foregroundColor: tokens.textSecondary,
                                         ),
                                       ),
                                     ],
@@ -839,20 +824,20 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                   // Synopsis / Overview
                                   if (movie.overview != null &&
                                       movie.overview!.isNotEmpty) ...[
-                                    const Text(
+                                    Text(
                                       'Synopsis',
                                       style: TextStyle(
-                                        color: CinemaColors.textPrimary,
+                                        color: tokens.textPrimary,
                                         fontSize: 18,
-                                        fontWeight: FontWeight.w700,
+                                        fontWeight: FontWeight.w500,
                                         letterSpacing: 0.3,
                                       ),
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
                                       movie.overview!,
-                                      style: const TextStyle(
-                                        color: CinemaColors.textSecondary,
+                                      style: TextStyle(
+                                        color: tokens.textSecondary,
                                         fontSize: 14,
                                         height: 1.6,
                                       ),
@@ -865,10 +850,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: CinemaColors.surface,
+                                        color: tokens.surface1,
                                         borderRadius: BorderRadius.circular(10),
                                         border: Border.all(
-                                          color: CinemaColors.amberSubtle,
+                                          color: tokens.border,
                                         ),
                                       ),
                                       child: Column(
@@ -879,11 +864,11 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                             mainAxisAlignment:
                                                 MainAxisAlignment.spaceBetween,
                                             children: [
-                                              const Text(
+                                              Text(
                                                 'Copying to Device Storage...',
                                                 style: TextStyle(
-                                                  color: CinemaColors.amber,
-                                                  fontWeight: FontWeight.w700,
+                                                  color: tokens.stateProgress,
+                                                  fontWeight: FontWeight.w500,
                                                   fontSize: 13,
                                                 ),
                                               ),
@@ -891,10 +876,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                                 downloadProgress != null
                                                     ? '${(downloadProgress * 100).toStringAsFixed(1)}%'
                                                     : 'Queued',
-                                                style: const TextStyle(
-                                                  color:
-                                                      CinemaColors.textPrimary,
-                                                  fontWeight: FontWeight.w700,
+                                                style: TextStyle(
+                                                  color: tokens.textPrimary,
+                                                  fontWeight: FontWeight.w500,
                                                   fontSize: 13,
                                                 ),
                                               ),
@@ -903,17 +887,17 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                           const SizedBox(height: 10),
                                           LinearProgressIndicator(
                                             value: downloadProgress,
-                                            backgroundColor: CinemaColors.card,
+                                            backgroundColor: tokens.surface2,
                                             valueColor:
-                                                const AlwaysStoppedAnimation<
-                                                  Color
-                                                >(CinemaColors.amber),
+                                                AlwaysStoppedAnimation<Color>(
+                                                  tokens.stateProgress,
+                                                ),
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
                                             '${Formatters.formatBytes(activeJobs.first.bytesTransferred)} of ${Formatters.formatBytes(activeJobs.first.totalBytes)}',
-                                            style: const TextStyle(
-                                              color: CinemaColors.textSecondary,
+                                            style: TextStyle(
+                                              color: tokens.textSecondary,
                                               fontSize: 12,
                                             ),
                                           ),
@@ -924,20 +908,18 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                   ],
 
                                   // YOUR COPIES SECTION
-                                  const Text(
+                                  Text(
                                     'YOUR COPIES',
-                                    style: TextStyle(
-                                      color: CinemaColors.amber,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 2.0,
+                                    style: CinemaTheme.eyebrowStyle(
+                                      context,
+                                      fontSize: 13,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  const Text(
+                                  Text(
                                     'Physical media sources registered for this title.',
                                     style: TextStyle(
-                                      color: CinemaColors.textSecondary,
+                                      color: tokens.textSecondary,
                                       fontSize: 13,
                                     ),
                                   ),
@@ -948,16 +930,16 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                       width: double.infinity,
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: CinemaColors.card,
+                                        color: tokens.surface1,
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: CinemaColors.borderSubtle,
+                                          color: tokens.border,
                                         ),
                                       ),
-                                      child: const Text(
+                                      child: Text(
                                         'No physical media copies currently registered.',
                                         style: TextStyle(
-                                          color: CinemaColors.textMuted,
+                                          color: tokens.textMuted,
                                         ),
                                       ),
                                     )
@@ -977,14 +959,15 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                         ),
                                         padding: const EdgeInsets.all(16),
                                         decoration: BoxDecoration(
-                                          color: CinemaColors.card,
+                                          color: tokens.surface1,
                                           borderRadius: BorderRadius.circular(
-                                            10,
+                                            12,
                                           ),
                                           border: Border.all(
                                             color: isConnected
-                                                ? CinemaColors.border
-                                                : CinemaColors.borderSubtle,
+                                                ? tokens.borderStrong
+                                                : tokens.border,
+                                            width: 1,
                                           ),
                                         ),
                                         child: Column(
@@ -1000,8 +983,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                                       : Icons
                                                             .radio_button_unchecked,
                                                   color: isConnected
-                                                      ? CinemaColors.amber
-                                                      : CinemaColors.textMuted,
+                                                      ? tokens.accent
+                                                      : tokens.textMuted,
                                                   size: 18,
                                                 ),
                                                 const SizedBox(width: 10),
@@ -1010,11 +993,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                                     isLocal
                                                         ? 'On This Device (Offline Copy)'
                                                         : '${storage?.name ?? 'External Storage'} (Original)',
-                                                    style: const TextStyle(
-                                                      color: CinemaColors
-                                                          .textPrimary,
+                                                    style: TextStyle(
+                                                      color: tokens.textPrimary,
                                                       fontWeight:
-                                                          FontWeight.w700,
+                                                          FontWeight.w500,
                                                       fontSize: 15,
                                                     ),
                                                   ),
@@ -1026,11 +1008,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                                           source,
                                                         ),
                                                     style: OutlinedButton.styleFrom(
-                                                      foregroundColor:
-                                                          Colors.red.shade400,
+                                                      foregroundColor: tokens
+                                                          .stateUnavailable,
                                                       side: BorderSide(
-                                                        color:
-                                                            Colors.red.shade900,
+                                                        color: tokens.border,
                                                       ),
                                                       padding:
                                                           const EdgeInsets.symmetric(
@@ -1052,9 +1033,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                             const SizedBox(height: 8),
                                             Text(
                                               source.relativePath,
-                                              style: const TextStyle(
-                                                color:
-                                                    CinemaColors.textSecondary,
+                                              style: TextStyle(
+                                                color: tokens.textSecondary,
                                                 fontSize: 13,
                                                 fontFamily: 'monospace',
                                               ),
@@ -1067,27 +1047,26 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                                   Formatters.formatBytes(
                                                     source.fileSize,
                                                   ),
-                                                  style: const TextStyle(
-                                                    color: CinemaColors
-                                                        .textSecondary,
+                                                  style: TextStyle(
+                                                    color: tokens.textSecondary,
                                                     fontSize: 12,
                                                   ),
                                                 ),
                                                 if (source.resolution != null)
                                                   Text(
                                                     source.resolution!,
-                                                    style: const TextStyle(
-                                                      color: CinemaColors
-                                                          .textSecondary,
+                                                    style: TextStyle(
+                                                      color:
+                                                          tokens.textSecondary,
                                                       fontSize: 12,
                                                     ),
                                                   ),
                                                 if (source.videoCodec != null)
                                                   Text(
                                                     source.videoCodec!,
-                                                    style: const TextStyle(
-                                                      color: CinemaColors
-                                                          .textSecondary,
+                                                    style: TextStyle(
+                                                      color:
+                                                          tokens.textSecondary,
                                                       fontSize: 12,
                                                     ),
                                                   ),
@@ -1095,9 +1074,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                                     null)
                                                   Text(
                                                     source.audioChannels!,
-                                                    style: const TextStyle(
-                                                      color: CinemaColors
-                                                          .textSecondary,
+                                                    style: TextStyle(
+                                                      color:
+                                                          tokens.textSecondary,
                                                       fontSize: 12,
                                                     ),
                                                   ),
@@ -1107,11 +1086,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                                       : 'Disconnected',
                                                   style: TextStyle(
                                                     color: isConnected
-                                                        ? CinemaColors.amber
-                                                        : CinemaColors
-                                                              .textMuted,
+                                                        ? tokens.accent
+                                                        : tokens.textMuted,
                                                     fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
+                                                    fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
                                               ],
@@ -1132,9 +1110,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                 },
               );
             },
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

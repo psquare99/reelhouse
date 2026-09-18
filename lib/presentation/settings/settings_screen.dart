@@ -2,7 +2,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../core/theme/cinema_colors.dart';
+import '../../core/theme/cinema_theme.dart';
 import '../../data/database/database.dart';
 import '../../data/network/tmdb_api_client.dart';
 import '../../data/repository/drift_library_repository.dart';
@@ -94,10 +94,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     _metadataService.tmdbClient.updateApiKey(key.isNotEmpty ? key : null);
     if (mounted) {
+      final theme = CinemaTheme.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('TMDB API configuration saved.'),
-          backgroundColor: CinemaColors.surface,
+        SnackBar(
+          content: Text(
+            'TMDB API configuration saved.',
+            style: TextStyle(color: theme.textPrimary),
+          ),
+          backgroundColor: theme.surface2,
         ),
       );
       setState(() {});
@@ -153,6 +157,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
       if (mounted) {
+        final theme = CinemaTheme.of(context);
         setState(() {
           _isIdentifyingLibrary = false;
           _identifyStatus =
@@ -164,8 +169,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SnackBar(
             content: Text(
               'Identification pass complete: ${summary.automaticallyMatched} matched.',
+              style: TextStyle(color: theme.textPrimary),
             ),
-            backgroundColor: CinemaColors.surface,
+            backgroundColor: theme.surface2,
           ),
         );
       }
@@ -180,14 +186,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showPlayerDialog() async {
+    final theme = CinemaTheme.of(context);
     final current = _settingsService?.preferredPlayer ?? 'vlc';
     await showDialog<void>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        backgroundColor: CinemaColors.card,
-        title: const Text(
+        backgroundColor: theme.surface,
+        title: Text(
           'Preferred Media Player',
-          style: TextStyle(color: CinemaColors.textPrimary),
+          style: TextStyle(
+            color: theme.textPrimary,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         children: [
           SimpleDialogOption(
@@ -202,14 +212,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Icon(
                   Icons.video_library,
-                  color: current == 'vlc'
-                      ? CinemaColors.amber
-                      : CinemaColors.textMuted,
+                  color: current == 'vlc' ? theme.accent : theme.textMuted,
                 ),
                 const SizedBox(width: 12),
-                const Text(
+                Text(
                   'VLC Media Player',
-                  style: TextStyle(color: CinemaColors.textPrimary),
+                  style: TextStyle(
+                    color: theme.textPrimary,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ],
             ),
@@ -226,14 +237,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Icon(
                   Icons.play_circle_outline,
-                  color: current == 'system'
-                      ? CinemaColors.amber
-                      : CinemaColors.textMuted,
+                  color: current == 'system' ? theme.accent : theme.textMuted,
                 ),
                 const SizedBox(width: 12),
-                const Text(
+                Text(
                   'System Default Player',
-                  style: TextStyle(color: CinemaColors.textPrimary),
+                  style: TextStyle(
+                    color: theme.textPrimary,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ],
             ),
@@ -268,6 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showAddStorageDialog() async {
+    final theme = CinemaTheme.of(context);
     final pathController = TextEditingController();
     final nameController = TextEditingController();
 
@@ -275,42 +288,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (dialogCtx) {
         return AlertDialog(
-          backgroundColor: CinemaColors.card,
-          title: const Text(
+          backgroundColor: theme.surface,
+          title: Text(
             'Add Storage Location',
-            style: TextStyle(color: CinemaColors.textPrimary),
+            style: TextStyle(
+              color: theme.textPrimary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: pathController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Root Path or Document URI',
                   hintText: r'e.g. D:\Movies or content://...',
-                  labelStyle: TextStyle(color: CinemaColors.textSecondary),
+                  labelStyle: TextStyle(color: theme.textSecondary),
+                  hintStyle: TextStyle(color: theme.textMuted),
+                  filled: true,
+                  fillColor: theme.surface2,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: theme.border),
+                  ),
                 ),
-                style: const TextStyle(color: CinemaColors.textPrimary),
+                style: TextStyle(color: theme.textPrimary),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Display Name (optional)',
                   hintText: 'e.g. Movies HDD',
-                  labelStyle: TextStyle(color: CinemaColors.textSecondary),
+                  labelStyle: TextStyle(color: theme.textSecondary),
+                  hintStyle: TextStyle(color: theme.textMuted),
+                  filled: true,
+                  fillColor: theme.surface2,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: theme.border),
+                  ),
                 ),
-                style: const TextStyle(color: CinemaColors.textPrimary),
+                style: TextStyle(color: theme.textPrimary),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogCtx).pop(),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: CinemaColors.textMuted),
-              ),
+              child: Text('Cancel', style: TextStyle(color: theme.textMuted)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -350,12 +377,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _openScanSheet(Storage storage) {
+    final theme = CinemaTheme.of(context);
     showModalBottomSheet<void>(
       context: context,
       isDismissible: true,
       enableDrag: true,
       isScrollControlled: true,
-      backgroundColor: CinemaColors.card,
+      backgroundColor: theme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -370,6 +398,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = CinemaTheme.of(context);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
@@ -386,17 +416,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 margin: const EdgeInsets.only(bottom: 24),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: CinemaColors.amberSubtle,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: CinemaColors.amber),
+                  color: theme.warningSubtle,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.warning.withValues(alpha: 0.5),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.help_outline,
-                      color: CinemaColors.amber,
-                      size: 28,
-                    ),
+                    Icon(Icons.help_outline, color: theme.warning, size: 28),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -404,17 +432,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           Text(
                             '$count items need your attention',
-                            style: const TextStyle(
-                              color: CinemaColors.textPrimary,
+                            style: TextStyle(
+                              color: theme.textPrimary,
                               fontSize: 15,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
+                          Text(
                             'Some movies or TV shows could not be automatically identified with high confidence.',
                             style: TextStyle(
-                              color: CinemaColors.textSecondary,
+                              color: theme.textSecondary,
                               fontSize: 12,
                             ),
                           ),
@@ -435,8 +463,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: CinemaColors.amber,
-                        foregroundColor: CinemaColors.canvas,
+                        backgroundColor: theme.accent,
+                        foregroundColor: theme.onAccent,
                       ),
                       child: const Text('Review Queue'),
                     ),
@@ -450,15 +478,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'STORAGE LOCATIONS',
-                style: TextStyle(
-                  color: CinemaColors.amber,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 2,
-                ),
-              ),
+              Text('STORAGE LOCATIONS', style: CinemaTheme.eyebrow(context)),
               OutlinedButton.icon(
                 onPressed: _showAddStorageDialog,
                 icon: const Icon(Icons.add, size: 16),
@@ -479,9 +499,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             builder: (context, snapshot) {
               final storages = snapshot.data ?? [];
               if (storages.isEmpty) {
-                return const Text(
+                return Text(
                   'Loading storages...',
-                  style: TextStyle(color: CinemaColors.textMuted),
+                  style: TextStyle(color: theme.textMuted),
                 );
               }
 
@@ -500,8 +520,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ? Icons.tablet_android
                                 : Icons.storage_rounded,
                             color: storage.available
-                                ? CinemaColors.amber
-                                : CinemaColors.textMuted,
+                                ? theme.accent
+                                : theme.textMuted,
                             size: 32,
                           ),
                           const SizedBox(width: 16),
@@ -513,10 +533,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   children: [
                                     Text(
                                       storage.name,
-                                      style: const TextStyle(
-                                        color: CinemaColors.textPrimary,
+                                      style: TextStyle(
+                                        color: theme.textPrimary,
                                         fontSize: 16,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                     const SizedBox(width: 10),
@@ -526,20 +546,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: CinemaColors.surface,
+                                        color: theme.surface2,
                                         borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(
-                                          color: CinemaColors.border,
-                                        ),
+                                        border: Border.all(color: theme.border),
                                       ),
                                       child: Text(
                                         isLocal
                                             ? 'DEVICE STORAGE'
                                             : 'EXTERNAL DISK',
-                                        style: const TextStyle(
-                                          color: CinemaColors.textSecondary,
+                                        style: TextStyle(
+                                          color: theme.textSecondary,
                                           fontSize: 10,
-                                          fontWeight: FontWeight.w700,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ),
@@ -550,16 +568,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   storage.rootUri.isNotEmpty
                                       ? storage.rootUri
                                       : 'Application-managed offline storage',
-                                  style: const TextStyle(
-                                    color: CinemaColors.textMuted,
+                                  style: TextStyle(
+                                    color: theme.textMuted,
                                     fontSize: 12,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   'ID: ${storage.filesystemIdentifier}',
-                                  style: const TextStyle(
-                                    color: CinemaColors.textMuted,
+                                  style: TextStyle(
+                                    color: theme.textMuted,
                                     fontSize: 11,
                                     fontFamily: 'monospace',
                                   ),
@@ -578,8 +596,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: storage.available
-                                          ? CinemaColors.statusAvailable
-                                          : CinemaColors.statusUnavailable,
+                                          ? theme.statusAvailable
+                                          : theme.statusMissing,
                                     ),
                                   ),
                                   const SizedBox(width: 6),
@@ -589,10 +607,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         : 'Disconnected',
                                     style: TextStyle(
                                       color: storage.available
-                                          ? CinemaColors.statusAvailable
-                                          : CinemaColors.statusUnavailable,
+                                          ? theme.statusAvailable
+                                          : theme.statusMissing,
                                       fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ],
@@ -605,8 +623,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   icon: const Icon(Icons.sync, size: 14),
                                   label: const Text('Scan Now'),
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: CinemaColors.amberSubtle,
-                                    foregroundColor: CinemaColors.amber,
+                                    backgroundColor: theme.accentMuted,
+                                    foregroundColor: theme.accent,
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 10,
                                       vertical: 4,
@@ -614,7 +632,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     minimumSize: const Size(0, 30),
                                     textStyle: const TextStyle(
                                       fontSize: 11,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ),
@@ -623,7 +641,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 const SizedBox(height: 6),
                                 InkWell(
                                   onTap: () async {
-                                    // Toggle connection status for testing/simulation
                                     await (widget.database.update(
                                           widget.database.storages,
                                         )..where(
@@ -641,8 +658,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     storage.available
                                         ? 'Simulate Disconnect'
                                         : 'Simulate Reconnect',
-                                    style: const TextStyle(
-                                      color: CinemaColors.amber,
+                                    style: TextStyle(
+                                      color: theme.accent,
                                       fontSize: 11,
                                       decoration: TextDecoration.underline,
                                     ),
@@ -662,14 +679,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 32),
 
           // Section: Device Offline Storage Capacity
-          const Text(
+          Text(
             'THIS DEVICE (OFFLINE STORAGE)',
-            style: TextStyle(
-              color: CinemaColors.amber,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 2,
-            ),
+            style: CinemaTheme.eyebrow(context),
           ),
           const SizedBox(height: 14),
 
@@ -682,18 +694,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Offline Media Storage',
                         style: TextStyle(
-                          color: CinemaColors.textPrimary,
+                          color: theme.textPrimary,
                           fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       Text(
                         '${_formatBytes(_usedBytes)} used / ${_formatBytes(_availableBytes)} free',
-                        style: const TextStyle(
-                          color: CinemaColors.textSecondary,
+                        style: TextStyle(
+                          color: theme.textSecondary,
                           fontSize: 13,
                         ),
                       ),
@@ -707,16 +719,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             1.0,
                           )
                         : 0.0,
-                    backgroundColor: CinemaColors.surface,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      CinemaColors.amber,
-                    ),
+                    backgroundColor: theme.surface2,
+                    valueColor: AlwaysStoppedAnimation<Color>(theme.accent),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Offline copies are stored in an application-managed directory. Deleting a local offline copy frees device space without deleting the original HDD media or removing it from your cinema.',
                     style: TextStyle(
-                      color: CinemaColors.textMuted,
+                      color: theme.textMuted,
                       fontSize: 12,
                       height: 1.4,
                     ),
@@ -728,14 +738,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 32),
 
           // Section: TMDB Metadata Configuration (Sections 13, 15, 40)
-          const Text(
+          Text(
             'TMDB METADATA CONFIGURATION',
-            style: TextStyle(
-              color: CinemaColors.amber,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 2,
-            ),
+            style: CinemaTheme.eyebrow(context),
           ),
           const SizedBox(height: 14),
 
@@ -748,20 +753,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(
-                            Icons.public,
-                            color: CinemaColors.amber,
-                            size: 20,
-                          ),
-                          SizedBox(width: 8),
+                          Icon(Icons.public, color: theme.accent, size: 20),
+                          const SizedBox(width: 8),
                           Text(
                             'The Movie Database (TMDB) API',
                             style: TextStyle(
-                              color: CinemaColors.textPrimary,
+                              color: theme.textPrimary,
                               fontSize: 15,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -772,36 +773,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: _hasApiKey
-                              ? CinemaColors.surface
-                              : CinemaColors.card,
+                          color: _hasApiKey ? theme.surface2 : theme.surface,
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
                             color: _hasApiKey
-                                ? CinemaColors.statusAvailable
-                                : CinemaColors.statusUnavailable,
+                                ? theme.statusAvailable
+                                : theme.statusMissing,
                           ),
                         ),
                         child: Text(
                           _hasApiKey ? 'CONFIGURED' : 'KEY MISSING',
                           style: TextStyle(
                             color: _hasApiKey
-                                ? CinemaColors.statusAvailable
-                                : CinemaColors.statusUnavailable,
+                                ? theme.statusAvailable
+                                : theme.statusMissing,
                             fontSize: 10,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  const Text(
+                  Text(
                     'A TMDB API Key or Read Access Token is required to fetch official cinema artwork, synopses, runtimes, and season/episode metadata.',
-                    style: TextStyle(
-                      color: CinemaColors.textMuted,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: theme.textMuted, fontSize: 12),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -813,12 +809,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           decoration: InputDecoration(
                             labelText: 'API Key or Access Token',
                             hintText: 'Enter TMDB API Key / Token or set TMDB_API_KEY',
+                            labelStyle: TextStyle(color: theme.textSecondary),
+                            hintStyle: TextStyle(color: theme.textMuted),
+                            filled: true,
+                            fillColor: theme.surface2,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: theme.border),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: theme.accent,
+                                width: 2,
+                              ),
+                            ),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _isApiKeyObscured
                                     ? Icons.visibility
                                     : Icons.visibility_off,
-                                color: CinemaColors.textMuted,
+                                color: theme.textMuted,
                               ),
                               onPressed: () {
                                 setState(() {
@@ -827,9 +838,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               },
                             ),
                           ),
-                          style: const TextStyle(
-                            color: CinemaColors.textPrimary,
-                          ),
+                          style: TextStyle(color: theme.textPrimary),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -849,11 +858,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ? _testTmdbConnection
                             : null,
                         icon: _isTestingConnection
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: theme.accent,
                                 ),
                               )
                             : const Icon(Icons.network_check, size: 16),
@@ -864,11 +874,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ? _runBatchIdentification
                             : null,
                         icon: _isIdentifyingLibrary
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: theme.accent,
                                 ),
                               )
                             : const Icon(Icons.auto_fix_high, size: 16),
@@ -882,8 +893,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _testStatusMessage!,
                       style: TextStyle(
                         color: _testStatusMessage!.contains('Error')
-                            ? CinemaColors.statusUnavailable
-                            : CinemaColors.statusAvailable,
+                            ? theme.statusMissing
+                            : theme.statusAvailable,
                         fontSize: 12,
                       ),
                     ),
@@ -892,19 +903,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 12),
                     LinearProgressIndicator(
                       value: _identifyProgress > 0 ? _identifyProgress : null,
-                      color: CinemaColors.amber,
+                      color: theme.accent,
+                      backgroundColor: theme.surface2,
                     ),
                     if (_identifyStatus != null) ...[
                       const SizedBox(height: 6),
                       Text(
                         _identifyStatus!,
-                        style: const TextStyle(
-                          color: CinemaColors.textMuted,
-                          fontSize: 11,
-                        ),
+                        style: TextStyle(color: theme.textMuted, fontSize: 11),
                       ),
                     ],
                   ],
+                  const SizedBox(height: 16),
+                  Divider(color: theme.border, height: 1),
+                  const SizedBox(height: 12),
+                  Text(
+                    'This product uses the TMDB API but is not endorsed or certified by TMDB.',
+                    style: TextStyle(
+                      color: theme.textMuted,
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -912,15 +932,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 32),
 
           // Section: Appearance & Theme
-          const Text(
-            'APPEARANCE & THEME',
-            style: TextStyle(
-              color: CinemaColors.amber,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 2,
-            ),
-          ),
+          Text('APPEARANCE & THEME', style: CinemaTheme.eyebrow(context)),
           const SizedBox(height: 14),
 
           Card(
@@ -931,9 +943,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.palette_outlined,
-                        color: CinemaColors.amber,
+                        color: theme.accent,
                         size: 28,
                       ),
                       const SizedBox(width: 16),
@@ -941,12 +953,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Visual Theme',
                               style: TextStyle(
-                                color: CinemaColors.textPrimary,
+                                color: theme.textPrimary,
                                 fontSize: 15,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -957,8 +969,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         ThemeMode.system
                                   ? 'System Default'
                                   : 'Dark Mode (The Screening Room)',
-                              style: const TextStyle(
-                                color: CinemaColors.textSecondary,
+                              style: TextStyle(
+                                color: theme.textSecondary,
                                 fontSize: 13,
                               ),
                             ),
@@ -978,6 +990,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         selected:
                             (_settingsService?.themeMode ?? ThemeMode.dark) ==
                             ThemeMode.dark,
+                        selectedColor: theme.accentMuted,
+                        backgroundColor: theme.surface2,
+                        labelStyle: TextStyle(
+                          color:
+                              (_settingsService?.themeMode ?? ThemeMode.dark) ==
+                                  ThemeMode.dark
+                              ? theme.accent
+                              : theme.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color:
+                                (_settingsService?.themeMode ??
+                                        ThemeMode.dark) ==
+                                    ThemeMode.dark
+                                ? theme.accent
+                                : theme.border,
+                          ),
+                        ),
                         onSelected: (selected) async {
                           if (selected && _settingsService != null) {
                             await _settingsService!.setThemeMode(
@@ -992,6 +1025,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         label: const Text('Light (Gallery Linen)'),
                         selected:
                             _settingsService?.themeMode == ThemeMode.light,
+                        selectedColor: theme.accentMuted,
+                        backgroundColor: theme.surface2,
+                        labelStyle: TextStyle(
+                          color: _settingsService?.themeMode == ThemeMode.light
+                              ? theme.accent
+                              : theme.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color:
+                                _settingsService?.themeMode == ThemeMode.light
+                                ? theme.accent
+                                : theme.border,
+                          ),
+                        ),
                         onSelected: (selected) async {
                           if (selected && _settingsService != null) {
                             await _settingsService!.setThemeMode(
@@ -1006,6 +1056,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         label: const Text('System Default'),
                         selected:
                             _settingsService?.themeMode == ThemeMode.system,
+                        selectedColor: theme.accentMuted,
+                        backgroundColor: theme.surface2,
+                        labelStyle: TextStyle(
+                          color: _settingsService?.themeMode == ThemeMode.system
+                              ? theme.accent
+                              : theme.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color:
+                                _settingsService?.themeMode == ThemeMode.system
+                                ? theme.accent
+                                : theme.border,
+                          ),
+                        ),
                         onSelected: (selected) async {
                           if (selected && _settingsService != null) {
                             await _settingsService!.setThemeMode(
@@ -1024,15 +1091,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 32),
 
           // Section: Playback Player Preference
-          const Text(
-            'PLAYBACK HANDOFF',
-            style: TextStyle(
-              color: CinemaColors.amber,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 2,
-            ),
-          ),
+          Text('PLAYBACK HANDOFF', style: CinemaTheme.eyebrow(context)),
           const SizedBox(height: 14),
 
           Card(
@@ -1040,9 +1099,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.play_circle_outline,
-                    color: CinemaColors.amber,
+                    color: theme.accent,
                     size: 28,
                   ),
                   const SizedBox(width: 16),
@@ -1050,12 +1109,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Preferred Media Player',
                           style: TextStyle(
-                            color: CinemaColors.textPrimary,
+                            color: theme.textPrimary,
                             fontSize: 15,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -1063,8 +1122,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           _settingsService?.preferredPlayer == 'system'
                               ? 'System Default Player'
                               : 'VLC Media Player',
-                          style: const TextStyle(
-                            color: CinemaColors.textSecondary,
+                          style: TextStyle(
+                            color: theme.textSecondary,
                             fontSize: 13,
                           ),
                         ),
@@ -1087,9 +1146,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 'REELHOUSE v1.0 • Personal Digital Cinema',
                 style: TextStyle(
-                  color: CinemaColors.ofTextPrimary(context),
+                  color: theme.textPrimary,
                   fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 14),
@@ -1099,28 +1158,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: CinemaColors.ofSurface(context),
+                  color: theme.surface,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: CinemaColors.ofBorderSubtle(context),
-                  ),
+                  border: Border.all(color: theme.borderSubtle),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 16,
-                      color: CinemaColors.ofTextMuted(context),
-                    ),
+                    Icon(Icons.info_outline, size: 16, color: theme.textMuted),
                     const SizedBox(width: 10),
                     Flexible(
                       child: Text(
                         'This product uses the TMDB API but is not endorsed or certified by TMDB.',
-                        style: TextStyle(
-                          color: CinemaColors.ofTextMuted(context),
-                          fontSize: 11,
-                        ),
+                        style: TextStyle(color: theme.textMuted, fontSize: 11),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -1194,13 +1244,19 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
         });
   }
 
-  Widget _buildStatCard(String label, int value, IconData icon) {
+  Widget _buildStatCard(
+    BuildContext context,
+    String label,
+    int value,
+    IconData icon,
+  ) {
+    final theme = CinemaTheme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: CinemaColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: CinemaColors.borderSubtle),
+        color: theme.surface2,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.borderSubtle),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1208,17 +1264,17 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
         children: [
           Row(
             children: [
-              Icon(icon, size: 14, color: CinemaColors.textMuted),
+              Icon(icon, size: 14, color: theme.textMuted),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: CinemaColors.textSecondary,
+                  style: TextStyle(
+                    color: theme.textSecondary,
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -1228,10 +1284,10 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
           const SizedBox(height: 8),
           Text(
             '$value',
-            style: const TextStyle(
-              color: CinemaColors.textPrimary,
+            style: TextStyle(
+              color: theme.textPrimary,
               fontSize: 22,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -1241,6 +1297,7 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = CinemaTheme.of(context);
     final filesDiscovered = _progress?.filesDiscovered ?? 0;
     final moviesIdentified = _progress?.moviesIdentified ?? 0;
     final tvEpisodesIdentified = _progress?.tvEpisodesIdentified ?? 0;
@@ -1263,7 +1320,7 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: CinemaColors.border,
+                color: theme.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1278,18 +1335,16 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
                 children: [
                   Icon(
                     _isComplete ? Icons.check_circle_outline : Icons.radar,
-                    color: _isComplete
-                        ? CinemaColors.statusAvailable
-                        : CinemaColors.amber,
+                    color: _isComplete ? theme.statusAvailable : theme.accent,
                     size: 22,
                   ),
                   const SizedBox(width: 10),
                   Text(
                     _isComplete ? 'Scan Complete' : 'Scanning...',
-                    style: const TextStyle(
-                      color: CinemaColors.textPrimary,
+                    style: TextStyle(
+                      color: theme.textPrimary,
                       fontSize: 18,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -1300,16 +1355,16 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: CinemaColors.surface,
+                  color: theme.surface2,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: CinemaColors.border),
+                  border: Border.all(color: theme.border),
                 ),
                 child: Text(
                   widget.storage.name,
-                  style: const TextStyle(
-                    color: CinemaColors.amber,
+                  style: TextStyle(
+                    color: theme.accent,
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -1319,11 +1374,11 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
 
           // Progress bar
           if (!_isComplete)
-            const ClipRRect(
-              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ClipRRect(
+              borderRadius: const BorderRadius.all(Radius.circular(4)),
               child: LinearProgressIndicator(
-                color: CinemaColors.amber,
-                backgroundColor: CinemaColors.borderSubtle,
+                color: theme.accent,
+                backgroundColor: theme.surface2,
                 minHeight: 4,
               ),
             ),
@@ -1342,21 +1397,25 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
                 childAspectRatio: constraints.maxWidth > 500 ? 1.4 : 1.8,
                 children: [
                   _buildStatCard(
+                    context,
                     'Files Discovered',
                     filesDiscovered,
                     Icons.folder_open,
                   ),
                   _buildStatCard(
+                    context,
                     'Movies Identified',
                     moviesIdentified,
                     Icons.movie_outlined,
                   ),
                   _buildStatCard(
+                    context,
                     'TV Episodes',
                     tvEpisodesIdentified,
                     Icons.tv_outlined,
                   ),
                   _buildStatCard(
+                    context,
                     'Needs Verification',
                     needsVerification,
                     Icons.help_outline,
@@ -1372,9 +1431,9 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: CinemaColors.surface,
+              color: theme.surface2,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: CinemaColors.borderSubtle),
+              border: Border.all(color: theme.borderSubtle),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1382,10 +1441,7 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
                 if (_error != null) ...[
                   Text(
                     _error!,
-                    style: const TextStyle(
-                      color: CinemaColors.statusUnavailable,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: theme.statusMissing, fontSize: 12),
                   ),
                 ] else if (_isComplete && _summary != null) ...[
                   Text(
@@ -1394,29 +1450,21 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
                     '${_summary!.newSourcesAdded} new sources added, '
                     '${_summary!.sourcesRestored} restored, '
                     '${_summary!.sourcesMarkedMissing} marked missing.',
-                    style: const TextStyle(
-                      color: CinemaColors.textSecondary,
+                    style: TextStyle(
+                      color: theme.textSecondary,
                       fontSize: 12,
                       height: 1.4,
                     ),
                   ),
                 ] else ...[
-                  const Text(
-                    'CURRENT FILE',
-                    style: TextStyle(
-                      color: CinemaColors.textMuted,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
+                  Text('CURRENT FILE', style: CinemaTheme.eyebrow(context)),
                   const SizedBox(height: 4),
                   Text(
                     _progress?.currentFile ?? 'Inspecting filesystem...',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: CinemaColors.textPrimary,
+                    style: TextStyle(
+                      color: theme.textPrimary,
                       fontSize: 12,
                       fontFamily: 'monospace',
                     ),
