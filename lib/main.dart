@@ -8,6 +8,7 @@ import 'data/platform/device_storage_service_impl.dart';
 import 'data/platform/local_storage_manager_impl.dart';
 import 'data/platform/storage_identity_service_impl.dart';
 import 'data/repository/drift_library_repository.dart';
+import 'data/services/transfer_service_impl.dart';
 import 'domain/metadata/image_cache_service.dart';
 import 'domain/metadata/metadata_service.dart';
 import 'domain/repository/library_repository.dart';
@@ -17,6 +18,8 @@ import 'domain/services/local_storage_manager.dart';
 import 'domain/services/settings_service.dart';
 import 'domain/services/storage_identity_service.dart';
 import 'domain/services/storage_monitor_service.dart';
+import 'domain/services/transfer_coordinator.dart';
+import 'domain/services/transfer_service.dart';
 import 'presentation/shell/cinema_shell.dart';
 
 void main() async {
@@ -34,6 +37,18 @@ void main() async {
 
   // Ensure default application-managed device storage destination is registered and rootUri is initialized
   await deviceStorageService.ensureDefaultDestinationRegistered();
+
+  final TransferService transferService = TransferServiceImpl(
+    database: database,
+    deviceStorageService: deviceStorageService,
+  );
+  final TransferCoordinator transferCoordinator = TransferCoordinator(
+    transferService: transferService,
+    database: database,
+    deviceStorageService: deviceStorageService,
+    storageIdentityService: storageIdentityService,
+  );
+  await transferCoordinator.initialize();
 
   final localMediaDir = await localStorageManager.getLocalMediaDirectoryPath();
   final settingsService = await SettingsService.load(
@@ -75,6 +90,8 @@ void main() async {
       storageMonitorService: storageMonitorService,
       metadataService: metadataService,
       settingsService: settingsService,
+      transferService: transferService,
+      transferCoordinator: transferCoordinator,
     ),
   );
 }
@@ -89,6 +106,8 @@ class ReelhouseApp extends StatelessWidget {
   final StorageMonitorService? storageMonitorService;
   final MetadataService? metadataService;
   final SettingsService? settingsService;
+  final TransferService? transferService;
+  final TransferCoordinator? transferCoordinator;
 
   ReelhouseApp({
     super.key,
@@ -101,6 +120,8 @@ class ReelhouseApp extends StatelessWidget {
     this.storageMonitorService,
     this.metadataService,
     this.settingsService,
+    this.transferService,
+    this.transferCoordinator,
   }) : libraryRepository =
            libraryRepository ?? DriftLibraryRepository(database);
 
@@ -127,6 +148,8 @@ class ReelhouseApp extends StatelessWidget {
             metadataService: metadataService,
             settingsService: settingsService,
             deviceStorageService: deviceStorageService,
+            transferService: transferService,
+            transferCoordinator: transferCoordinator,
           ),
         );
       },

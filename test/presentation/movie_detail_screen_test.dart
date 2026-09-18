@@ -100,7 +100,7 @@ void main() {
 
     // Verify Primary Action (PLAY button since HDD is connected)
     expect(find.text('PLAY'), findsOneWidget);
-    expect(find.text('DOWNLOAD TO DEVICE'), findsOneWidget);
+    expect(find.text('SAVE OFFLINE'), findsOneWidget);
 
     // Verify YOUR COPIES section
     expect(find.text('YOUR COPIES'), findsOneWidget);

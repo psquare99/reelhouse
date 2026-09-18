@@ -1,20 +1,24 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import '../../core/theme/cinema_theme.dart';
 import '../../data/database/database.dart';
 import '../../data/network/tmdb_api_client.dart';
+import '../../data/platform/device_storage_service_impl.dart';
 import '../../data/repository/drift_library_repository.dart';
+import '../../data/services/transfer_service_impl.dart';
 import '../../domain/metadata/image_cache_service.dart';
 import '../../domain/metadata/metadata_service.dart';
 import '../../domain/repository/library_repository.dart';
 import '../../domain/scanner/library_scanner_service.dart';
+import '../../domain/services/device_storage_service.dart';
 import '../../domain/services/local_storage_manager.dart';
 import '../../domain/services/settings_service.dart';
-import '../../data/platform/device_storage_service_impl.dart';
-import '../../domain/services/device_storage_service.dart';
 import '../../domain/services/storage_identity_service.dart';
+import '../../domain/services/transfer_coordinator.dart';
+import '../../domain/services/transfer_service.dart';
 import 'needs_verification_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -26,6 +30,8 @@ class SettingsScreen extends StatefulWidget {
   final DeviceStorageService deviceStorageService;
   final MetadataService? metadataService;
   final SettingsService? settingsService;
+  final TransferCoordinator? transferCoordinator;
+  final TransferService? transferService;
 
   SettingsScreen({
     super.key,
@@ -37,6 +43,8 @@ class SettingsScreen extends StatefulWidget {
     DeviceStorageService? deviceStorageService,
     this.metadataService,
     this.settingsService,
+    this.transferCoordinator,
+    this.transferService,
   }) : repository = repository ?? DriftLibraryRepository(database),
        libraryScannerService =
            libraryScannerService ??
@@ -58,6 +66,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   int _usedBytes = 0;
   int _availableBytes = 0;
+  late TransferCoordinator _transferCoordinator;
 
   late MetadataService _metadataService;
   SettingsService? _settingsService;
@@ -73,6 +82,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _settingsService = widget.settingsService;
+    _transferCoordinator =
+        widget.transferCoordinator ??
+        TransferCoordinator(
+          transferService:
+              widget.transferService ??
+              TransferServiceImpl(
+                database: widget.database,
+                deviceStorageService: widget.deviceStorageService,
+                storageIdentityService: widget.storageIdentityService,
+              ),
+          database: widget.database,
+          deviceStorageService: widget.deviceStorageService,
+          storageIdentityService: widget.storageIdentityService,
+        );
     _metadataService =
         widget.metadataService ??
         MetadataService(
@@ -745,6 +768,239 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 32),
+
+          // Section: Offline Transfer Queue & Diagnostics (M5.5 Diagnostics)
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              Text(
+                'OFFLINE TRANSFER QUEUE & DIAGNOSTICS',
+                style: CinemaTheme.eyebrow(context),
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final results = await _transferCoordinator
+                          .reconcileTransfers();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Reconciliation complete (${results.length} jobs evaluated).',
+                            ),
+                            backgroundColor: theme.surface2,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.build_circle_outlined, size: 14),
+                    label: const Text(
+                      'Reconcile',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final count = await _transferCoordinator
+                          .cleanStalePartials();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              count > 0
+                                  ? 'Cleaned $count stale partial transfer file(s).'
+                                  : 'No stale partial files found.',
+                            ),
+                            backgroundColor: theme.surface2,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.cleaning_services_outlined,
+                      size: 14,
+                    ),
+                    label: const Text(
+                      'Clean Partials',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          StreamBuilder<List<TransferJob>>(
+            stream: widget.database.watchAllTransferJobs(),
+            builder: (context, snapshot) {
+              final jobs = snapshot.data ?? [];
+              if (jobs.isEmpty) {
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: theme.textMuted,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'No offline transfer jobs recorded.',
+                          style: TextStyle(
+                            color: theme.textMuted,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: jobs.take(10).map((job) {
+                      final isTerminal =
+                          job.status == 'COMPLETED' ||
+                          job.status == 'FAILED' ||
+                          job.status == 'CANCELLED';
+                      final isFailed = job.status == 'FAILED';
+                      final isCompleted = job.status == 'COMPLETED';
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.surface2,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: theme.borderSubtle),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isCompleted
+                                  ? Icons.check_circle_outline
+                                  : isFailed
+                                  ? Icons.error_outline
+                                  : Icons.sync,
+                              color: isCompleted
+                                  ? theme.statusAvailable
+                                  : isFailed
+                                  ? theme.statusMissing
+                                  : theme.accent,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '${job.mediaType.toUpperCase()}: ${job.destinationRelativePath.isNotEmpty ? p.basename(job.destinationRelativePath) : job.mediaId}',
+                                        style: TextStyle(
+                                          color: theme.textPrimary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  if (job.error != null &&
+                                      job.error!.isNotEmpty) ...[
+                                    Text(
+                                      TransferCoordinator.formatError(
+                                        job.error,
+                                      ),
+                                      style: TextStyle(
+                                        color: theme.statusMissing,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                  ],
+                                  Text(
+                                    'Status: ${job.status} · ${_formatBytes(job.bytesTransferred.toInt())} of ${_formatBytes(job.totalBytes.toInt())}',
+                                    style: TextStyle(
+                                      color: theme.textMuted,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (!isTerminal) ...[
+                              TextButton(
+                                onPressed: () => _transferCoordinator
+                                    .cancelMediaTransfer(job.mediaId),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: theme.textSecondary,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                child: const Text(
+                                  'Cancel',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ] else if (isFailed) ...[
+                              OutlinedButton(
+                                onPressed: () =>
+                                    _transferCoordinator.retryTransferJob(job),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: theme.accent,
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Retry',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 32),
 

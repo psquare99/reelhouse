@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/theme/cinema_theme.dart';
 import '../../data/database/database.dart';
 import '../../data/repository/drift_library_repository.dart';
+import '../../data/platform/device_storage_service_impl.dart';
+import '../../data/services/transfer_service_impl.dart';
 import '../../domain/metadata/metadata_service.dart';
 import '../../domain/repository/library_repository.dart';
 import '../../domain/scanner/library_scanner_service.dart';
@@ -11,6 +13,8 @@ import '../../domain/services/local_storage_manager.dart';
 import '../../domain/services/settings_service.dart';
 import '../../domain/services/storage_identity_service.dart';
 import '../../domain/services/storage_monitor_service.dart';
+import '../../domain/services/transfer_coordinator.dart';
+import '../../domain/services/transfer_service.dart';
 import '../collections/collections_screen.dart';
 import '../home/home_screen.dart';
 import '../movies/movies_screen.dart';
@@ -37,6 +41,8 @@ class CinemaShell extends StatefulWidget {
   final MetadataService? metadataService;
   final SettingsService? settingsService;
   final DeviceStorageService? deviceStorageService;
+  final TransferService? transferService;
+  final TransferCoordinator? transferCoordinator;
 
   CinemaShell({
     super.key,
@@ -49,6 +55,8 @@ class CinemaShell extends StatefulWidget {
     this.metadataService,
     this.settingsService,
     this.deviceStorageService,
+    this.transferService,
+    this.transferCoordinator,
   }) : repository = repository ?? DriftLibraryRepository(database);
 
   @override
@@ -58,12 +66,35 @@ class CinemaShell extends StatefulWidget {
 class _CinemaShellState extends State<CinemaShell> {
   int _selectedIndex = 0;
   late bool _isCollapsed;
+  late final TransferCoordinator _transferCoordinator;
 
   @override
   void initState() {
     super.initState();
     _isCollapsed = widget.settingsService?.isNavRailCollapsed ?? false;
     widget.storageMonitorService?.startMonitoring();
+
+    final devStorage =
+        widget.deviceStorageService ??
+        DeviceStorageServiceImpl(
+          database: widget.database,
+          localStorageManager: widget.localStorageManager,
+        );
+    final transferSvc =
+        widget.transferService ??
+        TransferServiceImpl(
+          database: widget.database,
+          deviceStorageService: devStorage,
+        );
+    _transferCoordinator =
+        widget.transferCoordinator ??
+        TransferCoordinator(
+          transferService: transferSvc,
+          database: widget.database,
+          deviceStorageService: devStorage,
+          storageIdentityService: widget.storageIdentityService,
+        );
+    _transferCoordinator.initialize();
   }
 
   @override
@@ -114,6 +145,7 @@ class _CinemaShellState extends State<CinemaShell> {
         metadataService: widget.metadataService,
         settingsService: widget.settingsService,
         deviceStorageService: widget.deviceStorageService,
+        transferCoordinator: _transferCoordinator,
       ),
     ];
 

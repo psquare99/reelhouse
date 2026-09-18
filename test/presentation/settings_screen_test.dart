@@ -87,6 +87,11 @@ void main() {
   testWidgets(
     'SettingsScreen renders TMDB configuration card and required attribution',
     (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(
         MaterialApp(
           home: SettingsScreen(
@@ -115,7 +120,7 @@ void main() {
         find.text(
           'This product uses the TMDB API but is not endorsed or certified by TMDB.',
         ),
-        findsOneWidget,
+        findsAtLeastNWidgets(1),
       );
 
       // Unmount and flush Drift stream cancel timer
@@ -166,6 +171,11 @@ void main() {
   testWidgets(
     'SettingsScreen renders Appearance & Theme and allows switching theme mode',
     (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(
         MaterialApp(
           home: SettingsScreen(

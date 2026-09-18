@@ -50,7 +50,7 @@ class AvailabilityActionButton extends StatelessWidget {
           ),
         ),
         label: Text(
-          'DOWNLOADING $percentStr',
+          isCompact ? 'SAVING $percentStr' : 'SAVING OFFLINE $percentStr',
           style: TextStyle(
             fontSize: isCompact ? 11 : 13,
             fontWeight: FontWeight.w500,

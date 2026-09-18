@@ -1279,7 +1279,7 @@ class AppDatabase extends _$AppDatabase {
             (j) =>
                 j.mediaType.equals('movie') &
                 j.mediaId.equals(movieId) &
-                (j.status.equals('QUEUED') | j.status.equals('DOWNLOADING')),
+                j.status.isNotIn(const ['COMPLETED', 'FAILED', 'CANCELLED']),
           ))
           .watch();
 
@@ -1291,9 +1291,21 @@ class AppDatabase extends _$AppDatabase {
             (j) =>
                 j.mediaType.equals('episode') &
                 j.mediaId.equals(episodeId) &
-                (j.status.equals('QUEUED') | j.status.equals('DOWNLOADING')),
+                j.status.isNotIn(const ['COMPLETED', 'FAILED', 'CANCELLED']),
           ))
           .watch();
+
+  /// Watch all transfer jobs for a media item.
+  Stream<List<TransferJob>> watchTransferJobsForMedia(String mediaId) =>
+      (select(transferJobs)
+            ..where((j) => j.mediaId.equals(mediaId))
+            ..orderBy([(j) => OrderingTerm.desc(j.startedAt)]))
+          .watch();
+
+  /// Watch all transfer jobs in the system, ordered by start date descending.
+  Stream<List<TransferJob>> watchAllTransferJobs() => (select(
+    transferJobs,
+  )..orderBy([(j) => OrderingTerm.desc(j.startedAt)])).watch();
 
   /// Create a transfer job record.
   Future<int> createTransferJob(TransferJobsCompanion job) =>

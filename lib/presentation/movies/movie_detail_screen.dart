@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/theme/cinema_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/database/database.dart';
+import '../../data/platform/device_storage_service_impl.dart';
+import '../../data/platform/local_storage_manager_impl.dart';
 import '../../data/repository/drift_library_repository.dart';
+import '../../data/services/transfer_service_impl.dart';
 import '../../domain/models/playback_resolution.dart';
 import '../../domain/models/watch_state.dart';
 import '../../domain/query/collection_query.dart';
@@ -13,6 +16,8 @@ import '../../domain/repository/library_repository.dart';
 import '../../domain/services/availability_resolver.dart';
 import '../../domain/services/playback_launcher_service.dart';
 import '../../domain/services/playback_source_resolver.dart';
+import '../../domain/services/transfer_coordinator.dart';
+import '../../domain/services/transfer_service.dart';
 import '../widgets/availability_action_button.dart';
 import '../widgets/cinema_poster_image.dart';
 
@@ -22,12 +27,16 @@ class MovieDetailScreen extends StatefulWidget {
   final String movieId;
   final LibraryRepository repository;
   final AppDatabase? database;
+  final TransferCoordinator? transferCoordinator;
+  final TransferService? transferService;
 
   MovieDetailScreen({
     super.key,
     required this.movieId,
     LibraryRepository? repository,
     AppDatabase? database,
+    this.transferCoordinator,
+    this.transferService,
   }) : repository =
            repository ??
            (database != null
@@ -44,6 +53,7 @@ class MovieDetailScreen extends StatefulWidget {
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
   final PlaybackSourceResolver _resolver = const PlaybackSourceResolver();
   PlaybackLauncherService? _playbackLauncher;
+  late TransferCoordinator _transferCoordinator;
   late Stream<MovieLibraryItem?> _movieStream;
   late Stream<List<Storage>> _storageStream;
   late Stream<List<MediaSource>> _sourcesStream;
@@ -55,7 +65,31 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     if (widget.database != null) {
       _playbackLauncher = PlaybackLauncherService(database: widget.database!);
     }
+    _initCoordinator();
     _initStreams();
+  }
+
+  void _initCoordinator() {
+    if (widget.transferCoordinator != null) {
+      _transferCoordinator = widget.transferCoordinator!;
+    } else if (widget.database != null) {
+      final storageMgr = LocalStorageManagerImpl();
+      final deviceStorage = DeviceStorageServiceImpl(
+        database: widget.database!,
+        localStorageManager: storageMgr,
+      );
+      final transferService =
+          widget.transferService ??
+          TransferServiceImpl(
+            database: widget.database!,
+            deviceStorageService: deviceStorage,
+          );
+      _transferCoordinator = TransferCoordinator(
+        transferService: transferService,
+        database: widget.database!,
+        deviceStorageService: deviceStorage,
+      );
+    }
   }
 
   @override
@@ -147,9 +181,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
-              if (widget.database != null) {
-                await widget.database!.deleteMediaSource(source.id);
-              }
+              await _transferCoordinator.deleteOfflineCopy(source.id);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -259,70 +291,38 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     }
   }
 
-  void _showM5DownloadDialog(String title, String filename) {
+  void _handleSaveOffline(String title) async {
     final tokens = CinemaTheme.of(context);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: tokens.surface2,
-        title: Row(
-          children: [
-            Icon(Icons.download_rounded, color: tokens.accent, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Download to Device',
-                style: TextStyle(color: tokens.textPrimary, fontSize: 18),
-              ),
-            ),
-          ],
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Saving "$title" offline...'),
+        backgroundColor: tokens.surface1,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      await _transferCoordinator.requestMovieTransfer(widget.movieId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(TransferCoordinator.formatError(e.toString())),
+          backgroundColor: tokens.surface1,
+          duration: const Duration(seconds: 4),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Copy "$title" to your local device storage?',
-              style: TextStyle(
-                color: tokens.textPrimary,
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'This allows you to play the movie offline even when your external drive is disconnected.',
-              style: TextStyle(
-                color: tokens.textSecondary,
-                fontSize: 13,
-                height: 1.4,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: tokens.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Offline copy transfer scheduled for "$title".',
-                  ),
-                  backgroundColor: tokens.surface1,
-                ),
-              );
-            },
-            child: const Text('Start Download'),
-          ),
-        ],
+      );
+    }
+  }
+
+  void _handleCancelTransfer() async {
+    final tokens = CinemaTheme.of(context);
+    await _transferCoordinator.cancelMediaTransfer(widget.movieId);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Offline transfer cancelled.'),
+        backgroundColor: tokens.surface1,
       ),
     );
   }
@@ -653,28 +653,28 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                             ),
                                       ),
 
-                                      // Download to Device Action
-                                      if (!hasLocalCopy &&
-                                          primaryRemovable != null &&
-                                          !isDownloading)
+                                      // Save Offline Action
+                                      if (!hasLocalCopy && !isDownloading)
                                         OutlinedButton.icon(
-                                          onPressed: () =>
-                                              _showM5DownloadDialog(
-                                                movie.title ??
-                                                    movie.detectedTitle,
-                                                primaryRemovable.filename,
-                                              ),
+                                          onPressed: primaryRemovable != null
+                                              ? () => _handleSaveOffline(
+                                                  movie.title ??
+                                                      movie.detectedTitle,
+                                                )
+                                              : null,
                                           icon: const Icon(
-                                            Icons.download_rounded,
+                                            Icons.offline_pin_outlined,
                                             size: 18,
                                           ),
-                                          label: const Text(
-                                            'DOWNLOAD TO DEVICE',
-                                          ),
+                                          label: const Text('SAVE OFFLINE'),
                                           style: OutlinedButton.styleFrom(
                                             foregroundColor: tokens.accent,
+                                            disabledForegroundColor:
+                                                tokens.textMuted,
                                             side: BorderSide(
-                                              color: tokens.borderStrong,
+                                              color: primaryRemovable != null
+                                                  ? tokens.borderStrong
+                                                  : tokens.border,
                                             ),
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 14,
@@ -874,23 +874,73 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                             mainAxisAlignment:
                                                 MainAxisAlignment.spaceBetween,
                                             children: [
-                                              Text(
-                                                'Copying to Device Storage...',
-                                                style: TextStyle(
-                                                  color: tokens.stateProgress,
-                                                  fontWeight: FontWeight.w500,
-                                                  fontSize: 13,
-                                                ),
+                                              Row(
+                                                children: [
+                                                  SizedBox(
+                                                    width: 14,
+                                                    height: 14,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(
+                                                            tokens
+                                                                .stateProgress,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Text(
+                                                    'Saving Offline...',
+                                                    style: TextStyle(
+                                                      color:
+                                                          tokens.stateProgress,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      fontSize: 13,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              Text(
-                                                downloadProgress != null
-                                                    ? '${(downloadProgress * 100).toStringAsFixed(1)}%'
-                                                    : 'Queued',
-                                                style: TextStyle(
-                                                  color: tokens.textPrimary,
-                                                  fontWeight: FontWeight.w500,
-                                                  fontSize: 13,
-                                                ),
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    downloadProgress != null
+                                                        ? '${(downloadProgress * 100).toStringAsFixed(1)}%'
+                                                        : activeJobs
+                                                              .first
+                                                              .status,
+                                                    style: TextStyle(
+                                                      color: tokens.textPrimary,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      fontSize: 13,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  TextButton(
+                                                    onPressed:
+                                                        _handleCancelTransfer,
+                                                    style: TextButton.styleFrom(
+                                                      foregroundColor:
+                                                          tokens.textSecondary,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 4,
+                                                          ),
+                                                      visualDensity:
+                                                          VisualDensity.compact,
+                                                    ),
+                                                    child: const Text(
+                                                      'Cancel',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ],
                                           ),

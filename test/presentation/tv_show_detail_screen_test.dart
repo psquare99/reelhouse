@@ -166,7 +166,7 @@ void main() {
       // Verify Play button for episode and header Play Next Episode
       expect(find.text('PLAY NEXT EPISODE (S01E01)'), findsOneWidget);
       expect(find.text('PLAY'), findsNWidgets(2));
-      expect(find.text('DOWNLOAD'), findsNWidgets(2));
+      expect(find.text('SAVE OFFLINE'), findsNWidgets(2));
 
       // Test Episode watched toggle
       final watchToggle = find.byIcon(Icons.check_circle_outline).first;

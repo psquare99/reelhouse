@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/theme/cinema_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/database/database.dart';
+import '../../data/platform/device_storage_service_impl.dart';
+import '../../data/platform/local_storage_manager_impl.dart';
 import '../../data/repository/drift_library_repository.dart';
+import '../../data/services/transfer_service_impl.dart';
 import '../../domain/models/availability_status.dart';
 import '../../domain/models/playback_resolution.dart';
 import '../../domain/models/watch_state.dart';
@@ -15,6 +18,8 @@ import '../../domain/repository/library_repository.dart';
 import '../../domain/services/availability_resolver.dart';
 import '../../domain/services/playback_launcher_service.dart';
 import '../../domain/services/playback_source_resolver.dart';
+import '../../domain/services/transfer_coordinator.dart';
+import '../../domain/services/transfer_service.dart';
 import '../widgets/availability_action_button.dart';
 import '../widgets/cinema_poster_image.dart';
 
@@ -24,12 +29,16 @@ class TvShowDetailScreen extends StatefulWidget {
   final String showId;
   final LibraryRepository repository;
   final AppDatabase? database;
+  final TransferCoordinator? transferCoordinator;
+  final TransferService? transferService;
 
   TvShowDetailScreen({
     super.key,
     required this.showId,
     LibraryRepository? repository,
     AppDatabase? database,
+    this.transferCoordinator,
+    this.transferService,
   }) : repository =
            repository ??
            (database != null
@@ -46,6 +55,7 @@ class TvShowDetailScreen extends StatefulWidget {
 class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
   final PlaybackSourceResolver _resolver = const PlaybackSourceResolver();
   PlaybackLauncherService? _playbackLauncher;
+  late TransferCoordinator _transferCoordinator;
   String? _selectedSeasonId;
   late Stream<TvShowLibraryItem?> _showStream;
   late Stream<List<Storage>> _storageStream;
@@ -57,7 +67,31 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
     if (widget.database != null) {
       _playbackLauncher = PlaybackLauncherService(database: widget.database!);
     }
+    _initCoordinator();
     _initStreams();
+  }
+
+  void _initCoordinator() {
+    if (widget.transferCoordinator != null) {
+      _transferCoordinator = widget.transferCoordinator!;
+    } else if (widget.database != null) {
+      final storageMgr = LocalStorageManagerImpl();
+      final deviceStorage = DeviceStorageServiceImpl(
+        database: widget.database!,
+        localStorageManager: storageMgr,
+      );
+      final transferService =
+          widget.transferService ??
+          TransferServiceImpl(
+            database: widget.database!,
+            deviceStorageService: deviceStorage,
+          );
+      _transferCoordinator = TransferCoordinator(
+        transferService: transferService,
+        database: widget.database!,
+        deviceStorageService: deviceStorage,
+      );
+    }
   }
 
   @override
@@ -232,68 +266,74 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
     );
   }
 
-  void _showM5DownloadDialog(String title, String target) {
+  void _handleSaveSeasonOffline(SeasonLibraryItem season) async {
     final tokens = CinemaTheme.of(context);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: tokens.surface2,
-        title: Row(
-          children: [
-            Icon(Icons.download_rounded, color: tokens.accent, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Download to Device',
-                style: TextStyle(color: tokens.textPrimary, fontSize: 18),
-              ),
-            ),
-          ],
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Saving "${season.displayName}" offline...'),
+        backgroundColor: tokens.surface1,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      await _transferCoordinator.requestSeasonTransfer(season.id);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(TransferCoordinator.formatError(e.toString())),
+          backgroundColor: tokens.surface1,
+          duration: const Duration(seconds: 4),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Copy "$target" to your local device storage?',
-              style: TextStyle(
-                color: tokens.textPrimary,
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'This allows offline playback without needing the external drive connected.',
-              style: TextStyle(
-                color: tokens.textSecondary,
-                fontSize: 13,
-                height: 1.4,
-              ),
-            ),
-          ],
+      );
+    }
+  }
+
+  void _handleCancelSeasonTransfer(SeasonLibraryItem season) async {
+    final tokens = CinemaTheme.of(context);
+    await _transferCoordinator.cancelMediaTransfer(season.id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Cancelled transfer for "${season.displayName}".'),
+        backgroundColor: tokens.surface1,
+      ),
+    );
+  }
+
+  void _handleSaveEpisodeOffline(EpisodeLibraryItem episode) async {
+    final tokens = CinemaTheme.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Saving "${episode.displayName}" offline...'),
+        backgroundColor: tokens.surface1,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      await _transferCoordinator.requestEpisodeTransfer(episode.id);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(TransferCoordinator.formatError(e.toString())),
+          backgroundColor: tokens.surface1,
+          duration: const Duration(seconds: 4),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: tokens.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Offline transfer scheduled for "$target".'),
-                  backgroundColor: tokens.surface1,
-                ),
-              );
-            },
-            child: const Text('Start Download'),
-          ),
-        ],
+      );
+    }
+  }
+
+  void _handleCancelEpisodeTransfer(EpisodeLibraryItem episode) async {
+    final tokens = CinemaTheme.of(context);
+    await _transferCoordinator.cancelMediaTransfer(episode.id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Cancelled transfer for "${episode.displayName}".'),
+        backgroundColor: tokens.surface1,
       ),
     );
   }
@@ -580,27 +620,48 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                         fontSize: 13,
                                       ),
                                     ),
-                                    if (selectedSeason != null)
-                                      OutlinedButton.icon(
-                                        onPressed: () => _showM5DownloadDialog(
-                                          'Season Download',
-                                          'all episodes in this season',
-                                        ),
-                                        icon: const Icon(
-                                          Icons.download_rounded,
-                                          size: 14,
-                                        ),
-                                        label: const Text(
-                                          'DOWNLOAD SEASON',
-                                          style: TextStyle(fontSize: 11),
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: tokens.accent,
-                                          side: BorderSide(
-                                            color: tokens.borderStrong,
-                                          ),
-                                          visualDensity: VisualDensity.compact,
-                                        ),
+                                    if (selectedSeason != null &&
+                                        selectedSeason.seasonNumber >= 0)
+                                      ListenableBuilder(
+                                        listenable: _transferCoordinator,
+                                        builder: (context, _) {
+                                          final isSeasonTransferring =
+                                              _transferCoordinator
+                                                  .isMediaActiveOrQueued(
+                                                    selectedSeason.id,
+                                                  );
+
+                                          return OutlinedButton.icon(
+                                            onPressed: isSeasonTransferring
+                                                ? null
+                                                : () =>
+                                                      _handleSaveSeasonOffline(
+                                                        selectedSeason,
+                                                      ),
+                                            icon: const Icon(
+                                              Icons.offline_pin_outlined,
+                                              size: 14,
+                                            ),
+                                            label: Text(
+                                              isSeasonTransferring
+                                                  ? 'SAVING SEASON...'
+                                                  : 'SAVE SEASON OFFLINE',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: tokens.accent,
+                                              disabledForegroundColor:
+                                                  tokens.textMuted,
+                                              side: BorderSide(
+                                                color: tokens.borderStrong,
+                                              ),
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                            ),
+                                          );
+                                        },
                                       ),
                                   ],
                                 ),
@@ -663,6 +724,146 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                         ),
                       ),
 
+                      // Season Transfer Active Progress Banner (if transferring)
+                      if (selectedSeason != null)
+                        SliverToBoxAdapter(
+                          child: ListenableBuilder(
+                            listenable: _transferCoordinator,
+                            builder: (context, _) {
+                              final progress = _transferCoordinator
+                                  .getActiveProgress(selectedSeason.id);
+                              if (progress == null) {
+                                return const SizedBox.shrink();
+                              }
+
+                              final currentItem =
+                                  progress.currentItemName ?? '';
+                              final epNum = progress.totalItems > 1
+                                  ? 'Episode ${progress.currentItemIndex} of ${progress.totalItems}'
+                                  : '';
+                              final pct = progress.percentage;
+                              final fraction = progress.fraction;
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 8,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: tokens.surface1,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: tokens.border),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              SizedBox(
+                                                width: 14,
+                                                height: 14,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(tokens.stateProgress),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Text(
+                                                'Saving ${selectedSeason.displayName} Offline',
+                                                style: TextStyle(
+                                                  color: tokens.stateProgress,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                '$pct%',
+                                                style: TextStyle(
+                                                  color: tokens.textPrimary,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              TextButton(
+                                                onPressed: () =>
+                                                    _handleCancelSeasonTransfer(
+                                                      selectedSeason,
+                                                    ),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor:
+                                                      tokens.textSecondary,
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4,
+                                                      ),
+                                                  visualDensity:
+                                                      VisualDensity.compact,
+                                                ),
+                                                child: const Text(
+                                                  'Cancel',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      if (epNum.isNotEmpty ||
+                                          currentItem.isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          [epNum, currentItem]
+                                              .where((s) => s.isNotEmpty)
+                                              .join(' · '),
+                                          style: TextStyle(
+                                            color: tokens.textSecondary,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 10),
+                                      LinearProgressIndicator(
+                                        value: fraction,
+                                        backgroundColor: tokens.surface2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              tokens.stateProgress,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        '${Formatters.formatBytes(BigInt.from(progress.bytesTransferred))} of ${Formatters.formatBytes(BigInt.from(progress.totalBytes))}',
+                                        style: TextStyle(
+                                          color: tokens.textSecondary,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
                       // Episode List for Selected Season
                       if (selectedSeason != null)
                         StreamBuilder<LibraryResult<EpisodeLibraryItem>>(
@@ -699,14 +900,14 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                   return _EpisodeCard(
                                     episode: episode,
                                     repository: widget.repository,
+                                    transferCoordinator: _transferCoordinator,
                                     storageMap: storageMap,
                                     onConnectDisk: _showConnectDiskDialog,
                                     onPlay: () => _handlePlayEpisode(episode),
-                                    onDownload: () => _showM5DownloadDialog(
-                                      'Episode Download',
-                                      episode.name ??
-                                          'Episode ${episode.episodeNumber}',
-                                    ),
+                                    onSaveOffline: () =>
+                                        _handleSaveEpisodeOffline(episode),
+                                    onCancelOffline: () =>
+                                        _handleCancelEpisodeTransfer(episode),
                                   );
                                 }, childCount: episodes.length),
                               ),
@@ -729,18 +930,22 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
 class _EpisodeCard extends StatelessWidget {
   final EpisodeLibraryItem episode;
   final LibraryRepository repository;
+  final TransferCoordinator? transferCoordinator;
   final Map<String, Storage> storageMap;
   final void Function(String?) onConnectDisk;
   final VoidCallback onPlay;
-  final VoidCallback onDownload;
+  final VoidCallback onSaveOffline;
+  final VoidCallback onCancelOffline;
 
   const _EpisodeCard({
     required this.episode,
     required this.repository,
+    this.transferCoordinator,
     required this.storageMap,
     required this.onConnectDisk,
     required this.onPlay,
-    required this.onDownload,
+    required this.onSaveOffline,
+    required this.onCancelOffline,
   });
 
   PlaybackResolution get _resolution {
@@ -911,7 +1116,7 @@ class _EpisodeCard extends StatelessWidget {
           ],
           const SizedBox(height: 12),
 
-          // Bottom Actions Row: Play/Connect + Download button
+          // Bottom Actions Row: Play/Connect + Save Offline button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -924,11 +1129,104 @@ class _EpisodeCard extends StatelessWidget {
                 onConnectDisk: () => onConnectDisk(null),
               ),
 
-              if (!isLocal && isExternal)
+              if (transferCoordinator != null)
+                ListenableBuilder(
+                  listenable: transferCoordinator!,
+                  builder: (context, _) {
+                    final isTransferring = transferCoordinator!
+                        .isMediaActiveOrQueued(episode.id);
+                    final progress = transferCoordinator!.getActiveProgress(
+                      episode.id,
+                    );
+
+                    if (isTransferring) {
+                      final pct = progress?.percentage;
+                      final pctText = pct != null
+                          ? '${(pct * 100).toInt()}%'
+                          : 'SAVING...';
+
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                tokens.stateProgress,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            pctText,
+                            style: TextStyle(
+                              color: tokens.stateProgress,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          IconButton(
+                            onPressed: onCancelOffline,
+                            icon: const Icon(Icons.close, size: 14),
+                            tooltip: 'Cancel Transfer',
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            color: tokens.textSecondary,
+                          ),
+                        ],
+                      );
+                    }
+
+                    if (!isLocal && isExternal) {
+                      return OutlinedButton.icon(
+                        onPressed: onSaveOffline,
+                        icon: const Icon(Icons.offline_pin_outlined, size: 14),
+                        label: const Text(
+                          'SAVE OFFLINE',
+                          style: TextStyle(fontSize: 11),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: tokens.accent,
+                          side: BorderSide(color: tokens.borderStrong),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      );
+                    } else if (isLocal) {
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.offline_pin,
+                            color: tokens.stateOffline,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'OFFLINE',
+                            style: TextStyle(
+                              color: tokens.stateOffline,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                )
+              else if (!isLocal && isExternal)
                 OutlinedButton.icon(
-                  onPressed: onDownload,
-                  icon: const Icon(Icons.download_rounded, size: 14),
-                  label: const Text('DOWNLOAD', style: TextStyle(fontSize: 11)),
+                  onPressed: onSaveOffline,
+                  icon: const Icon(Icons.offline_pin_outlined, size: 14),
+                  label: const Text(
+                    'SAVE OFFLINE',
+                    style: TextStyle(fontSize: 11),
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: tokens.accent,
                     side: BorderSide(color: tokens.borderStrong),
