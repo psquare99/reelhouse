@@ -8,7 +8,7 @@ import '../widgets/cinema_genre_tile.dart';
 import '../widgets/cinema_loading_skeleton.dart';
 
 /// Screen presenting the complete catalogue of all genres discovered in the library
-/// using the shared cinematic artwork-backed genre tiles.
+/// using a prominent 4-column cinematic grid with substantial artwork tile presence.
 class AllGenresScreen extends StatelessWidget {
   final LibraryRepository repository;
   final AppDatabase? database;
@@ -53,21 +53,25 @@ class AllGenresScreen extends StatelessWidget {
           return LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
-              final crossAxisCount = width > 1200
-                  ? 5
-                  : width > 900
+              final crossAxisCount = width > 1024
                   ? 4
-                  : width > 600
+                  : width > 720
                   ? 3
-                  : width > 360
+                  : width > 340
                   ? 2
                   : 1;
-              const spacing = 12.0;
+              const spacing = 16.0;
               final contentWidth = (width - 48).clamp(0.0, double.infinity);
               final tileWidth =
                   (contentWidth - (crossAxisCount - 1) * spacing) /
                   crossAxisCount;
-              const tileHeight = 52.0;
+              final tileHeight = width > 1024
+                  ? 120.0
+                  : width > 720
+                  ? 115.0
+                  : width > 340
+                  ? 90.0
+                  : 72.0;
               final childAspectRatio = tileWidth / tileHeight;
 
               return GridView.builder(

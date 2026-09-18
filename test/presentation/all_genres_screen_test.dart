@@ -23,8 +23,12 @@ void main() {
   });
 
   testWidgets(
-    'AllGenresScreen displays responsive grid of all discovered genres using CinemaGenreTile',
+    'AllGenresScreen displays responsive 4-column grid of all discovered genres on desktop',
     (tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       final now = DateTime.now();
 
       // Seed media with various genres
@@ -65,6 +69,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
+      expect(tester.takeException(), isNull);
       expect(find.text('Genres'), findsOneWidget);
       expect(find.text('Action'), findsOneWidget);
       expect(find.text('Science Fiction'), findsOneWidget);
@@ -82,6 +87,48 @@ void main() {
 
       expect(find.byType(SystemCurationGridScreen), findsOneWidget);
       expect(find.text('Action'), findsWidgets);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'AllGenresScreen adapts cleanly to medium tablet viewport without layout overflow',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final now = DateTime.now();
+
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-1',
+              detectedTitle: 'Inception',
+              title: const drift.Value('Inception'),
+              genres: const drift.Value('Action, Science Fiction, Thriller'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: AllGenresScreen(repository: repository, database: db),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Genres'), findsOneWidget);
+      expect(find.text('Action'), findsOneWidget);
+      expect(find.text('Science Fiction'), findsOneWidget);
+      expect(find.text('Thriller'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
@@ -124,6 +171,46 @@ void main() {
       expect(find.text('Action'), findsOneWidget);
       expect(find.text('Science Fiction'), findsOneWidget);
       expect(find.text('Thriller'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'AllGenresScreen adapts cleanly to very narrow viewport (300px) without layout overflow',
+    (tester) async {
+      tester.view.physicalSize = const Size(300, 600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final now = DateTime.now();
+
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-1',
+              detectedTitle: 'Inception',
+              title: const drift.Value('Inception'),
+              genres: const drift.Value('Action, Science Fiction, Thriller'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: AllGenresScreen(repository: repository, database: db),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Genres'), findsOneWidget);
+      expect(find.text('Action'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
