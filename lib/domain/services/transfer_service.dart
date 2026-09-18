@@ -50,4 +50,21 @@ abstract class TransferService {
 
   /// Returns the current active progress snapshot for a media item, if transferring.
   TransferProgress? getActiveProgress(String mediaId);
+
+  /// Reconciles all non-terminal or interrupted transfer jobs against the physical filesystem.
+  ///
+  /// Evaluates interrupted jobs:
+  /// - Jobs interrupted in `VERIFYING` with valid `.reelhouse-partial` artifacts are verified
+  ///   and atomically finalized to `COMPLETED`.
+  /// - Jobs interrupted in `TRANSFERRING`, `PREPARING`, or `QUEUED` are marked `FAILED`
+  ///   as interrupted, and incomplete partial files are safely cleaned up for clean retry.
+  /// - Valid, already-finalized destination files are recognized idempotently.
+  ///
+  /// Safe and idempotent to invoke at application startup or on demand.
+  Future<List<TransferResult>> reconcileTransfers();
+
+  /// Cleans stale or orphaned `.reelhouse-partial` files in application-managed device storage.
+  ///
+  /// Only deletes partial files that are confirmed not to belong to any active transfer.
+  Future<int> cleanStalePartials();
 }

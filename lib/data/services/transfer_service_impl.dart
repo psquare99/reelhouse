@@ -313,6 +313,59 @@ class TransferServiceImpl implements TransferService {
 
       tempFilePath = '$targetFullPath.reelhouse-partial';
 
+      // Check if destination is already verified and finalized on disk
+      final existingTarget = File(targetFullPath);
+      if (existingTarget.existsSync() &&
+          existingTarget.lengthSync() == sourceSize) {
+        // Destination file is already present and valid. Avoid redundant copying.
+        final tempFile = File(tempFilePath);
+        if (tempFile.existsSync()) {
+          try {
+            tempFile.deleteSync();
+          } catch (_) {}
+        }
+
+        final now = DateTime.now();
+        await database.upsertTransferJob(
+          TransferJobsCompanion.insert(
+            id: transferId,
+            mediaType: scope == TransferScope.movie ? 'movie' : 'episode',
+            mediaId: mediaId,
+            sourceMediaSourceId: resolved.mediaSource.id,
+            destinationStorageId: destination.id,
+            destinationRelativePath: destRelPath,
+            status: 'COMPLETED',
+            totalBytes: BigInt.from(sourceSize),
+            bytesTransferred: Value(BigInt.from(sourceSize)),
+            startedAt: now,
+            completedAt: Value(now),
+          ),
+        );
+
+        final completedProgress = TransferProgress(
+          transferId: transferId,
+          scope: scope,
+          mediaId: mediaId,
+          state: TransferState.completed,
+          bytesTransferred: batchBytesBase + sourceSize,
+          totalBytes: effectiveTotalBytes,
+          currentItemName: itemDisplayName ?? resolved.mediaSource.filename,
+          currentItemIndex: currentItemIndex,
+          totalItems: totalItems,
+        );
+        _emitProgress(completedProgress, onProgress);
+
+        return TransferResult(
+          transferId: transferId,
+          scope: scope,
+          mediaId: mediaId,
+          state: TransferState.completed,
+          bytesTransferred: sourceSize,
+          totalBytes: sourceSize,
+          destinationPath: targetFullPath,
+        );
+      }
+
       // 5. Persist initial transfer record (QUEUED)
       final now = DateTime.now();
       await database.upsertTransferJob(
@@ -462,37 +515,78 @@ class TransferServiceImpl implements TransferService {
       await sink.close();
       targetSink = null;
 
-      // 8. Byte copy complete (M5.2 boundary)
-      // M5.2 leaves the temporary artifact (.reelhouse-partial) unverified on disk.
-      // M5.3 will perform verification and atomic finalization.
+      // 8. Transition to VERIFYING (M5.3 Verification Boundary)
       await database.updateTransferJobProgress(
         transferId,
-        status: 'TRANSFERRING',
+        status: 'VERIFYING',
         bytesTransferred: bytesCopied,
       );
 
-      final finalProgress = TransferProgress(
+      final verifyingProgress = TransferProgress(
         transferId: transferId,
         scope: scope,
         mediaId: mediaId,
-        state: TransferState.transferring,
+        state: TransferState.verifying,
         bytesTransferred: batchBytesBase + bytesCopied,
         totalBytes: effectiveTotalBytes,
         currentItemName: itemDisplayName ?? resolved.mediaSource.filename,
         currentItemIndex: currentItemIndex,
         totalItems: totalItems,
       );
-      _emitProgress(finalProgress, onProgress);
+      _emitProgress(verifyingProgress, onProgress);
+
+      if (token.isCancelled) {
+        return await _handleCancellation(
+          transferId: transferId,
+          scope: scope,
+          mediaId: mediaId,
+          bytesTransferred: batchBytesBase + bytesCopied,
+          totalBytes: effectiveTotalBytes,
+          tempPath: tempFilePath,
+          destPath: targetFullPath,
+          token: token,
+          onProgress: onProgress,
+        );
+      }
+
+      // 9. Verification & Atomic Finalization
+      await _verifyAndFinalize(
+        tempFilePath: tempFilePath,
+        targetFullPath: targetFullPath,
+        expectedBytes: sourceSize,
+        mediaId: mediaId,
+      );
+
+      // 10. Transition to COMPLETED
+      final completedAt = DateTime.now();
+      await database.updateTransferJobProgress(
+        transferId,
+        status: 'COMPLETED',
+        bytesTransferred: sourceSize,
+        completedAt: completedAt,
+      );
+
+      final completedProgress = TransferProgress(
+        transferId: transferId,
+        scope: scope,
+        mediaId: mediaId,
+        state: TransferState.completed,
+        bytesTransferred: batchBytesBase + sourceSize,
+        totalBytes: effectiveTotalBytes,
+        currentItemName: itemDisplayName ?? resolved.mediaSource.filename,
+        currentItemIndex: currentItemIndex,
+        totalItems: totalItems,
+      );
+      _emitProgress(completedProgress, onProgress);
 
       return TransferResult(
         transferId: transferId,
         scope: scope,
         mediaId: mediaId,
-        state: TransferState.transferring,
-        bytesTransferred: bytesCopied,
+        state: TransferState.completed,
+        bytesTransferred: sourceSize,
         totalBytes: sourceSize,
         destinationPath: targetFullPath,
-        temporaryPath: tempFilePath,
       );
     } catch (e) {
       if (targetSink != null) {
@@ -710,6 +804,353 @@ class TransferServiceImpl implements TransferService {
   /// Sanitizes filesystem path components, eliminating invalid characters.
   String _sanitizePathComponent(String input) {
     return input.replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '_').trim();
+  }
+
+  @override
+  Future<List<TransferResult>> reconcileTransfers() async {
+    final interruptedJobs = await database.getInterruptedTransferJobs();
+    if (interruptedJobs.isEmpty) {
+      return const [];
+    }
+
+    final results = <TransferResult>[];
+
+    for (final job in interruptedJobs) {
+      // If job is currently active in memory, skip reconciliation for this job
+      if (isMediaTransferring(job.mediaId) || isMediaTransferring(job.id)) {
+        continue;
+      }
+
+      final scope = TransferScope.fromString(job.mediaType);
+      final expectedBytes = job.totalBytes.toInt();
+
+      final storage = await database.getStorageById(job.destinationStorageId);
+      if (storage == null || storage.rootUri.isEmpty) {
+        final error =
+            'Destination storage ${job.destinationStorageId} is missing or inaccessible.';
+        await database.updateTransferJobProgress(
+          job.id,
+          status: 'FAILED',
+          error: error,
+          completedAt: DateTime.now(),
+        );
+        results.add(
+          TransferResult(
+            transferId: job.id,
+            scope: scope,
+            mediaId: job.mediaId,
+            state: TransferState.failed,
+            bytesTransferred: 0,
+            totalBytes: expectedBytes,
+            error: error,
+          ),
+        );
+        continue;
+      }
+
+      final targetFullPath = _resolveSafeDestinationPath(
+        destinationRoot: storage.rootUri,
+        relativePath: job.destinationRelativePath,
+      );
+      final tempFilePath = '$targetFullPath.reelhouse-partial';
+
+      final targetFile = File(targetFullPath);
+      final tempFile = File(tempFilePath);
+
+      // Case 1: Final destination file already exists and has the expected size
+      if (targetFile.existsSync() && targetFile.lengthSync() == expectedBytes) {
+        if (tempFile.existsSync()) {
+          try {
+            tempFile.deleteSync();
+          } catch (_) {}
+        }
+        await database.updateTransferJobProgress(
+          job.id,
+          status: 'COMPLETED',
+          bytesTransferred: expectedBytes,
+          completedAt: DateTime.now(),
+        );
+        results.add(
+          TransferResult(
+            transferId: job.id,
+            scope: scope,
+            mediaId: job.mediaId,
+            state: TransferState.completed,
+            bytesTransferred: expectedBytes,
+            totalBytes: expectedBytes,
+            destinationPath: targetFullPath,
+          ),
+        );
+        continue;
+      }
+
+      // Case 2: Job was interrupted in VERIFYING and partial file exists
+      if (job.status == 'VERIFYING' && tempFile.existsSync()) {
+        try {
+          await _verifyAndFinalize(
+            tempFilePath: tempFilePath,
+            targetFullPath: targetFullPath,
+            expectedBytes: expectedBytes,
+            mediaId: job.mediaId,
+          );
+
+          await database.updateTransferJobProgress(
+            job.id,
+            status: 'COMPLETED',
+            bytesTransferred: expectedBytes,
+            completedAt: DateTime.now(),
+          );
+          results.add(
+            TransferResult(
+              transferId: job.id,
+              scope: scope,
+              mediaId: job.mediaId,
+              state: TransferState.completed,
+              bytesTransferred: expectedBytes,
+              totalBytes: expectedBytes,
+              destinationPath: targetFullPath,
+            ),
+          );
+          continue;
+        } catch (e) {
+          if (tempFile.existsSync()) {
+            try {
+              tempFile.deleteSync();
+            } catch (_) {}
+          }
+          final error = 'Recovery verification failed: $e';
+          await database.updateTransferJobProgress(
+            job.id,
+            status: 'FAILED',
+            error: error,
+            completedAt: DateTime.now(),
+          );
+          results.add(
+            TransferResult(
+              transferId: job.id,
+              scope: scope,
+              mediaId: job.mediaId,
+              state: TransferState.failed,
+              bytesTransferred: 0,
+              totalBytes: expectedBytes,
+              error: error,
+            ),
+          );
+          continue;
+        }
+      }
+
+      // Case 3: Job was interrupted in TRANSFERRING, PREPARING, or QUEUED (or VERIFYING with missing partial)
+      final bool hadPartial = tempFile.existsSync();
+      if (hadPartial) {
+        try {
+          tempFile.deleteSync();
+        } catch (_) {}
+      }
+
+      final error = hadPartial
+          ? 'Transfer was interrupted before completion.'
+          : 'Transfer was interrupted and partial file is missing.';
+
+      await database.updateTransferJobProgress(
+        job.id,
+        status: 'FAILED',
+        error: error,
+        completedAt: DateTime.now(),
+      );
+
+      results.add(
+        TransferResult(
+          transferId: job.id,
+          scope: scope,
+          mediaId: job.mediaId,
+          state: TransferState.failed,
+          bytesTransferred: 0,
+          totalBytes: expectedBytes,
+          error: error,
+        ),
+      );
+    }
+
+    return results;
+  }
+
+  @override
+  Future<int> cleanStalePartials() async {
+    final destinationResolution = await deviceStorageService
+        .resolveDestination();
+    if (!destinationResolution.isAccessible ||
+        destinationResolution.destination == null) {
+      return 0;
+    }
+
+    final rootDir = Directory(destinationResolution.destination!.rootPath);
+    if (!rootDir.existsSync()) {
+      return 0;
+    }
+
+    // Active relative paths in database (TRANSFERRING or VERIFYING)
+    final activeJobs = await database.getInterruptedTransferJobs();
+    final activeRelativePaths = activeJobs
+        .map((j) => p.normalize(j.destinationRelativePath).toLowerCase())
+        .toSet();
+
+    var cleanedCount = 0;
+
+    try {
+      final entities = rootDir.listSync(recursive: true, followLinks: false);
+      for (final entity in entities) {
+        if (entity is File && entity.path.endsWith('.reelhouse-partial')) {
+          final relPath = p.normalize(
+            p.relative(entity.path, from: rootDir.path),
+          );
+          // Strip .reelhouse-partial suffix to compare against destinationRelativePath
+          final baseRelPath = relPath.substring(
+            0,
+            relPath.length - '.reelhouse-partial'.length,
+          );
+
+          final isActiveInDb = activeRelativePaths.contains(
+            baseRelPath.toLowerCase(),
+          );
+          final isActiveInMemory = _activeTokens.values.any(
+            (t) => !t.isCancelled,
+          );
+
+          if (!isActiveInDb && !isActiveInMemory) {
+            try {
+              entity.deleteSync();
+              cleanedCount++;
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+
+    return cleanedCount;
+  }
+
+  /// Verifies a partial transfer artifact and atomically finalizes it to [targetFullPath].
+  Future<void> _verifyAndFinalize({
+    required String tempFilePath,
+    required String targetFullPath,
+    required int expectedBytes,
+    required String mediaId,
+  }) async {
+    final tempFile = File(tempFilePath);
+    final targetFile = File(targetFullPath);
+
+    // If partial file doesn't exist, check if target file is already finalized and valid
+    if (!tempFile.existsSync()) {
+      if (targetFile.existsSync()) {
+        final targetLength = await targetFile.length();
+        if (targetLength == expectedBytes) {
+          // Destination file is already present, valid, and finalized
+          return;
+        }
+        throw VerificationFailedException(
+          'Partial file not found at $tempFilePath and existing destination has mismatched size $targetLength (expected $expectedBytes).',
+          expectedBytes: expectedBytes,
+          actualBytes: targetLength,
+          mediaId: mediaId,
+        );
+      }
+      throw VerificationFailedException(
+        'Partial file not found at $tempFilePath.',
+        expectedBytes: expectedBytes,
+        actualBytes: 0,
+        mediaId: mediaId,
+      );
+    }
+
+    // 1. Verify existence & size
+    final int actualBytes;
+    try {
+      actualBytes = await tempFile.length();
+    } catch (e) {
+      throw VerificationFailedException(
+        'Unable to inspect partial file size at $tempFilePath: $e',
+        expectedBytes: expectedBytes,
+        actualBytes: 0,
+        mediaId: mediaId,
+      );
+    }
+
+    if (actualBytes < expectedBytes) {
+      throw VerificationFailedException(
+        'Partial file size ($actualBytes bytes) is smaller than expected ($expectedBytes bytes).',
+        expectedBytes: expectedBytes,
+        actualBytes: actualBytes,
+        mediaId: mediaId,
+      );
+    }
+
+    if (actualBytes > expectedBytes) {
+      throw VerificationFailedException(
+        'Partial file size ($actualBytes bytes) is larger than expected ($expectedBytes bytes).',
+        expectedBytes: expectedBytes,
+        actualBytes: actualBytes,
+        mediaId: mediaId,
+      );
+    }
+
+    // 2. Verify file readability (sample read)
+    try {
+      final raf = await tempFile.open(mode: FileMode.read);
+      try {
+        if (actualBytes > 0) {
+          final sampleLength = actualBytes < 1024 ? actualBytes : 1024;
+          final sample = await raf.read(sampleLength);
+          if (sample.length != sampleLength) {
+            throw const FileSystemException(
+              'Short read during verification sampling.',
+            );
+          }
+        }
+      } finally {
+        await raf.close();
+      }
+    } catch (e) {
+      throw VerificationFailedException(
+        'Partial file at $tempFilePath is unreadable: $e',
+        expectedBytes: expectedBytes,
+        actualBytes: actualBytes,
+        mediaId: mediaId,
+      );
+    }
+
+    // 3. Atomic Finalization
+    final parentDir = targetFile.parent;
+    if (!parentDir.existsSync()) {
+      parentDir.createSync(recursive: true);
+    }
+
+    // Collision handling
+    if (targetFile.existsSync()) {
+      final targetLength = await targetFile.length();
+      if (targetLength == expectedBytes) {
+        // Target file already exists with identical valid size
+        try {
+          await tempFile.delete();
+        } catch (_) {}
+        return;
+      }
+      // Target file exists but has mismatched size / is stale. Remove before atomic rename.
+      try {
+        await targetFile.delete();
+      } catch (_) {}
+    }
+
+    // Atomically rename partial to target destination
+    try {
+      await tempFile.rename(targetFullPath);
+    } catch (e) {
+      throw TransferException(
+        'Failed to atomically finalize transfer destination from $tempFilePath to $targetFullPath: $e',
+        mediaId: mediaId,
+        cause: e,
+      );
+    }
   }
 
   void dispose() {

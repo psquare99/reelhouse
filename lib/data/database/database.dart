@@ -186,6 +186,13 @@ class AppDatabase extends _$AppDatabase {
   /// Get all transfer jobs.
   Future<List<TransferJob>> getAllTransferJobs() => select(transferJobs).get();
 
+  /// Find all interrupted or active (non-terminal) transfer jobs.
+  Future<List<TransferJob>> getInterruptedTransferJobs() =>
+      (select(transferJobs)..where(
+            (j) => j.status.isNotIn(const ['COMPLETED', 'FAILED', 'CANCELLED']),
+          ))
+          .get();
+
   /// Updates transfer job progress and status.
   Future<int> updateTransferJobProgress(
     String id, {

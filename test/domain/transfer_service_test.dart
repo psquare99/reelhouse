@@ -373,7 +373,7 @@ void main() {
       );
 
       final result = await transferService.transferMovie('movie-interstellar');
-      expect(result.state, TransferState.transferring);
+      expect(result.state, TransferState.completed);
       expect(result.bytesTransferred, 1024);
       expect(result.totalBytes, 1024);
     });
@@ -429,7 +429,7 @@ void main() {
           );
 
       final result = await transferService.transferMovie('movie-matrix');
-      expect(result.state, TransferState.transferring);
+      expect(result.state, TransferState.completed);
       expect(result.bytesTransferred, 512);
     });
 
@@ -476,13 +476,14 @@ void main() {
         final expectedTemp = '$expectedDest.reelhouse-partial';
 
         expect(result.destinationPath, expectedDest);
-        expect(result.temporaryPath, expectedTemp);
+        expect(result.state, TransferState.completed);
 
-        // Verify temporary file exists on disk with exact bytes
-        final tempFile = File(expectedTemp);
-        expect(tempFile.existsSync(), true);
-        expect(tempFile.lengthSync(), 5);
-        expect(tempFile.readAsBytesSync(), sampleBytes);
+        // Verify final file exists on disk with exact bytes and temporary artifact is cleaned
+        final destFile = File(expectedDest);
+        expect(destFile.existsSync(), true);
+        expect(destFile.lengthSync(), 5);
+        expect(destFile.readAsBytesSync(), sampleBytes);
+        expect(File(expectedTemp).existsSync(), false);
       },
     );
 
@@ -562,7 +563,7 @@ void main() {
           onProgress: (p) => progressEvents.add(p),
         );
 
-        expect(result.state, TransferState.transferring);
+        expect(result.state, TransferState.completed);
         expect(result.bytesTransferred, dataSize);
 
         // Verify source file remains untouched
@@ -571,11 +572,11 @@ void main() {
         expect(sourceFile.lengthSync(), dataSize);
         expect(sourceFile.readAsBytesSync(), sampleBytes);
 
-        // Verify temporary file on destination
-        final tempFile = File(result.temporaryPath!);
-        expect(tempFile.existsSync(), true);
-        expect(tempFile.lengthSync(), dataSize);
-        expect(tempFile.readAsBytesSync(), sampleBytes);
+        // Verify finalized file on destination
+        final destFile = File(result.destinationPath!);
+        expect(destFile.existsSync(), true);
+        expect(destFile.lengthSync(), dataSize);
+        expect(destFile.readAsBytesSync(), sampleBytes);
 
         // Verify progress events were emitted
         expect(progressEvents, isNotEmpty);
@@ -676,7 +677,7 @@ void main() {
 
       final result = await transferService.transferEpisode('ep-bb-101');
 
-      expect(result.state, TransferState.transferring);
+      expect(result.state, TransferState.completed);
       expect(result.bytesTransferred, 4);
 
       final expectedDest = p.normalize(
@@ -689,7 +690,8 @@ void main() {
         ),
       );
       expect(result.destinationPath, expectedDest);
-      expect(File('$expectedDest.reelhouse-partial').existsSync(), true);
+      expect(File(expectedDest).existsSync(), true);
+      expect(File('$expectedDest.reelhouse-partial').existsSync(), false);
     });
 
     test(
@@ -787,7 +789,7 @@ void main() {
       expect(job, isNotNull);
       expect(job!.mediaId, 'movie-jaws');
       expect(job.mediaType, 'movie');
-      expect(job.status, 'TRANSFERRING');
+      expect(job.status, 'COMPLETED');
       expect(job.bytesTransferred, BigInt.from(4));
       expect(job.totalBytes, BigInt.from(4));
       expect(job.destinationRelativePath, contains('Jaws'));

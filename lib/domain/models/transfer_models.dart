@@ -248,6 +248,19 @@ class NoAvailableSourceException extends TransferException {
   const NoAvailableSourceException(super.message, {super.mediaId});
 }
 
+/// Thrown when post-transfer integrity verification fails.
+class VerificationFailedException extends TransferException {
+  final int? expectedBytes;
+  final int? actualBytes;
+
+  const VerificationFailedException(
+    super.message, {
+    this.expectedBytes,
+    this.actualBytes,
+    super.mediaId,
+  });
+}
+
 /// Thrown when host device storage has insufficient available space.
 class InsufficientStorageException extends TransferException {
   final int requiredBytes;
