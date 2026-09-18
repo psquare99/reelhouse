@@ -12,6 +12,8 @@ import '../../domain/repository/library_repository.dart';
 import '../../domain/scanner/library_scanner_service.dart';
 import '../../domain/services/local_storage_manager.dart';
 import '../../domain/services/settings_service.dart';
+import '../../data/platform/device_storage_service_impl.dart';
+import '../../domain/services/device_storage_service.dart';
 import '../../domain/services/storage_identity_service.dart';
 import 'needs_verification_screen.dart';
 
@@ -21,6 +23,7 @@ class SettingsScreen extends StatefulWidget {
   final StorageIdentityService storageIdentityService;
   final LocalStorageManager localStorageManager;
   final LibraryScannerService libraryScannerService;
+  final DeviceStorageService deviceStorageService;
   final MetadataService? metadataService;
   final SettingsService? settingsService;
 
@@ -31,6 +34,7 @@ class SettingsScreen extends StatefulWidget {
     required this.storageIdentityService,
     required this.localStorageManager,
     LibraryScannerService? libraryScannerService,
+    DeviceStorageService? deviceStorageService,
     this.metadataService,
     this.settingsService,
   }) : repository = repository ?? DriftLibraryRepository(database),
@@ -39,6 +43,12 @@ class SettingsScreen extends StatefulWidget {
            LibraryScannerService(
              database: database,
              storageIdentityService: storageIdentityService,
+           ),
+       deviceStorageService =
+           deviceStorageService ??
+           DeviceStorageServiceImpl(
+             database: database,
+             localStorageManager: localStorageManager,
            );
 
   @override
@@ -616,6 +626,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ],
                               ),
                               if (storage.available &&
+                                  !isLocal &&
                                   storage.rootUri.isNotEmpty) ...[
                                 const SizedBox(height: 8),
                                 FilledButton.tonalIcon(

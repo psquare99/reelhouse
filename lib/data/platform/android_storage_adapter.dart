@@ -71,6 +71,12 @@ class AndroidStorageAdapter implements PlatformStorageAdapter {
   }
 
   @override
+  Future<int> getTotalBytes(String rootUri) async {
+    // 64 GB conservative baseline for mobile storage
+    return 64 * 1024 * 1024 * 1024;
+  }
+
+  @override
   Future<bool> fileExists(String rootUri, String relativePath) async {
     if (rootUri.startsWith('content://')) {
       // In SAF mode, document existence is verified via platform channel in M2/M5

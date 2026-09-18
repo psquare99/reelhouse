@@ -38,6 +38,9 @@ class _FakeStorageAdapter implements PlatformStorageAdapter {
   Future<int> getAvailableBytes(String rootUri) async => 0;
 
   @override
+  Future<int> getTotalBytes(String rootUri) async => 0;
+
+  @override
   Future<int> getFileSizeBytes(String rootUri, String relativePath) async => 0;
 }
 

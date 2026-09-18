@@ -124,6 +124,29 @@ class LibraryScannerService {
     );
     onProgress?.call(progress);
 
+    // Scanner Isolation (M5 Section 6):
+    // Application-managed device storage must NEVER be scanned as a normal user media source.
+    if (storage.storageType == 'DEVICE_LOCAL_STORAGE') {
+      final doneProgress = progress.copyWith(
+        isComplete: true,
+        error: 'Application-managed device storage cannot be scanned as a user media source.',
+      );
+      onProgress?.call(doneProgress);
+
+      return ScanSummary(
+        storageId: storage.id,
+        storageName: storage.name,
+        filesDiscovered: 0,
+        newSourcesAdded: 0,
+        sourcesRestored: 0,
+        sourcesMarkedMissing: 0,
+        moviesIdentified: 0,
+        tvEpisodesIdentified: 0,
+        needsVerification: 0,
+        duration: Duration.zero,
+      );
+    }
+
     // 1. Verify storage connectivity
     final isConnected = await storageIdentityService.isStorageConnected(
       storage.rootUri,

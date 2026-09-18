@@ -6,6 +6,7 @@ import '../../data/repository/drift_library_repository.dart';
 import '../../domain/metadata/metadata_service.dart';
 import '../../domain/repository/library_repository.dart';
 import '../../domain/scanner/library_scanner_service.dart';
+import '../../domain/services/device_storage_service.dart';
 import '../../domain/services/local_storage_manager.dart';
 import '../../domain/services/settings_service.dart';
 import '../../domain/services/storage_identity_service.dart';
@@ -35,6 +36,7 @@ class CinemaShell extends StatefulWidget {
   final StorageMonitorService? storageMonitorService;
   final MetadataService? metadataService;
   final SettingsService? settingsService;
+  final DeviceStorageService? deviceStorageService;
 
   CinemaShell({
     super.key,
@@ -46,6 +48,7 @@ class CinemaShell extends StatefulWidget {
     this.storageMonitorService,
     this.metadataService,
     this.settingsService,
+    this.deviceStorageService,
   }) : repository = repository ?? DriftLibraryRepository(database);
 
   @override
@@ -110,6 +113,7 @@ class _CinemaShellState extends State<CinemaShell> {
         libraryScannerService: widget.libraryScannerService,
         metadataService: widget.metadataService,
         settingsService: widget.settingsService,
+        deviceStorageService: widget.deviceStorageService,
       ),
     ];
 

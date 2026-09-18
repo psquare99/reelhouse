@@ -25,6 +25,9 @@ class GenericStorageAdapter implements PlatformStorageAdapter {
       50 * 1024 * 1024 * 1024;
 
   @override
+  Future<int> getTotalBytes(String rootUri) async => 100 * 1024 * 1024 * 1024;
+
+  @override
   Future<bool> fileExists(String rootUri, String relativePath) async => true;
 
   @override

@@ -15,6 +15,9 @@ abstract class PlatformStorageAdapter {
   /// Obtains available free storage bytes at the storage location.
   Future<int> getAvailableBytes(String rootUri);
 
+  /// Obtains total storage capacity in bytes at the storage location.
+  Future<int> getTotalBytes(String rootUri);
+
   /// Checks if a file exists relative to the storage root.
   Future<bool> fileExists(String rootUri, String relativePath);
 

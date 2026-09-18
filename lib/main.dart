@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'core/theme/cinema_theme.dart';
 import 'data/database/database.dart';
 import 'data/network/tmdb_api_client.dart';
+import 'data/platform/device_storage_service_impl.dart';
 import 'data/platform/local_storage_manager_impl.dart';
 import 'data/platform/storage_identity_service_impl.dart';
 import 'data/repository/drift_library_repository.dart';
@@ -11,6 +12,7 @@ import 'domain/metadata/image_cache_service.dart';
 import 'domain/metadata/metadata_service.dart';
 import 'domain/repository/library_repository.dart';
 import 'domain/scanner/library_scanner_service.dart';
+import 'domain/services/device_storage_service.dart';
 import 'domain/services/local_storage_manager.dart';
 import 'domain/services/settings_service.dart';
 import 'domain/services/storage_identity_service.dart';
@@ -25,6 +27,13 @@ void main() async {
   final StorageIdentityService storageIdentityService =
       StorageIdentityServiceImpl();
   final LocalStorageManager localStorageManager = LocalStorageManagerImpl();
+  final DeviceStorageService deviceStorageService = DeviceStorageServiceImpl(
+    database: database,
+    localStorageManager: localStorageManager,
+  );
+
+  // Ensure default application-managed device storage destination is registered and rootUri is initialized
+  await deviceStorageService.ensureDefaultDestinationRegistered();
 
   final localMediaDir = await localStorageManager.getLocalMediaDirectoryPath();
   final settingsService = await SettingsService.load(
@@ -61,6 +70,7 @@ void main() async {
       libraryRepository: libraryRepository,
       storageIdentityService: storageIdentityService,
       localStorageManager: localStorageManager,
+      deviceStorageService: deviceStorageService,
       libraryScannerService: libraryScannerService,
       storageMonitorService: storageMonitorService,
       metadataService: metadataService,
@@ -74,6 +84,7 @@ class ReelhouseApp extends StatelessWidget {
   final LibraryRepository libraryRepository;
   final StorageIdentityService storageIdentityService;
   final LocalStorageManager localStorageManager;
+  final DeviceStorageService? deviceStorageService;
   final LibraryScannerService? libraryScannerService;
   final StorageMonitorService? storageMonitorService;
   final MetadataService? metadataService;
@@ -85,6 +96,7 @@ class ReelhouseApp extends StatelessWidget {
     LibraryRepository? libraryRepository,
     required this.storageIdentityService,
     required this.localStorageManager,
+    this.deviceStorageService,
     this.libraryScannerService,
     this.storageMonitorService,
     this.metadataService,
@@ -114,6 +126,7 @@ class ReelhouseApp extends StatelessWidget {
             storageMonitorService: storageMonitorService,
             metadataService: metadataService,
             settingsService: settingsService,
+            deviceStorageService: deviceStorageService,
           ),
         );
       },

@@ -18,6 +18,9 @@ class FakeLocalStorageManager implements LocalStorageManager {
   Future<int> getAvailableDeviceStorageBytes() async => 1000000;
 
   @override
+  Future<int> getTotalDeviceStorageBytes() async => 2000000;
+
+  @override
   Future<int> getUsedOfflineStorageBytes() async => 0;
 
   @override

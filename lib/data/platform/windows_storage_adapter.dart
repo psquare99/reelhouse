@@ -28,10 +28,25 @@ typedef _GetVolumeInformationWDart = int Function(
   int nFileSystemNameSize,
 );
 
+typedef _GetDiskFreeSpaceExWNative = Int32 Function(
+  Pointer<Utf16> lpDirectoryName,
+  Pointer<Uint64> lpFreeBytesAvailableToCaller,
+  Pointer<Uint64> lpTotalNumberOfBytes,
+  Pointer<Uint64> lpTotalNumberOfFreeBytes,
+);
+
+typedef _GetDiskFreeSpaceExWDart = int Function(
+  Pointer<Utf16> lpDirectoryName,
+  Pointer<Uint64> lpFreeBytesAvailableToCaller,
+  Pointer<Uint64> lpTotalNumberOfBytes,
+  Pointer<Uint64> lpTotalNumberOfFreeBytes,
+);
+
 /// Windows implementation using Win32 Volume APIs and local paths.
 class WindowsStorageAdapter implements PlatformStorageAdapter {
   DynamicLibrary? _kernel32;
   _GetVolumeInformationWDart? _getVolumeInformationW;
+  _GetDiskFreeSpaceExWDart? _getDiskFreeSpaceExW;
 
   WindowsStorageAdapter() {
     if (Platform.isWindows) {
@@ -42,6 +57,11 @@ class WindowsStorageAdapter implements PlatformStorageAdapter {
               _GetVolumeInformationWNative,
               _GetVolumeInformationWDart
             >('GetVolumeInformationW');
+        _getDiskFreeSpaceExW = _kernel32!
+            .lookupFunction<
+              _GetDiskFreeSpaceExWNative,
+              _GetDiskFreeSpaceExWDart
+            >('GetDiskFreeSpaceExW');
       } catch (_) {
         // Fallback if DLL lookup fails
       }
@@ -150,8 +170,70 @@ class WindowsStorageAdapter implements PlatformStorageAdapter {
 
   @override
   Future<int> getAvailableBytes(String rootUri) async {
-    // Basic fallback: 50 GB estimated if direct statfs not available
+    if (!Platform.isWindows || _getDiskFreeSpaceExW == null) {
+      return 50 * 1024 * 1024 * 1024;
+    }
+
+    final rootPath = _normalizeRoot(rootUri);
+    final rootUtf16 = rootPath.toNativeUtf16();
+    final freeBytesPtr = calloc<Uint64>();
+    final totalBytesPtr = calloc<Uint64>();
+    final totalFreeBytesPtr = calloc<Uint64>();
+
+    try {
+      final result = _getDiskFreeSpaceExW!(
+        rootUtf16,
+        freeBytesPtr,
+        totalBytesPtr,
+        totalFreeBytesPtr,
+      );
+      if (result != 0) {
+        return freeBytesPtr.value;
+      }
+    } catch (_) {
+      // Fallback
+    } finally {
+      calloc.free(rootUtf16);
+      calloc.free(freeBytesPtr);
+      calloc.free(totalBytesPtr);
+      calloc.free(totalFreeBytesPtr);
+    }
+
     return 50 * 1024 * 1024 * 1024;
+  }
+
+  @override
+  Future<int> getTotalBytes(String rootUri) async {
+    if (!Platform.isWindows || _getDiskFreeSpaceExW == null) {
+      return 100 * 1024 * 1024 * 1024;
+    }
+
+    final rootPath = _normalizeRoot(rootUri);
+    final rootUtf16 = rootPath.toNativeUtf16();
+    final freeBytesPtr = calloc<Uint64>();
+    final totalBytesPtr = calloc<Uint64>();
+    final totalFreeBytesPtr = calloc<Uint64>();
+
+    try {
+      final result = _getDiskFreeSpaceExW!(
+        rootUtf16,
+        freeBytesPtr,
+        totalBytesPtr,
+        totalFreeBytesPtr,
+      );
+      if (result != 0) {
+        return totalBytesPtr.value;
+      }
+    } catch (_) {
+      // Fallback
+    } finally {
+      calloc.free(rootUtf16);
+      calloc.free(freeBytesPtr);
+      calloc.free(totalBytesPtr);
+      calloc.free(totalFreeBytesPtr);
+    }
+
+    return 100 * 1024 * 1024 * 1024;
   }
 
   @override

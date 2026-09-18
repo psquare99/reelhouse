@@ -9,6 +9,9 @@ abstract class LocalStorageManager {
   /// Returns the available free space on the host device storage in bytes.
   Future<int> getAvailableDeviceStorageBytes();
 
+  /// Returns the total capacity of the host device storage in bytes.
+  Future<int> getTotalDeviceStorageBytes();
+
   /// Returns the total bytes consumed by REELHOUSE offline media on this device.
   Future<int> getUsedOfflineStorageBytes();
 

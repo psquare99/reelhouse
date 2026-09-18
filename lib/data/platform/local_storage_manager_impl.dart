@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/services/local_storage_manager.dart';
+import 'windows_storage_adapter.dart';
 
 /// Implementation of [LocalStorageManager] managing application-managed offline media storage.
 class LocalStorageManagerImpl implements LocalStorageManager {
@@ -45,8 +46,26 @@ class LocalStorageManagerImpl implements LocalStorageManager {
 
   @override
   Future<int> getAvailableDeviceStorageBytes() async {
-    // 64 GB baseline calculation if low-level statfs unavailable
+    try {
+      final path = await getLocalMediaDirectoryPath();
+      if (Platform.isWindows) {
+        final adapter = WindowsStorageAdapter();
+        return await adapter.getAvailableBytes(path);
+      }
+    } catch (_) {}
     return 64 * 1024 * 1024 * 1024;
+  }
+
+  @override
+  Future<int> getTotalDeviceStorageBytes() async {
+    try {
+      final path = await getLocalMediaDirectoryPath();
+      if (Platform.isWindows) {
+        final adapter = WindowsStorageAdapter();
+        return await adapter.getTotalBytes(path);
+      }
+    } catch (_) {}
+    return 128 * 1024 * 1024 * 1024;
   }
 
   @override

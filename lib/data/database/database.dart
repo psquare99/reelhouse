@@ -145,6 +145,21 @@ class AppDatabase extends _$AppDatabase {
     storages,
   )..where((s) => s.filesystemIdentifier.equals(identifier))).getSingleOrNull();
 
+  /// Find the registered REELHOUSE application-managed device storage record.
+  Future<Storage?> getDeviceStorage() =>
+      (select(storages)
+            ..where((s) => s.storageType.equals('DEVICE_LOCAL_STORAGE')))
+          .getSingleOrNull();
+
+  /// Update the root URI / path for a registered storage.
+  Future<int> updateStorageRootUri(String storageId, String rootUri) =>
+      (update(storages)..where((s) => s.id.equals(storageId))).write(
+        StoragesCompanion(
+          rootUri: Value(rootUri),
+          lastSeenAt: Value(DateTime.now()),
+        ),
+      );
+
   /// Get all active media sources for a movie.
   Future<List<MediaSource>> getSourcesForMovie(String movieId) =>
       (select(mediaSources)..where((s) => s.movieId.equals(movieId))).get();

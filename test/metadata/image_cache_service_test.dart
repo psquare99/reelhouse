@@ -17,6 +17,9 @@ class MockLocalStorageManager implements LocalStorageManager {
   Future<int> getAvailableDeviceStorageBytes() async => 50000000;
 
   @override
+  Future<int> getTotalDeviceStorageBytes() async => 100000000;
+
+  @override
   Future<int> getUsedOfflineStorageBytes() async => 0;
 
   @override
