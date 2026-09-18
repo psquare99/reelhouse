@@ -22,7 +22,7 @@ void main() {
   });
 
   testWidgets(
-    'CollectionsScreen displays genre chip strip, responsive shelves, in-page scroll, and long-tail curation navigation',
+    'CollectionsScreen displays genre chip strip, responsive shelves, and navigates to genre detail grid',
     (tester) async {
       tester.view.physicalSize = const Size(1280, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -148,11 +148,16 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
-      // Tap prominent genre chip (Action) - selects and scrolls in-page
+      // Tap prominent genre chip (Action) - navigates to SystemCurationGridScreen
       final actionChip = find.text('Action').first;
       await tester.tap(actionChip);
       await tester.pumpAndSettle();
-      expect(find.byType(SystemCurationGridScreen), findsNothing);
+      expect(find.byType(SystemCurationGridScreen), findsOneWidget);
+      expect(find.text('Action'), findsWidgets);
+
+      // Pop SystemCurationGridScreen
+      await tester.pageBack();
+      await tester.pumpAndSettle();
 
       // Tap long-tail genre chip (Documentary) - navigates directly to SystemCurationGridScreen
       final docChip = find.text('Documentary');
@@ -575,7 +580,7 @@ void main() {
   );
 
   testWidgets(
-    'Genre chip navigation correctly differentiates between rendered shelves and SystemCurationGridScreen navigation',
+    'Every genre chip navigates directly to SystemCurationGridScreen regardless of rendered shelf presence',
     (tester) async {
       tester.view.physicalSize = const Size(1280, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -662,19 +667,33 @@ void main() {
       expect(find.text('DRAMA'), findsNothing);
       expect(find.text('ANIMATION'), findsNothing);
 
-      // Path A: Tapping Action chip (has dedicated shelf) -> scrolls in-page without pushing SystemCurationGridScreen
+      // 1. Tapping Action chip (has dedicated shelf) -> navigates directly to SystemCurationGridScreen
       final actionChip = find.text('Action').first;
       await tester.tap(actionChip);
       await tester.pumpAndSettle();
-      expect(find.byType(SystemCurationGridScreen), findsNothing);
+      expect(find.byType(SystemCurationGridScreen), findsOneWidget);
+      expect(find.text('Action'), findsWidgets);
+      expect(find.text('Die Hard'), findsOneWidget);
 
-      // Path A2: Tapping Science Fiction chip (has dedicated shelf) -> scrolls in-page without pushing SystemCurationGridScreen
-      final sciFiChip = find.text('Science Fiction').first;
-      await tester.tap(sciFiChip);
+      // Return to CollectionsScreen
+      await tester.pageBack();
       await tester.pumpAndSettle();
       expect(find.byType(SystemCurationGridScreen), findsNothing);
 
-      // Path B1: Tapping Drama chip (prominent genre, but TV-only with NO rendered shelf) -> navigates to SystemCurationGridScreen
+      // 2. Tapping Science Fiction chip (has dedicated shelf) -> navigates directly to SystemCurationGridScreen
+      final sciFiChip = find.text('Science Fiction').first;
+      await tester.tap(sciFiChip);
+      await tester.pumpAndSettle();
+      expect(find.byType(SystemCurationGridScreen), findsOneWidget);
+      expect(find.text('Science Fiction'), findsWidgets);
+      expect(find.text('Interstellar'), findsOneWidget);
+
+      // Return to CollectionsScreen
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(SystemCurationGridScreen), findsNothing);
+
+      // 3. Tapping Drama chip (prominent genre, TV-only with NO rendered shelf) -> navigates to SystemCurationGridScreen
       final dramaChip = find.text('Drama');
       await tester.tap(dramaChip);
       await tester.pumpAndSettle();
@@ -687,7 +706,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SystemCurationGridScreen), findsNothing);
 
-      // Path B2: Tapping Animation chip (long-tail genre with NO rendered shelf) -> navigates to SystemCurationGridScreen
+      // 4. Tapping Animation chip (long-tail genre with NO rendered shelf) -> navigates to SystemCurationGridScreen
       final animChip = find.text('Animation');
       await tester.tap(animChip);
       await tester.pumpAndSettle();

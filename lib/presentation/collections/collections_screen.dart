@@ -36,7 +36,7 @@ const List<String> kProminentGenres = [
 ];
 
 /// Collections / Curation Screen featuring:
-/// 1. Discovered Genre horizontal chip strip with in-page scroll or direct curation navigation.
+/// 1. Discovered Genre horizontal chip strip with direct curation grid navigation.
 /// 2. Prominent genre shelves with responsive poster rows and per-genre View All.
 /// 3. Franchises carousel with full browse option.
 /// 4. Personal Collections created by the user.
@@ -62,9 +62,6 @@ class CollectionsScreen extends StatefulWidget {
 }
 
 class _CollectionsScreenState extends State<CollectionsScreen> {
-  final Map<String, GlobalKey> _genreKeys = {};
-  String? _selectedGenre;
-
   void _showCreateCollectionDialog(BuildContext context) {
     final tokens = CinemaTheme.of(context);
     final nameController = TextEditingController();
@@ -271,33 +268,17 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
             // Horizontal text-first genre chip strip with explicit left/right navigation controls
             _GenreChipStrip(
               genres: discoveredGenres,
-              selectedGenre: _selectedGenre,
               onGenreSelected: (genre) {
-                setState(() {
-                  _selectedGenre = genre;
-                });
-
-                final shelfKey = _genreKeys[genre.toLowerCase()];
-                final shelfContext = shelfKey?.currentContext;
-
-                if (shelfContext != null && shelfContext.mounted) {
-                  Scrollable.ensureVisible(
-                    shelfContext,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                  );
-                } else {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => SystemCurationGridScreen(
-                        title: genre,
-                        genre: genre,
-                        repository: widget.repository,
-                        database: widget.database,
-                      ),
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SystemCurationGridScreen(
+                      title: genre,
+                      genre: genre,
+                      repository: widget.repository,
+                      database: widget.database,
                     ),
-                  );
-                }
+                  ),
+                );
               },
             ),
             const SizedBox(height: 28),
@@ -310,12 +291,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: 28),
               itemBuilder: (context, index) {
                 final genre = activeGenres[index];
-                final shelfKey = _genreKeys.putIfAbsent(
-                  genre.toLowerCase(),
-                  () => GlobalKey(),
-                );
                 return _GenreDiscoveryRow(
-                  shelfKey: shelfKey,
                   genre: genre,
                   repository: widget.repository,
                   database: widget.database,
@@ -620,13 +596,11 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
 
 /// A responsive horizontal poster row presenting a subset of films in a specific genre.
 class _GenreDiscoveryRow extends StatelessWidget {
-  final GlobalKey? shelfKey;
   final String genre;
   final LibraryRepository repository;
   final AppDatabase? database;
 
   const _GenreDiscoveryRow({
-    this.shelfKey,
     required this.genre,
     required this.repository,
     this.database,
@@ -653,101 +627,98 @@ class _GenreDiscoveryRow extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        return Container(
-          key: shelfKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Text(
-                      genre.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: tokens.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    genre.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: tokens.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => SystemCurationGridScreen(
-                            title: genre,
-                            genre: genre,
-                            repository: repository,
-                            database: database,
-                          ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SystemCurationGridScreen(
+                          title: genre,
+                          genre: genre,
+                          repository: repository,
+                          database: database,
                         ),
-                      );
-                    },
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
                       ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'View All',
-                          style: TextStyle(
-                            color: tokens.accent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_forward_rounded,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View All',
+                        style: TextStyle(
                           color: tokens.accent,
-                          size: 14,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: tokens.accent,
+                        size: 14,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ResponsiveCardRow(
-                itemCount: movies.length,
-                itemBuilder: (context, index) {
-                  final movie = movies[index];
-                  return CinemaPosterCard(
-                    title: movie.displayTitle,
-                    year: movie.displayYear,
-                    posterPath: movie.posterPath,
-                    availabilityStatus: movie.availability,
-                    isFavorite: movie.isFavorite,
-                    isWatchlist: movie.isWatchlist,
-                    watchState: movie.watchState.toDbString(),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => MovieDetailScreen(
-                            movieId: movie.id,
-                            repository: repository,
-                            database: database,
-                          ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ResponsiveCardRow(
+              itemCount: movies.length,
+              itemBuilder: (context, index) {
+                final movie = movies[index];
+                return CinemaPosterCard(
+                  title: movie.displayTitle,
+                  year: movie.displayYear,
+                  posterPath: movie.posterPath,
+                  availabilityStatus: movie.availability,
+                  isFavorite: movie.isFavorite,
+                  isWatchlist: movie.isWatchlist,
+                  watchState: movie.watchState.toDbString(),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MovieDetailScreen(
+                          movieId: movie.id,
+                          repository: repository,
+                          database: database,
                         ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
         );
       },
     );
@@ -757,14 +728,9 @@ class _GenreDiscoveryRow extends StatelessWidget {
 /// A horizontal text-first genre chip strip with explicit left/right navigation controls.
 class _GenreChipStrip extends StatefulWidget {
   final List<String> genres;
-  final String? selectedGenre;
   final ValueChanged<String> onGenreSelected;
 
-  const _GenreChipStrip({
-    required this.genres,
-    required this.selectedGenre,
-    required this.onGenreSelected,
-  });
+  const _GenreChipStrip({required this.genres, required this.onGenreSelected});
 
   @override
   State<_GenreChipStrip> createState() => _GenreChipStripState();
@@ -932,7 +898,6 @@ class _GenreChipStripState extends State<_GenreChipStrip> {
                   separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final genre = widget.genres[index];
-                    final isSelected = widget.selectedGenre == genre;
 
                     return InkWell(
                       onTap: () => widget.onGenreSelected(genre),
@@ -943,26 +908,17 @@ class _GenreChipStripState extends State<_GenreChipStrip> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? tokens.accent.withValues(alpha: 0.14)
-                              : tokens.surface1,
+                          color: tokens.surface1,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isSelected ? tokens.accent : tokens.border,
-                            width: 1,
-                          ),
+                          border: Border.all(color: tokens.border, width: 1),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           genre,
                           style: TextStyle(
-                            color: isSelected
-                                ? tokens.accent
-                                : tokens.textPrimary,
+                            color: tokens.textPrimary,
                             fontSize: 13,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ),
