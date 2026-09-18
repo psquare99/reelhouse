@@ -12,16 +12,14 @@ import '../../domain/query/query_projections.dart';
 import '../../domain/repository/library_repository.dart';
 import '../movies/movie_detail_screen.dart';
 import '../widgets/cinema_error_state.dart';
-import '../widgets/cinema_genre_tile.dart';
 import '../widgets/cinema_loading_skeleton.dart';
 import '../widgets/cinema_poster_card.dart';
 import '../widgets/responsive_card_row.dart';
 import 'all_franchises_screen.dart';
-import 'all_genres_screen.dart';
 import 'collection_detail_screen.dart';
 import 'system_curation_grid_screen.dart';
 
-/// Prominent genres prioritized for discovery tiles and shelves on the landing page.
+/// Prominent genres prioritized for shelves on the landing page.
 const List<String> kProminentGenres = [
   'Action',
   'Adventure',
@@ -36,10 +34,11 @@ const List<String> kProminentGenres = [
 ];
 
 /// Collections / Curation Screen featuring:
-/// 1. Prominent Genre discovery tiles and responsive poster shelves with full browse option.
-/// 2. Franchises carousel with full browse option.
-/// 3. Personal Collections created by the user.
-class CollectionsScreen extends StatelessWidget {
+/// 1. Discovered Genre horizontal chip strip with in-page scroll or direct curation navigation.
+/// 2. Prominent genre shelves with responsive poster rows and per-genre View All.
+/// 3. Franchises carousel with full browse option.
+/// 4. Personal Collections created by the user.
+class CollectionsScreen extends StatefulWidget {
   final LibraryRepository repository;
   final AppDatabase? database;
 
@@ -55,6 +54,14 @@ class CollectionsScreen extends StatelessWidget {
                    'Either repository or database must be provided',
                  )),
        database = database;
+
+  @override
+  State<CollectionsScreen> createState() => _CollectionsScreenState();
+}
+
+class _CollectionsScreenState extends State<CollectionsScreen> {
+  final Map<String, GlobalKey> _genreKeys = {};
+  String? _selectedGenre;
 
   void _showCreateCollectionDialog(BuildContext context) {
     final tokens = CinemaTheme.of(context);
@@ -114,7 +121,7 @@ class CollectionsScreen extends StatelessWidget {
 
               Navigator.of(ctx).pop();
               final overviewText = overviewController.text.trim();
-              await repository.createCollection(
+              await widget.repository.createCollection(
                 name: name,
                 overview: overviewText.isNotEmpty ? overviewText : null,
               );
@@ -147,7 +154,7 @@ class CollectionsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Section: Genres (Discovery Tiles + Responsive Shelves)
+            // 1. Section: Genres (Text-first Chip Strip + Responsive Shelves)
             _buildGenresSection(context, tokens),
             const SizedBox(height: 36),
 
@@ -204,7 +211,7 @@ class CollectionsScreen extends StatelessWidget {
 
   Widget _buildGenresSection(BuildContext context, CinemaThemeData tokens) {
     return StreamBuilder<List<String>>(
-      stream: repository.watchDiscoveredGenres(),
+      stream: widget.repository.watchDiscoveredGenres(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Column(
@@ -235,7 +242,7 @@ class CollectionsScreen extends StatelessWidget {
           );
         }
 
-        // Determine active genres to display:
+        // Determine active genres for shelves:
         // Match kProminentGenres that exist in discoveredGenres first.
         final activeGenres = <String>[];
         for (final pg in kProminentGenres) {
@@ -256,57 +263,84 @@ class CollectionsScreen extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(
-              context,
-              tokens,
-              title: 'GENRES',
-              trailing: TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => AllGenresScreen(
-                        repository: repository,
-                        database: database,
+            _buildSectionHeader(context, tokens, title: 'GENRES'),
+            const SizedBox(height: 14),
+
+            // Horizontal text-first genre chip strip
+            SizedBox(
+              height: 38,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: discoveredGenres.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final genre = discoveredGenres[index];
+                  final isSelected = _selectedGenre == genre;
+
+                  return InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedGenre = genre;
+                      });
+
+                      final prominentMatch = activeGenres.firstWhere(
+                        (g) => g.toLowerCase() == genre.toLowerCase(),
+                        orElse: () => '',
+                      );
+
+                      if (prominentMatch.isNotEmpty &&
+                          _genreKeys[prominentMatch]?.currentContext != null) {
+                        Scrollable.ensureVisible(
+                          _genreKeys[prominentMatch]!.currentContext!,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      } else {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => SystemCurationGridScreen(
+                              title: genre,
+                              genre: genre,
+                              repository: widget.repository,
+                              database: widget.database,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? tokens.accent.withValues(alpha: 0.14)
+                            : tokens.surface1,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected ? tokens.accent : tokens.border,
+                          width: 1,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        genre,
+                        style: TextStyle(
+                          color: isSelected
+                              ? tokens.accent
+                              : tokens.textPrimary,
+                          fontSize: 13,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
                       ),
                     ),
                   );
                 },
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'View All',
-                      style: TextStyle(
-                        color: tokens.accent,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_forward_rounded,
-                      color: tokens.accent,
-                      size: 14,
-                    ),
-                  ],
-                ),
               ),
-            ),
-            const SizedBox(height: 14),
-
-            // Visual Genre Discovery Tiles Grid
-            _GenreDiscoveryTilesGrid(
-              genres: activeGenres,
-              repository: repository,
-              database: database,
             ),
             const SizedBox(height: 28),
 
@@ -318,10 +352,14 @@ class CollectionsScreen extends StatelessWidget {
               separatorBuilder: (_, _) => const SizedBox(height: 28),
               itemBuilder: (context, index) {
                 final genre = activeGenres[index];
-                return _GenreDiscoveryRow(
-                  genre: genre,
-                  repository: repository,
-                  database: database,
+                final key = _genreKeys.putIfAbsent(genre, () => GlobalKey());
+                return Container(
+                  key: key,
+                  child: _GenreDiscoveryRow(
+                    genre: genre,
+                    repository: widget.repository,
+                    database: widget.database,
+                  ),
                 );
               },
             ),
@@ -333,7 +371,7 @@ class CollectionsScreen extends StatelessWidget {
 
   Widget _buildFranchisesSection(BuildContext context, CinemaThemeData tokens) {
     return StreamBuilder<List<FranchiseLibraryItem>>(
-      stream: repository.watchFranchises(),
+      stream: widget.repository.watchFranchises(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return const SizedBox.shrink();
@@ -356,8 +394,8 @@ class CollectionsScreen extends StatelessWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => AllFranchisesScreen(
-                        repository: repository,
-                        database: database,
+                        repository: widget.repository,
+                        database: widget.database,
                       ),
                     ),
                   );
@@ -408,8 +446,8 @@ class CollectionsScreen extends StatelessWidget {
                           title: franchise.name,
                           tmdbCollectionId: franchise.id,
                           tmdbCollectionName: franchise.name,
-                          repository: repository,
-                          database: database,
+                          repository: widget.repository,
+                          database: widget.database,
                         ),
                       ),
                     );
@@ -449,7 +487,7 @@ class CollectionsScreen extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         StreamBuilder<LibraryResult<CollectionLibraryItem>>(
-          stream: repository.watchCollections(CollectionQuery.all()),
+          stream: widget.repository.watchCollections(CollectionQuery.all()),
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return CinemaErrorState(
@@ -534,8 +572,8 @@ class CollectionsScreen extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => CollectionDetailScreen(
                           collectionId: col.id,
-                          repository: repository,
-                          database: database,
+                          repository: widget.repository,
+                          database: widget.database,
                         ),
                       ),
                     );
@@ -617,62 +655,6 @@ class CollectionsScreen extends StatelessWidget {
           },
         ),
       ],
-    );
-  }
-}
-
-/// A responsive grid of visual genre discovery tiles placed directly under the GENRES header.
-class _GenreDiscoveryTilesGrid extends StatelessWidget {
-  final List<String> genres;
-  final LibraryRepository repository;
-  final AppDatabase? database;
-
-  const _GenreDiscoveryTilesGrid({
-    required this.genres,
-    required this.repository,
-    this.database,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final crossAxisCount = width > 1200
-            ? 5
-            : width > 900
-            ? 4
-            : width > 600
-            ? 3
-            : width > 360
-            ? 2
-            : 1;
-        const spacing = 12.0;
-        final tileWidth =
-            (width - (crossAxisCount - 1) * spacing) / crossAxisCount;
-        const tileHeight = 52.0;
-        final childAspectRatio = tileWidth / tileHeight;
-
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: genres.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: spacing,
-            mainAxisSpacing: spacing,
-            childAspectRatio: childAspectRatio,
-          ),
-          itemBuilder: (context, index) {
-            final genre = genres[index];
-            return CinemaGenreTile(
-              genre: genre,
-              repository: repository,
-              database: database,
-            );
-          },
-        );
-      },
     );
   }
 }

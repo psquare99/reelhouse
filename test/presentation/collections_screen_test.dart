@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:reelhouse/core/theme/cinema_theme.dart';
 import 'package:reelhouse/data/database/database.dart';
 import 'package:reelhouse/presentation/collections/all_franchises_screen.dart';
-import 'package:reelhouse/presentation/collections/all_genres_screen.dart';
 import 'package:reelhouse/presentation/collections/collection_detail_screen.dart';
 import 'package:reelhouse/presentation/collections/collections_screen.dart';
 import 'package:reelhouse/presentation/collections/system_curation_grid_screen.dart';
@@ -23,7 +22,7 @@ void main() {
   });
 
   testWidgets(
-    'CollectionsScreen displays genre hierarchy, prominent genre discovery tiles with chevrons, and responsive shelves',
+    'CollectionsScreen displays genre chip strip, responsive shelves, in-page scroll, and long-tail curation navigation',
     (tester) async {
       tester.view.physicalSize = const Size(1280, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -63,6 +62,21 @@ void main() {
             ),
           );
 
+      // Seed a movie with a long-tail genre (Documentary)
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-doc',
+              detectedTitle: 'Planet Earth',
+              title: const drift.Value('Planet Earth'),
+              year: const drift.Value(2006),
+              genres: const drift.Value('Documentary'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
       await tester.pumpWidget(
         MaterialApp(
           theme: CinemaTheme.darkTheme,
@@ -86,17 +100,16 @@ void main() {
       expect(find.text('Custom lists curated by you'), findsNothing);
       expect(find.text('FRANCHISES & SAGAS'), findsNothing);
 
-      // Verify prominent genre discovery tiles render with genre name & chevron icon
+      // Verify horizontal genre chips exist for all discovered genres
       expect(find.text('Action'), findsWidgets);
       expect(find.text('Science Fiction'), findsWidgets);
-      expect(find.byIcon(Icons.chevron_right_rounded), findsWidgets);
+      expect(find.text('Documentary'), findsOneWidget);
 
       // Non-represented genres are NOT shown
-      expect(find.text('Documentary'), findsNothing);
       expect(find.text('Western'), findsNothing);
       expect(find.text('Romance'), findsNothing);
 
-      // Verify individual genre shelf headers
+      // Verify prominent genre shelves exist for Action and Science Fiction
       expect(find.text('ACTION'), findsOneWidget);
       expect(find.text('SCIENCE FICTION'), findsOneWidget);
 
@@ -135,11 +148,31 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
-      // Tap genre discovery tile opens SystemCurationGridScreen
-      final actionTile = find.text('Action').first;
-      await tester.ensureVisible(actionTile);
+      // Tap prominent genre chip (Action) - selects and scrolls in-page
+      final actionChip = find.text('Action').first;
+      await tester.tap(actionChip);
       await tester.pumpAndSettle();
-      await tester.tap(actionTile);
+      expect(find.byType(SystemCurationGridScreen), findsNothing);
+
+      // Tap long-tail genre chip (Documentary) - navigates directly to SystemCurationGridScreen
+      final docChip = find.text('Documentary');
+      await tester.tap(docChip);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SystemCurationGridScreen), findsOneWidget);
+      expect(find.text('Documentary'), findsWidgets);
+
+      // Pop SystemCurationGridScreen
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      // Tap 'View All' on ACTION shelf opens SystemCurationGridScreen for Action
+      final actionViewAll = find
+          .widgetWithText(TextButton, 'View All')
+          .first; // ACTION shelf View All
+      await tester.ensureVisible(actionViewAll);
+      await tester.pumpAndSettle();
+      await tester.tap(actionViewAll);
       await tester.pumpAndSettle();
 
       expect(find.byType(SystemCurationGridScreen), findsOneWidget);
@@ -149,27 +182,10 @@ void main() {
       await tester.pageBack();
       await tester.pumpAndSettle();
 
-      // Tap main 'GENRES' View All opens AllGenresScreen
-      final viewAllGenresButton = find
-          .widgetWithText(TextButton, 'View All')
-          .first;
-      await tester.ensureVisible(viewAllGenresButton);
-      await tester.pumpAndSettle();
-      await tester.tap(viewAllGenresButton);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(AllGenresScreen), findsOneWidget);
-      expect(find.text('Action'), findsWidgets);
-      expect(find.text('Science Fiction'), findsWidgets);
-
-      // Pop AllGenresScreen
-      await tester.pageBack();
-      await tester.pumpAndSettle();
-
       // Tap main 'FRANCHISES' View All opens AllFranchisesScreen
       final viewAllFranchisesButton = find
           .widgetWithText(TextButton, 'View All')
-          .at(3); // after GENRES, ACTION, SCIENCE FICTION View Alls
+          .at(2); // after ACTION, SCIENCE FICTION View Alls
       await tester.ensureVisible(viewAllFranchisesButton);
       await tester.pumpAndSettle();
       await tester.tap(viewAllFranchisesButton);
