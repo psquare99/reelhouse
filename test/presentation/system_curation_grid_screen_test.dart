@@ -79,6 +79,10 @@ void main() {
       expect(find.text('Star Wars: A New Hope'), findsOneWidget);
       expect(find.text('Andor'), findsOneWidget);
 
+      // Verify NO internal/architectural language
+      expect(find.text('System Curation • Genre Catalogue'), findsNothing);
+      expect(find.text('Canonical Franchise Grouping'), findsNothing);
+
       // Tap movie card navigates to MovieDetailScreen
       await tester.tap(find.text('Star Wars: A New Hope'));
       await tester.pumpAndSettle();

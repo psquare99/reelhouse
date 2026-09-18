@@ -14,8 +14,8 @@ import '../widgets/cinema_error_state.dart';
 import '../widgets/cinema_loading_skeleton.dart';
 import '../widgets/cinema_poster_card.dart';
 
-/// Screen presenting dynamic system curation views (e.g. Genre view or Franchise grouping)
-/// over the user's local cinema catalogue without altering underlying files or creating fake rows.
+/// Screen presenting catalogue views (e.g. Genre or Franchise grouping)
+/// over the user's local cinema catalogue.
 class SystemCurationGridScreen extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -56,23 +56,22 @@ class SystemCurationGridScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: tokens.background,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title),
-            Text(
-              subtitle ??
-                  (isFranchise
-                      ? 'Canonical Franchise Grouping'
-                      : 'System Curation • Genre Catalogue'),
-              style: TextStyle(
-                color: tokens.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
+        title: subtitle != null && subtitle!.isNotEmpty
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title),
+                  Text(
+                    subtitle!,
+                    style: TextStyle(
+                      color: tokens.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ],
+              )
+            : Text(title),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -85,7 +84,7 @@ class SystemCurationGridScreen extends StatelessWidget {
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return CinemaErrorState(
-                    title: 'Unable to Load Curated Movies',
+                    title: 'Unable to Load Movies',
                     message: snapshot.error.toString(),
                   );
                 }

@@ -13,32 +13,9 @@ import '../widgets/cinema_poster_card.dart';
 import 'collection_detail_screen.dart';
 import 'system_curation_grid_screen.dart';
 
-/// Canonical genres defined by TMDB and standard cinema taxonomy.
-const List<String> kCanonicalGenres = [
-  'Action',
-  'Adventure',
-  'Animation',
-  'Comedy',
-  'Crime',
-  'Documentary',
-  'Drama',
-  'Family',
-  'Fantasy',
-  'History',
-  'Horror',
-  'Music',
-  'Mystery',
-  'Romance',
-  'Science Fiction',
-  'TV Movie',
-  'Thriller',
-  'War',
-  'Western',
-];
-
-/// Redesigned Collections / Curation Screen featuring:
-/// 1. System Curation — Dynamic query-derived views over genres & canonical TMDB franchises.
-/// 2. Personal Collections — User-curated custom collections & lists.
+/// Collections / Curation Screen featuring:
+/// 1. Genres & Franchises discovered in the library.
+/// 2. Personal Collections created by the user.
 class CollectionsScreen extends StatelessWidget {
   final LibraryRepository repository;
   final AppDatabase? database;
@@ -133,7 +110,7 @@ class CollectionsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: tokens.background,
       appBar: AppBar(
-        title: const Text('Curation & Collections'),
+        title: const Text('Collections'),
         actions: [
           IconButton(
             icon: Icon(Icons.add_rounded, color: tokens.accent),
@@ -147,15 +124,15 @@ class CollectionsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Section: System Curation (Genres)
+            // 1. Section: Genres
             _buildGenresSection(context, tokens),
-            const SizedBox(height: 36),
+            const SizedBox(height: 32),
 
-            // 2. Section: Canonical Franchises / Collections (TMDB-derived)
+            // 2. Section: Franchises
             _buildFranchisesSection(context, tokens),
-            const SizedBox(height: 36),
+            const SizedBox(height: 32),
 
-            // 3. Section: Your Collections (Personal User-created lists)
+            // 3. Section: Your Collections
             _buildPersonalCollectionsSection(context, tokens),
             const SizedBox(height: 24),
           ],
@@ -168,22 +145,24 @@ class CollectionsScreen extends StatelessWidget {
     BuildContext context,
     CinemaThemeData tokens, {
     required String title,
-    required String subtitle,
+    String? subtitle,
     Widget? trailing,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: CinemaTheme.eyebrow(context, fontSize: 13)),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: TextStyle(color: tokens.textSecondary, fontSize: 13),
-            ),
+            if (subtitle != null && subtitle.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(color: tokens.textSecondary, fontSize: 13),
+              ),
+            ],
           ],
         ),
         ?trailing,
@@ -195,61 +174,38 @@ class CollectionsScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(
-          context,
-          tokens,
-          title: 'SYSTEM CURATION — GENRES',
-          subtitle: 'Dynamic metadata-derived catalogue views',
-        ),
-        const SizedBox(height: 16),
+        _buildSectionHeader(context, tokens, title: 'GENRES'),
+        const SizedBox(height: 14),
         StreamBuilder<List<String>>(
           stream: repository.watchDiscoveredGenres(),
           builder: (context, snapshot) {
-            final discoveredSet = (snapshot.data ?? []).toSet();
+            if (snapshot.hasError) {
+              return Text(
+                'Unable to load genres',
+                style: TextStyle(color: tokens.textMuted, fontSize: 13),
+              );
+            }
 
-            // Put discovered genres first, then remaining canonical genres
-            final sortedGenres = List<String>.from(kCanonicalGenres);
-            sortedGenres.sort((a, b) {
-              final aHas = discoveredSet.contains(a);
-              final bHas = discoveredSet.contains(b);
-              if (aHas && !bHas) return -1;
-              if (!aHas && bHas) return 1;
-              return a.compareTo(b);
-            });
+            final genres = snapshot.data ?? [];
+            if (genres.isEmpty) {
+              return Text(
+                'No genres found in library.',
+                style: TextStyle(color: tokens.textMuted, fontSize: 13),
+              );
+            }
 
             return Wrap(
               spacing: 8,
               runSpacing: 10,
-              children: sortedGenres.map((genre) {
-                final hasMedia = discoveredSet.contains(genre);
-
+              children: genres.map((genre) {
                 return ActionChip(
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (hasMedia) ...[
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: tokens.accent,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                      ],
-                      Text(genre),
-                    ],
-                  ),
-                  backgroundColor: hasMedia ? tokens.surface2 : tokens.surface1,
-                  side: BorderSide(
-                    color: hasMedia ? tokens.borderStrong : tokens.border,
-                    width: 1,
-                  ),
+                  label: Text(genre),
+                  backgroundColor: tokens.surface1,
+                  side: BorderSide(color: tokens.border, width: 1),
                   labelStyle: TextStyle(
-                    color: hasMedia ? tokens.textPrimary : tokens.textSecondary,
+                    color: tokens.textPrimary,
                     fontSize: 13,
-                    fontWeight: hasMedia ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: FontWeight.w500,
                   ),
                   onPressed: () {
                     Navigator.of(context).push(
@@ -288,14 +244,8 @@ class CollectionsScreen extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(
-              context,
-              tokens,
-              title: 'FRANCHISES & SAGAS',
-              subtitle:
-                  'Canonical provider groupings discovered in your library',
-            ),
-            const SizedBox(height: 16),
+            _buildSectionHeader(context, tokens, title: 'FRANCHISES'),
+            const SizedBox(height: 14),
             SizedBox(
               height: 240,
               child: ListView.separated(
@@ -346,7 +296,6 @@ class CollectionsScreen extends StatelessWidget {
           context,
           tokens,
           title: 'YOUR COLLECTIONS',
-          subtitle: 'Custom lists curated by you',
           trailing: TextButton.icon(
             onPressed: () => _showCreateCollectionDialog(context),
             icon: Icon(Icons.add, size: 16, color: tokens.accent),
@@ -360,7 +309,7 @@ class CollectionsScreen extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         StreamBuilder<LibraryResult<CollectionLibraryItem>>(
           stream: repository.watchCollections(CollectionQuery.all()),
           builder: (context, snapshot) {
@@ -415,7 +364,7 @@ class CollectionsScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Create custom lists for director retrospectives, weekend marathons, or thematic film collections.',
+                            'Create a collection for a marathon, a theme, or anything you want to keep together.',
                             style: TextStyle(
                               color: tokens.textSecondary,
                               fontSize: 13,

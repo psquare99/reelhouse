@@ -6,6 +6,7 @@ import 'package:reelhouse/core/theme/cinema_theme.dart';
 import 'package:reelhouse/data/database/database.dart';
 import 'package:reelhouse/presentation/collections/collection_detail_screen.dart';
 import 'package:reelhouse/presentation/collections/collections_screen.dart';
+import 'package:reelhouse/presentation/collections/system_curation_grid_screen.dart';
 
 void main() {
   late AppDatabase db;
@@ -19,8 +20,27 @@ void main() {
   });
 
   testWidgets(
-    'CollectionsScreen displays System Curation (Genres) and Personal Collections with creation dialog',
+    'CollectionsScreen displays clean headings, discovered genres, franchises, and personal collections',
     (tester) async {
+      final now = DateTime.now();
+
+      // Seed a movie with Sci-Fi genre & Star Wars franchise
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-sw',
+              detectedTitle: 'Star Wars',
+              title: const drift.Value('Star Wars'),
+              year: const drift.Value(1977),
+              genres: const drift.Value('Action, Science Fiction'),
+              tmdbCollectionId: const drift.Value(10),
+              tmdbCollectionName: const drift.Value('Star Wars Collection'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
       await tester.pumpWidget(
         MaterialApp(
           theme: CinemaTheme.darkTheme,
@@ -30,20 +50,65 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('SYSTEM CURATION — GENRES'), findsOneWidget);
-      expect(find.text('Action'), findsOneWidget);
-      expect(find.text('Drama'), findsOneWidget);
+      // Verify clean section headers without implementation terminology
+      expect(find.text('GENRES'), findsOneWidget);
+      expect(find.text('FRANCHISES'), findsOneWidget);
       expect(find.text('YOUR COLLECTIONS'), findsOneWidget);
-      expect(find.text('No personal collections yet.'), findsOneWidget);
 
-      // Tap create button
+      // Verify NO architectural/internal language exists
+      expect(find.text('SYSTEM CURATION — GENRES'), findsNothing);
+      expect(
+        find.text('Dynamic metadata-derived catalogue views'),
+        findsNothing,
+      );
+      expect(find.text('Custom lists curated by you'), findsNothing);
+      expect(find.text('FRANCHISES & SAGAS'), findsNothing);
+
+      // Verify discovered genres
+      expect(find.text('Action'), findsOneWidget);
+      expect(find.text('Science Fiction'), findsOneWidget);
+      // Non-represented genres are NOT shown
+      expect(find.text('Documentary'), findsNothing);
+      expect(find.text('Western'), findsNothing);
+
+      // Verify franchise card
+      expect(find.text('Star Wars Collection'), findsOneWidget);
+      expect(find.text('1 Film'), findsOneWidget);
+
+      // Verify personal collections empty state
+      expect(find.text('No personal collections yet.'), findsOneWidget);
+      expect(
+        find.text(
+          'Create a collection for a marathon, a theme, or anything you want to keep together.',
+        ),
+        findsOneWidget,
+      );
+
+      // Tap create button opens dialog
       final createButton = find.widgetWithText(ElevatedButton, 'Create');
       expect(createButton, findsOneWidget);
+      await tester.ensureVisible(createButton);
+      await tester.pumpAndSettle();
       await tester.tap(createButton);
       await tester.pumpAndSettle();
 
       expect(find.text('New Curated Collection'), findsOneWidget);
       expect(find.text('Collection Name'), findsOneWidget);
+
+      // Close dialog
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Tap genre chip navigates to SystemCurationGridScreen
+      final actionChip = find.widgetWithText(ActionChip, 'Science Fiction');
+      expect(actionChip, findsOneWidget);
+      await tester.ensureVisible(actionChip);
+      await tester.pumpAndSettle();
+      await tester.tap(actionChip);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SystemCurationGridScreen), findsOneWidget);
+      expect(find.text('Science Fiction'), findsWidgets);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
