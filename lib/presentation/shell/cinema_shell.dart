@@ -212,7 +212,7 @@ class _CollapsibleCinemaRail extends StatelessWidget {
     required this.onToggleCollapse,
   });
 
-  static const _libraryGroup = [
+  static const _browseGroup = [
     _RailDestinationData(
       index: 0,
       label: 'Home',
@@ -233,22 +233,22 @@ class _CollapsibleCinemaRail extends StatelessWidget {
     ),
   ];
 
-  static const _curationGroup = [
+  static const _libraryGroup = [
     _RailDestinationData(
       index: 3,
       label: 'Collections',
       icon: Icons.collections_bookmark_outlined,
       selectedIcon: Icons.collections_bookmark,
     ),
-  ];
-
-  static const _systemGroup = [
     _RailDestinationData(
       index: 4,
       label: 'Offline',
       icon: Icons.offline_pin_outlined,
       selectedIcon: Icons.offline_pin,
     ),
+  ];
+
+  static const _utilityGroup = [
     _RailDestinationData(
       index: 5,
       label: 'Settings',
@@ -383,20 +383,20 @@ class _CollapsibleCinemaRail extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          // Group 1: Library
-          ..._buildGroup(context, _libraryGroup),
+          // Group 1: Browse
+          ..._buildGroup(context, _browseGroup),
 
           // Divider 1
           _buildGroupDivider(tokens),
 
-          // Group 2: Curation
-          ..._buildGroup(context, _curationGroup),
+          // Group 2: Library
+          ..._buildGroup(context, _libraryGroup),
 
           // Divider 2
           _buildGroupDivider(tokens),
 
-          // Group 3: System
-          ..._buildGroup(context, _systemGroup),
+          // Group 3: Utility
+          ..._buildGroup(context, _utilityGroup),
         ],
       ),
     );

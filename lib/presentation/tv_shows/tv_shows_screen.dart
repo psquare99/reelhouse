@@ -347,6 +347,8 @@ class _TvShowsScreenState extends State<TvShowsScreen> {
                       availability: show.availability,
                       isFavorite: show.isFavorite,
                       isWatchlist: show.isWatchlist,
+                      watchState: show.derivedWatchState.toDbString(),
+                      fallbackIcon: Icons.tv,
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(

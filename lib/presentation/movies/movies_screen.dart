@@ -340,6 +340,11 @@ class _MoviesScreenState extends State<MoviesScreen> {
                       availability: movie.availability,
                       isFavorite: movie.isFavorite,
                       isWatchlist: movie.isWatchlist,
+                      watchState: movie.watchState.toDbString(),
+                      playbackPositionSeconds: movie.playbackPositionSeconds,
+                      durationSeconds: movie.runtime != null
+                          ? movie.runtime! * 60
+                          : null,
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(

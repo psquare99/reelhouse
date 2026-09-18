@@ -19,6 +19,8 @@ class CinemaPosterCard extends StatelessWidget {
   final bool isWatchlist;
   final String watchState; // 'UNWATCHED' | 'IN_PROGRESS' | 'WATCHED'
   final double? watchProgress; // 0.0 to 1.0 (for in-progress)
+  final int? playbackPositionSeconds;
+  final int? durationSeconds;
   final VoidCallback onTap;
   final IconData fallbackIcon;
 
@@ -34,6 +36,8 @@ class CinemaPosterCard extends StatelessWidget {
     this.isWatchlist = false,
     this.watchState = 'UNWATCHED',
     this.watchProgress,
+    this.playbackPositionSeconds,
+    this.durationSeconds,
     required this.onTap,
     this.fallbackIcon = Icons.movie_filter,
   }) : availabilityStatus = availabilityStatus ?? availability;
@@ -41,6 +45,54 @@ class CinemaPosterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = CinemaTheme.of(context);
+    final isUnavailable = availabilityStatus == AvailabilityStatus.unavailable;
+
+    final isProgress =
+        watchState == 'IN_PROGRESS' ||
+        (playbackPositionSeconds != null && playbackPositionSeconds! > 0) ||
+        (watchProgress != null && watchProgress! > 0);
+
+    final double progressValue =
+        watchProgress ??
+        ((playbackPositionSeconds != null &&
+                durationSeconds != null &&
+                durationSeconds! > 0)
+            ? (playbackPositionSeconds! / durationSeconds!).clamp(0.0, 1.0)
+            : (isProgress ? 0.4 : 0.0));
+
+    Widget poster = CinemaPosterImage(
+      imagePath: posterPath,
+      fallbackIcon: fallbackIcon,
+    );
+
+    if (isUnavailable) {
+      const greyscaleMatrix = <double>[
+        0.4,
+        0.4,
+        0.4,
+        0,
+        0,
+        0.4,
+        0.4,
+        0.4,
+        0,
+        0,
+        0.4,
+        0.4,
+        0.4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.75,
+        0,
+      ];
+      poster = ColorFiltered(
+        colorFilter: const ColorFilter.matrix(greyscaleMatrix),
+        child: poster,
+      );
+    }
 
     return InkWell(
       onTap: onTap,
@@ -60,10 +112,7 @@ class CinemaPosterCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  CinemaPosterImage(
-                    imagePath: posterPath,
-                    fallbackIcon: fallbackIcon,
-                  ),
+                  poster,
 
                   // Favorite indicator badge (top-right)
                   if (isFavorite)
@@ -97,13 +146,13 @@ class CinemaPosterCard extends StatelessWidget {
                     ),
 
                   // In-progress watch line (bottom of poster)
-                  if (watchState == 'IN_PROGRESS')
+                  if (isProgress && progressValue > 0)
                     Positioned(
                       bottom: 0,
                       left: 0,
                       right: 0,
                       child: LinearProgressIndicator(
-                        value: watchProgress ?? 0.4,
+                        value: progressValue,
                         minHeight: 3,
                         backgroundColor: tokens.background.withValues(
                           alpha: 0.8,
@@ -209,24 +258,24 @@ class CinemaPosterCard extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
         decoration: BoxDecoration(
-          color: tokens.surface1.withValues(alpha: 0.90),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: dotColor.withValues(alpha: 0.35), width: 1),
+          color: tokens.surface1.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: dotColor.withValues(alpha: 0.4), width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: dotColor, size: 10),
-            const SizedBox(width: 4),
+            Icon(icon, color: dotColor, size: 9),
+            const SizedBox(width: 3.5),
             Text(
               badgeText,
               style: TextStyle(
                 color: dotColor,
-                fontSize: 9,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.5,
+                fontSize: 8.5,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4,
               ),
             ),
           ],
