@@ -72,6 +72,48 @@ void main() {
       expect(result.title, 'Pulp Fiction');
       expect(result.year, 1994);
     });
+
+    test('preserves intra-word hyphens in titles like Ant-Man, Spider-Man, and Nobody-2', () {
+      final antMan = parser.parse(
+        relativePath: 'MARVEL/13. Ant-Man 2015 BluRay 1080p Hindi English DD 5.1 x264-RARBG.mkv',
+        fileSize: 11000000000,
+      );
+      expect(antMan.title, '13 Ant-Man');
+      expect(antMan.year, 2015);
+
+      final spiderMan = parser.parse(
+        relativePath: 'THE AMAZING SPIDERMAN/The Amazing Spider-Man 2012 BluRay 1080p x264-Telly.mkv',
+        fileSize: 10000000000,
+      );
+      expect(spiderMan.title, 'The Amazing Spider-Man');
+      expect(spiderMan.year, 2012);
+
+      final nobody2 = parser.parse(
+        relativePath: 'Nobody-2.2025.1080p.AMZN.WEB-DL.x264-HDHub.mkv',
+        fileSize: 5000000000,
+      );
+      expect(nobody2.title, 'Nobody-2');
+      expect(nobody2.year, 2025);
+    });
+
+    test('cuts title at technical boundaries when year is omitted', () {
+      final shangChi = parser.parse(
+        relativePath: 'MARVEL/26. Shang-Chi And The Legend of the Ten Rings 1080p IMAX WEB-DL [DD 5.1 Hindi + DD 5.1 English] x264-UHDMovies [7.3GB].mkv',
+        fileSize: 7300000000,
+      );
+      expect(shangChi.title, '26 Shang-Chi And The Legend of the Ten Rings');
+      expect(shangChi.year, isNull);
+      expect(shangChi.resolution, '1080p');
+    });
+
+    test('correctly parses titles starting with 4-digit numbers adjacent to release year', () {
+      final m1917 = parser.parse(
+        relativePath: '1917.2019.1080p.BluRay.x264.mkv',
+        fileSize: 4000000000,
+      );
+      expect(m1917.title, '1917');
+      expect(m1917.year, 2019);
+    });
   });
 
   group('FilenameParser — TV Series Tests', () {
@@ -131,7 +173,7 @@ void main() {
       expect(result.episodeNumber, 4);
     });
 
-    test('parses TV bonus and extras content associating them with parent TV show as Season 0', () {
+    test('parses TV bonus and extras content associating them with parent TV show as Season -1 Extras', () {
       // Game of Thrones Season 2 Extras from user's library
       final nightwatch = parser.parse(
         relativePath: 'GAME OF THRONES/GOT S2/Extras/History- Nightwatch.mkv',
@@ -139,8 +181,9 @@ void main() {
       );
       expect(nightwatch.type, ParsedMediaType.tvEpisode);
       expect(nightwatch.title, 'GAME OF THRONES');
-      expect(nightwatch.seasonNumber, 0);
-      expect(nightwatch.episodeTitle, 'History Nightwatch');
+      expect(nightwatch.seasonNumber, -1);
+      expect(nightwatch.isExtra, isTrue);
+      expect(nightwatch.episodeTitle, 'History- Nightwatch');
 
       final battle = parser.parse(
         relativePath: 'GAME OF THRONES/GOT S2/Extras/Creating the Battle of Blackwater Bay.mkv',
@@ -148,7 +191,8 @@ void main() {
       );
       expect(battle.type, ParsedMediaType.tvEpisode);
       expect(battle.title, 'GAME OF THRONES');
-      expect(battle.seasonNumber, 0);
+      expect(battle.seasonNumber, -1);
+      expect(battle.isExtra, isTrue);
       expect(battle.episodeTitle, 'Creating the Battle of Blackwater Bay');
 
       final deletedScene = parser.parse(
@@ -157,8 +201,9 @@ void main() {
       );
       expect(deletedScene.type, ParsedMediaType.tvEpisode);
       expect(deletedScene.title, 'GAME OF THRONES');
-      expect(deletedScene.seasonNumber, 0);
-      expect(deletedScene.episodeTitle, 'Deleted Scene Sansa and Clegane');
+      expect(deletedScene.seasonNumber, -1);
+      expect(deletedScene.isExtra, isTrue);
+      expect(deletedScene.episodeTitle, 'Deleted Scene- Sansa and Clegane');
 
       // Extras under show root
       final breakingBadExtra = parser.parse(
@@ -167,7 +212,8 @@ void main() {
       );
       expect(breakingBadExtra.type, ParsedMediaType.tvEpisode);
       expect(breakingBadExtra.title, 'Breaking Bad');
-      expect(breakingBadExtra.seasonNumber, 0);
+      expect(breakingBadExtra.seasonNumber, -1);
+      expect(breakingBadExtra.isExtra, isTrue);
 
       // Bonus under season folder
       final lastOfUsBonus = parser.parse(
@@ -177,7 +223,8 @@ void main() {
       );
       expect(lastOfUsBonus.type, ParsedMediaType.tvEpisode);
       expect(lastOfUsBonus.title, 'The Last of Us');
-      expect(lastOfUsBonus.seasonNumber, 0);
+      expect(lastOfUsBonus.seasonNumber, -1);
+      expect(lastOfUsBonus.isExtra, isTrue);
     });
   });
 

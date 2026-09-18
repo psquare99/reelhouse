@@ -110,12 +110,21 @@ class SeasonQueryEngine {
 
     final orderTerms = <String>[];
     for (final sortClause in query.sort) {
-      final colExpr = _mapSortFieldToSql(sortClause.field);
-      final dir = sortClause.direction == SortDirection.asc ? 'ASC' : 'DESC';
-      final nulls = sortClause.nullsOrder == NullsOrder.first
-          ? 'NULLS FIRST'
-          : 'NULLS LAST';
-      orderTerms.add('$colExpr $dir $nulls');
+      if (sortClause.field == SeasonSortField.seasonNumber) {
+        final dir = sortClause.direction == SortDirection.asc ? 'ASC' : 'DESC';
+        // Specials (0) first, Normal seasons (1..N) middle, Extras (-1) last
+        orderTerms.add(
+          'CASE WHEN s.season_number = 0 THEN 0 WHEN s.season_number > 0 THEN 1 ELSE 2 END $dir',
+        );
+        orderTerms.add('s.season_number $dir');
+      } else {
+        final colExpr = _mapSortFieldToSql(sortClause.field);
+        final dir = sortClause.direction == SortDirection.asc ? 'ASC' : 'DESC';
+        final nulls = sortClause.nullsOrder == NullsOrder.first
+            ? 'NULLS FIRST'
+            : 'NULLS LAST';
+        orderTerms.add('$colExpr $dir $nulls');
+      }
     }
     orderTerms.add('s.id ASC');
     final orderSql = 'ORDER BY ${orderTerms.join(', ')}';

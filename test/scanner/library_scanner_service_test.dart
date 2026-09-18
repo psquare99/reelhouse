@@ -656,30 +656,30 @@ void main() {
     final movies = await db.getAllMovies();
     expect(movies.isEmpty, isTrue);
 
-    // 3. Parent TV show has Season 2 and Season 0 (Specials)
+    // 3. Parent TV show has Season 2 and Season -1 (Extras)
     final seasons = await (db.select(
       db.seasons,
     )..where((s) => s.showId.equals(shows.first.id))).get();
     expect(seasons.length, 2);
     final seasonNums = seasons.map((s) => s.seasonNumber).toSet();
-    expect(seasonNums, containsAll([0, 2]));
+    expect(seasonNums, containsAll([-1, 2]));
 
-    // 4. Season 0 has 4 episodes (the 4 extras)
-    final season0 = seasons.firstWhere((s) => s.seasonNumber == 0);
-    expect(season0.name, 'Specials');
+    // 4. Season -1 has 4 episodes (the 4 extras)
+    final seasonExtras = seasons.firstWhere((s) => s.seasonNumber == -1);
+    expect(seasonExtras.name, 'Extras');
     final extrasEpisodes = await (db.select(
       db.episodes,
-    )..where((e) => e.seasonId.equals(season0.id))).get();
+    )..where((e) => e.seasonId.equals(seasonExtras.id))).get();
     expect(extrasEpisodes.length, 4);
 
     final extraNames = extrasEpisodes.map((e) => e.name).toSet();
     expect(
       extraNames,
       containsAll([
-        'History Nightwatch',
-        'History Wildfire',
+        'History- Nightwatch',
+        'History- Wildfire',
         'Creating the Battle of Blackwater Bay',
-        'Deleted Scene Sansa and Clegane',
+        'Deleted Scene- Sansa and Clegane',
       ]),
     );
 
@@ -708,7 +708,7 @@ void main() {
 
     final episodesAfter = await (db.select(
       db.episodes,
-    )..where((e) => e.seasonId.equals(season0.id))).get();
+    )..where((e) => e.seasonId.equals(seasonExtras.id))).get();
     expect(episodesAfter.length, 4);
   });
 }

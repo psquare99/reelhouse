@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart';
+
 import '../../data/database/database.dart';
 import '../../data/network/tmdb_api_client.dart';
 import '../../data/network/tmdb_models.dart';
@@ -389,6 +391,9 @@ class MetadataService {
     )..where((s) => s.showId.equals(show.id))).get();
 
     for (final season in seasons) {
+      if (season.seasonNumber < 0 || season.name?.toLowerCase() == 'extras') {
+        continue;
+      }
       try {
         final seasonDetails = await tmdbClient.getSeasonDetails(
           tmdbId,
@@ -612,6 +617,75 @@ class MetadataService {
           }
         } else {
           unresolvedCount++;
+        }
+      }
+    }
+
+    // 3. Migrate any existing Season 0 episodes that are TV Extras into Season -1 ("Extras")
+    final allShows = await database.getAllTvShows();
+    for (final show in allShows) {
+      final season0 = await database.findSeason(show.id, 0);
+      if (season0 != null) {
+        final ep0s = await (database.select(
+          database.episodes,
+        )..where((e) => e.seasonId.equals(season0.id))).get();
+        for (final ep in ep0s) {
+          final sources = await database.getSourcesForEpisode(ep.id);
+          final isExtra = sources.any((src) {
+            final path = src.relativePath.replaceAll('\\', '/');
+            final segs = path.split('/').where((s) => s.isNotEmpty).toList();
+            final hasExtraFolder = segs.any(
+              (seg) => RegExp(
+                r'^(?:extras?|bonus|featurettes?|behind\s*the\s*scenes|deleted\s*scenes?)$',
+                caseSensitive: false,
+              ).hasMatch(seg),
+            );
+            final hasBonusFilename = RegExp(
+              r'^(?:deleted\s*scenes?|featurettes?|behind\s*the\s*scenes?|character\s*profile|history\s*[-–]|making\s*of|interview|bonus\s*feature|locations\s*[-–]|rebelion|religons|rountable|taming)',
+              caseSensitive: false,
+            ).hasMatch(src.filename);
+            return hasExtraFolder || hasBonusFilename;
+          });
+
+          if (isExtra) {
+            var seasonExtras = await database.findSeason(show.id, -1);
+            String extrasSeasonId;
+            if (seasonExtras == null) {
+              extrasSeasonId = 'season_${show.id}_extras';
+              await database
+                  .into(database.seasons)
+                  .insert(
+                    SeasonsCompanion.insert(
+                      id: extrasSeasonId,
+                      showId: show.id,
+                      seasonNumber: -1,
+                      name: const Value('Extras'),
+                    ),
+                  );
+            } else {
+              extrasSeasonId = seasonExtras.id;
+            }
+
+            await (database.update(
+              database.episodes,
+            )..where((e) => e.id.equals(ep.id))).write(
+              EpisodesCompanion(
+                seasonId: Value(extrasSeasonId),
+                tmdbId: const Value(null),
+              ),
+            );
+            convertedExtrasCount++;
+          }
+        }
+
+        // If Season 0 is now empty, delete it
+        final remainingEp0s = await (database.select(
+          database.episodes,
+        )..where((e) => e.seasonId.equals(season0.id))).get();
+        if (remainingEp0s.isEmpty) {
+          await (database.delete(
+            database.seasons,
+          )..where((s) => s.id.equals(season0.id))).go();
         }
       }
     }

@@ -322,7 +322,11 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                 builder: (context, seasonsSnapshot) {
                   final seasons = seasonsSnapshot.data?.items ?? [];
                   if (_selectedSeasonId == null && seasons.isNotEmpty) {
-                    _selectedSeasonId = seasons.first.id;
+                    final defaultSeason = seasons.firstWhere(
+                      (s) => s.seasonNumber == 1,
+                      orElse: () => seasons.first,
+                    );
+                    _selectedSeasonId = defaultSeason.id;
                   }
 
                   final selectedSeason = seasons
@@ -563,10 +567,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                       final season = seasons[index];
                                       final isSelected =
                                           season.id == _selectedSeasonId;
-                                      final label =
-                                          season.name?.isNotEmpty == true
-                                          ? season.name!
-                                          : 'Season ${season.seasonNumber}';
+                                      final label = season.displayName;
 
                                       return ChoiceChip(
                                         label: Text(label),
@@ -757,7 +758,9 @@ class _EpisodeCard extends StatelessWidget {
                             bottom: 4,
                             right: 6,
                             child: Text(
-                              'EP ${episode.episodeNumber}',
+                              episode.isExtra
+                                  ? 'EXTRA'
+                                  : 'EP ${episode.episodeNumber}',
                               style: TextStyle(
                                 color: tokens.textMuted,
                                 fontSize: 9,
@@ -783,7 +786,9 @@ class _EpisodeCard extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          'Episode ${episode.episodeNumber}',
+                          episode.isExtra
+                              ? 'EXTRA'
+                              : 'Episode ${episode.episodeNumber}',
                           style: TextStyle(
                             color: tokens.accent,
                             fontWeight: FontWeight.w500,
@@ -805,7 +810,7 @@ class _EpisodeCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      episode.name ?? 'Episode ${episode.episodeNumber}',
+                      episode.displayName,
                       style: TextStyle(
                         color: tokens.textPrimary,
                         fontWeight: FontWeight.w500,

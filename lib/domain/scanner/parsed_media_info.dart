@@ -8,6 +8,7 @@ class ParsedMediaInfo {
   final int? seasonNumber;
   final int? episodeNumber;
   final String? episodeTitle;
+  final bool isExtra;
   final String? resolution; // e.g. "1080p", "4K", "720p"
   final String? videoCodec; // e.g. "HEVC", "AVC", "AV1"
   final String? audioCodec; // e.g. "DTS", "AAC", "AC3"
@@ -24,6 +25,7 @@ class ParsedMediaInfo {
     this.seasonNumber,
     this.episodeNumber,
     this.episodeTitle,
+    this.isExtra = false,
     this.resolution,
     this.videoCodec,
     this.audioCodec,
@@ -48,6 +50,7 @@ class ParsedMediaInfo {
           seasonNumber == other.seasonNumber &&
           episodeNumber == other.episodeNumber &&
           episodeTitle == other.episodeTitle &&
+          isExtra == other.isExtra &&
           resolution == other.resolution &&
           videoCodec == other.videoCodec &&
           audioCodec == other.audioCodec &&
@@ -65,6 +68,7 @@ class ParsedMediaInfo {
     seasonNumber,
     episodeNumber,
     episodeTitle,
+    isExtra,
     resolution,
     videoCodec,
     audioCodec,
@@ -78,6 +82,9 @@ class ParsedMediaInfo {
   @override
   String toString() {
     if (isTvEpisode) {
+      if (isExtra) {
+        return 'ParsedMediaInfo(TV Extra: $title - $episodeTitle, res: $resolution, codec: $videoCodec)';
+      }
       return 'ParsedMediaInfo(TV: $title S${seasonNumber?.toString().padLeft(2, '0')}E${episodeNumber?.toString().padLeft(2, '0')}, res: $resolution, codec: $videoCodec)';
     }
     return 'ParsedMediaInfo(Movie: $title ($year), res: $resolution, codec: $videoCodec)';

@@ -319,13 +319,16 @@ class EpisodeLibraryItem {
   });
 
   /// Formatted episode designation (e.g. "S01E05").
-  String get episodeCode =>
-      'S${seasonNumber.toString().padLeft(2, '0')}E${episodeNumber.toString().padLeft(2, '0')}';
+  String get episodeCode => isExtra
+      ? 'EXTRA'
+      : 'S${seasonNumber.toString().padLeft(2, '0')}E${episodeNumber.toString().padLeft(2, '0')}';
 
   /// Display name: fallback to episode designation if title is null.
-  String get displayName =>
-      (name != null && name!.isNotEmpty) ? name! : 'Episode $episodeNumber';
+  String get displayName => (name != null && name!.isNotEmpty)
+      ? name!
+      : (isExtra ? 'Bonus Feature' : 'Episode $episodeNumber');
 
+  bool get isExtra => seasonNumber < 0;
   bool get isPlayable => availability.isPlayable;
 
   @override
@@ -393,9 +396,15 @@ class SeasonLibraryItem {
     this.airDate,
   });
 
-  /// Display name: fallback to "Season X" if name is null or empty.
-  String get displayName =>
-      (name != null && name!.isNotEmpty) ? name! : 'Season $seasonNumber';
+  bool get isExtra => seasonNumber < 0;
+
+  /// Display name: fallback to "Extras", "Specials", or "Season X".
+  String get displayName {
+    if (name != null && name!.isNotEmpty) return name!;
+    if (seasonNumber < 0) return 'Extras';
+    if (seasonNumber == 0) return 'Specials';
+    return 'Season $seasonNumber';
+  }
 
   @override
   bool operator ==(Object other) =>

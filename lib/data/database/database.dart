@@ -260,7 +260,7 @@ class AppDatabase extends _$AppDatabase {
           ))
           .getSingleOrNull();
 
-  /// Converts an incorrectly created Movie record representing a TV extra into a Season 0 Episode under its parent TvShow.
+  /// Converts an incorrectly created Movie record representing a TV extra into a Season -1 ("Extras") Episode under its parent TvShow.
   /// Preserves the physical MediaSource, watch state, and playback position, and removes the erroneous Movie record.
   Future<void> convertMovieToEpisodeExtra({
     required String movieId,
@@ -269,21 +269,21 @@ class AppDatabase extends _$AppDatabase {
     int? explicitEpisodeNumber,
   }) async {
     await transaction(() async {
-      // 1. Ensure Season 0 (Specials) exists for the parent TV show
-      var season0 = await findSeason(targetTvShowId, 0);
-      String season0Id;
-      if (season0 == null) {
-        season0Id = 'season_${targetTvShowId}_0';
+      // 1. Ensure Season -1 (Extras) exists for the parent TV show
+      var seasonExtras = await findSeason(targetTvShowId, -1);
+      String extrasSeasonId;
+      if (seasonExtras == null) {
+        extrasSeasonId = 'season_${targetTvShowId}_extras';
         await into(seasons).insert(
           SeasonsCompanion.insert(
-            id: season0Id,
+            id: extrasSeasonId,
             showId: targetTvShowId,
-            seasonNumber: 0,
-            name: const Value('Specials'),
+            seasonNumber: -1,
+            name: const Value('Extras'),
           ),
         );
       } else {
-        season0Id = season0.id;
+        extrasSeasonId = seasonExtras.id;
       }
 
       // 2. Fetch the movie record to preserve watch state
@@ -293,16 +293,16 @@ class AppDatabase extends _$AppDatabase {
       // 3. Determine episode number
       final epNum =
           explicitEpisodeNumber ??
-          await getNextEpisodeNumberForSeason(season0Id);
-      final episodeId = 'ep_${season0Id}_$epNum';
+          await getNextEpisodeNumberForSeason(extrasSeasonId);
+      final episodeId = 'ep_${extrasSeasonId}_$epNum';
 
-      // 4. Create or reuse Episode in Season 0
-      final existingEp = await findEpisode(season0Id, epNum);
+      // 4. Create or reuse Episode in Season -1 (Extras)
+      final existingEp = await findEpisode(extrasSeasonId, epNum);
       if (existingEp == null) {
         await into(episodes).insert(
           EpisodesCompanion.insert(
             id: episodeId,
-            seasonId: season0Id,
+            seasonId: extrasSeasonId,
             episodeNumber: epNum,
             name: Value(extraTitle),
             watchState: Value(movie.watchState),

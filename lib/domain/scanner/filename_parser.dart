@@ -60,9 +60,7 @@ class FilenameParser {
     caseSensitive: false,
   );
 
-  static final RegExp _yearPattern = RegExp(
-    r'(?:^|[.\s_(-])(19\d{2}|20\d{2})(?:[).\s_-]|$)',
-  );
+  static final RegExp _yearPattern = RegExp(r'\b(19\d{2}|20\d{2})\b');
 
   static final RegExp _resolutionPattern = RegExp(
     r'\b(2160p|4k|uhd|1080p|1080i|720p|576p|480p)\b',
@@ -89,8 +87,8 @@ class FilenameParser {
     caseSensitive: false,
   );
 
-  static final RegExp _releaseGroups = RegExp(
-    r'-[a-zA-Z0-9_]+$',
+  static final RegExp _technicalBoundaryPattern = RegExp(
+    r'\b(2160p|4k|uhd|1080p|1080i|720p|576p|480p|x265|h265|hevc|x264|h264|avc|av1|xvid|divx|vp9|bluray|blu-ray|bdrip|brrip|web-dl|webdl|webrip|web-rip|hdtv|dvdrip|remux|imax)\b|[\[\(]',
     caseSensitive: false,
   );
 
@@ -213,9 +211,13 @@ class FilenameParser {
 
     final hasExtrasFolder = pathSegments.any(
       (seg) => RegExp(
-        r'^(?:extras?|bonus|specials?|featurettes?|behind\s*the\s*scenes|deleted\s*scenes?|bonus\s*material)$',
+        r'^(?:extras?|bonus|featurettes?|behind\s*the\s*scenes|deleted\s*scenes?|bonus\s*material)$',
         caseSensitive: false,
       ).hasMatch(seg),
+    );
+
+    final hasSpecialsFolder = pathSegments.any(
+      (seg) => RegExp(r'^(?:specials?)$', caseSensitive: false).hasMatch(seg),
     );
 
     final hasSeasonFolder = pathSegments.any(
@@ -230,7 +232,9 @@ class FilenameParser {
       caseSensitive: false,
     ).hasMatch(nameWithoutExt);
 
-    if (hasExtrasFolder || (hasSeasonFolder && hasBonusFilenamePattern)) {
+    if (hasExtrasFolder ||
+        hasSpecialsFolder ||
+        (hasSeasonFolder && hasBonusFilenamePattern)) {
       final showTitle = _findShowTitleFromPath(relativePath);
       if (showTitle.isNotEmpty) {
         var extraTitle = _cleanEpisodeTitle(nameWithoutExt);
@@ -246,12 +250,18 @@ class FilenameParser {
             ? int.tryParse(episodeNumberMatch.group(1) ?? '')
             : null;
 
+        final isSpecialOnly =
+            hasSpecialsFolder && !hasExtrasFolder && !hasBonusFilenamePattern;
+
         return ParsedMediaInfo(
           type: ParsedMediaType.tvEpisode,
           title: showTitle,
-          seasonNumber: 0, // Season 0 for Specials / Extras
+          seasonNumber: isSpecialOnly
+              ? 0
+              : -1, // Season -1 for Extras, Season 0 for broadcast Specials
           episodeNumber: epNum,
           episodeTitle: extraTitle.isNotEmpty ? extraTitle : nameWithoutExt,
+          isExtra: !isSpecialOnly,
           resolution: resolution,
           videoCodec: videoCodec,
           audioCodec: audioCodec,
@@ -273,6 +283,12 @@ class FilenameParser {
       final lastYearMatch = yearMatches.last;
       year = int.tryParse(lastYearMatch.group(1) ?? '');
       rawTitle = nameWithoutExt.substring(0, lastYearMatch.start);
+    } else {
+      // If no year found, stop title extraction at the first technical specification marker
+      final techMatch = _technicalBoundaryPattern.firstMatch(nameWithoutExt);
+      if (techMatch != null && techMatch.start > 0) {
+        rawTitle = nameWithoutExt.substring(0, techMatch.start);
+      }
     }
 
     var cleanTitle = _cleanTitle(rawTitle);
@@ -361,9 +377,6 @@ class FilenameParser {
   String _cleanTitle(String raw) {
     var title = raw;
 
-    // Remove release group suffixes (e.g. -SPARKS, -YIFY)
-    title = title.replaceAll(_releaseGroups, '');
-
     // Remove junk tokens
     title = title.replaceAll(_garbageTokens, ' ');
     title = title.replaceAll(_resolutionPattern, ' ');
@@ -371,9 +384,12 @@ class FilenameParser {
     title = title.replaceAll(_audioCodecPattern, ' ');
     title = title.replaceAll(_audioChannelsPattern, ' ');
 
-    // Replace dots, underscores, hyphens with spaces
+    // Replace dots and underscores with spaces
     title = title.replaceAll(RegExp(r'[._]'), ' ');
-    title = title.replaceAll(RegExp(r'\s*-\s*'), ' ');
+
+    // Replace isolated hyphens surrounded by whitespace, preserving intra-word hyphens (e.g. Ant-Man, Spider-Man)
+    title = title.replaceAll(RegExp(r'\s+-\s+'), ' ');
+    title = title.replaceAll(RegExp(r'^\s*-\s*|\s*-\s*$'), '');
 
     // Remove remaining brackets or lingering symbols
     title = title.replaceAll(RegExp(r'[\[\]\(\)\{\}]'), ' ');
@@ -384,14 +400,15 @@ class FilenameParser {
   }
 
   String _cleanEpisodeTitle(String rest) {
-    var s = rest.replaceAll(_releaseGroups, '');
+    var s = rest;
     s = s.replaceAll(_garbageTokens, ' ');
     s = s.replaceAll(_resolutionPattern, ' ');
     s = s.replaceAll(_videoCodecPattern, ' ');
     s = s.replaceAll(_audioCodecPattern, ' ');
     s = s.replaceAll(_audioChannelsPattern, ' ');
     s = s.replaceAll(RegExp(r'[._]'), ' ');
-    s = s.replaceAll(RegExp(r'\s*-\s*'), ' ');
+    s = s.replaceAll(RegExp(r'\s+-\s+'), ' ');
+    s = s.replaceAll(RegExp(r'^\s*-\s*|\s*-\s*$'), '');
     s = s.replaceAll(RegExp(r'[\[\]\(\)\{\}]'), ' ');
     return s.replaceAll(RegExp(r'\s+'), ' ').trim();
   }

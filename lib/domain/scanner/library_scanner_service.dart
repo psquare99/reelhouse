@@ -399,8 +399,10 @@ class LibraryScannerService {
     }
 
     // 2. Find or create Season
-    final seasonNum = parsed.seasonNumber ?? 1;
-    final seasonName = seasonNum == 0 ? 'Specials' : null;
+    final seasonNum = parsed.seasonNumber ?? (parsed.isExtra ? -1 : 1);
+    final seasonName = parsed.isExtra || seasonNum < 0
+        ? 'Extras'
+        : (seasonNum == 0 ? 'Specials' : null);
     final existingSeason = await database.findSeason(showId, seasonNum);
     String seasonId;
     if (existingSeason != null) {
