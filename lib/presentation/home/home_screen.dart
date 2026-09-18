@@ -494,56 +494,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    final startPos =
-        movie.watchState == WatchState.inProgress &&
-            movie.playbackPositionSeconds > 0
-        ? movie.playbackPositionSeconds
-        : null;
-
     final result = await _playbackLauncher.launchPlayback(
       mediaSourceId: sourceId,
-      startPositionSeconds: startPos,
-    );
-    if (!mounted) return;
-
-    if (!result.isSuccess) {
-      _showPlaybackDiagnosticDialog(result);
-    }
-  }
-
-  Future<void> _handleHeroPlayEpisode(EpisodeLibraryItem episode) async {
-    final sources = await widget.database.getSourcesForEpisode(episode.id);
-    final storages = await widget.database.getAllStorages();
-    final storageMap = {for (final s in storages) s.id: s};
-    final checkSources = sources.map((s) {
-      final storage = storageMap[s.storageId];
-      return SourceCheckInfo(
-        sourceId: s.id,
-        sourceType: s.sourceType,
-        storageId: s.storageId,
-        storageName: storage?.name ?? 'Storage',
-        isSourceAvailable: s.available,
-        isStorageConnected: storage?.available ?? true,
-      );
-    }).toList();
-
-    final resolution = const PlaybackSourceResolver().resolve(checkSources);
-    final sourceId = resolution.selectedSourceId;
-    if (sourceId == null) {
-      if (!mounted) return;
-      _showConnectDiskDialog(resolution.storageName);
-      return;
-    }
-
-    final startPos =
-        episode.watchState == WatchState.inProgress &&
-            episode.playbackPositionSeconds > 0
-        ? episode.playbackPositionSeconds
-        : null;
-
-    final result = await _playbackLauncher.launchPlayback(
-      mediaSourceId: sourceId,
-      startPositionSeconds: startPos,
     );
     if (!mounted) return;
 
@@ -554,116 +506,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeroSection(BuildContext context, CinemaThemeData tokens) {
     return StreamBuilder<LibraryResult<MovieLibraryItem>>(
-      stream: widget.repository.watchMovies(
-        MovieQuery.continueWatching(limit: 5),
-      ),
-      builder: (context, movieSnap) {
-        return StreamBuilder<LibraryResult<EpisodeLibraryItem>>(
-          stream: widget.repository.watchEpisodes(
-            EpisodeQuery.continueWatching(limit: 5),
-          ),
-          builder: (context, episodeSnap) {
-            final inProgressMovies = movieSnap.data?.items ?? [];
-            final inProgressEpisodes = episodeSnap.data?.items ?? [];
+      stream: widget.repository.watchMovies(MovieQuery.recentlyAdded(limit: 1)),
+      builder: (context, snapshot) {
+        final recentMovie = snapshot.data?.items.firstOrNull;
 
-            final candidates = <_HeroCandidate>[
-              for (final m in inProgressMovies) _MovieHeroCandidate(m),
-              for (final ep in inProgressEpisodes) _EpisodeHeroCandidate(ep),
-            ];
-
-            if (candidates.isNotEmpty) {
-              candidates.sort(_compareHeroCandidates);
-              final topCandidate = candidates.first;
-
-              return _HeroCard(
-                eyebrow: 'RESUME WATCHING',
-                title: topCandidate.displayTitle,
-                subtitle: topCandidate.displaySubtitle,
-                backdropPath: topCandidate.backdropPath,
-                posterPath: topCandidate.posterPath,
-                actionLabel: 'Resume',
-                actionIcon: Icons.play_arrow,
-                onAction: () {
-                  if (topCandidate is _MovieHeroCandidate) {
-                    _handleHeroPlayMovie(topCandidate.movie);
-                  } else if (topCandidate is _EpisodeHeroCandidate) {
-                    _handleHeroPlayEpisode(topCandidate.episode);
-                  }
-                },
-                onDetails: () {
-                  if (topCandidate is _MovieHeroCandidate) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => MovieDetailScreen(
-                          movieId: topCandidate.movie.id,
-                          repository: widget.repository,
-                          database: widget.database,
-                        ),
-                      ),
-                    );
-                  } else if (topCandidate is _EpisodeHeroCandidate) {
-                    if (topCandidate.episode.showId != null) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => TvShowDetailScreen(
-                            showId: topCandidate.episode.showId!,
-                            repository: widget.repository,
-                            database: widget.database,
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                },
+        if (recentMovie != null) {
+          return _HeroCard(
+            eyebrow: 'FEATURED SCREENING',
+            title: recentMovie.displayTitle,
+            subtitle: recentMovie.displayYear != null
+                ? '${recentMovie.displayYear} • Recently Added'
+                : 'Recently Added',
+            backdropPath: recentMovie.backdropPath ?? recentMovie.posterPath,
+            posterPath: recentMovie.posterPath,
+            actionLabel: 'Play',
+            actionIcon: Icons.play_arrow,
+            onAction: () => _handleHeroPlayMovie(recentMovie),
+            onDetails: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => MovieDetailScreen(
+                    movieId: recentMovie.id,
+                    repository: widget.repository,
+                    database: widget.database,
+                  ),
+                ),
               );
-            }
+            },
+          );
+        }
 
-            // Fallback: check recently added Movie
-            return StreamBuilder<LibraryResult<MovieLibraryItem>>(
-              stream: widget.repository.watchMovies(
-                MovieQuery.recentlyAdded(limit: 1),
-              ),
-              builder: (context, recentSnap) {
-                final recentMovie = recentSnap.data?.items.firstOrNull;
-
-                if (recentMovie != null) {
-                  return _HeroCard(
-                    eyebrow: 'FEATURED SCREENING',
-                    title: recentMovie.displayTitle,
-                    subtitle: recentMovie.displayYear != null
-                        ? '${recentMovie.displayYear} • Recently Added'
-                        : 'Recently Added',
-                    backdropPath: recentMovie.posterPath,
-                    posterPath: recentMovie.posterPath,
-                    actionLabel: 'Play',
-                    actionIcon: Icons.play_arrow,
-                    onAction: () => _handleHeroPlayMovie(recentMovie),
-                    onDetails: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => MovieDetailScreen(
-                            movieId: recentMovie.id,
-                            repository: widget.repository,
-                            database: widget.database,
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                }
-
-                // Fallback: Themed neutral cinema surface
-                return _HeroCard(
-                  eyebrow: 'REELHOUSE CINEMA',
-                  title: 'Your Personal Digital Cinema',
-                  subtitle: 'Permanent catalogue preserved across all your storage disks.',
-                  actionLabel: 'Explore Movies',
-                  actionIcon: Icons.movie_outlined,
-                  onAction: widget.onNavigateToMovies,
-                );
-              },
-            );
-          },
+        // Fallback: Themed neutral cinema surface
+        return _HeroCard(
+          eyebrow: 'REELHOUSE CINEMA',
+          title: 'Your Personal Digital Cinema',
+          subtitle:
+              'Permanent catalogue preserved across all your storage disks.',
+          actionLabel: 'Explore Movies',
+          actionIcon: Icons.movie_outlined,
+          onAction: widget.onNavigateToMovies,
         );
       },
     );
@@ -1353,90 +1234,4 @@ class _CompactExploreCard extends StatelessWidget {
       ),
     );
   }
-}
-
-abstract class _HeroCandidate {
-  String get id;
-  DateTime? get lastPlayedAt;
-  DateTime get updatedAt;
-  String get displayTitle;
-  String get displaySubtitle;
-  String? get posterPath;
-  String? get backdropPath;
-}
-
-class _MovieHeroCandidate extends _HeroCandidate {
-  final MovieLibraryItem movie;
-  _MovieHeroCandidate(this.movie);
-
-  @override
-  String get id => movie.id;
-
-  @override
-  DateTime? get lastPlayedAt => movie.lastPlayedAt;
-
-  @override
-  DateTime get updatedAt => movie.updatedAt;
-
-  @override
-  String get displayTitle => movie.displayTitle;
-
-  @override
-  String get displaySubtitle => movie.displayYear != null
-      ? '${movie.displayYear} • In Progress'
-      : 'In Progress';
-
-  @override
-  String? get posterPath => movie.posterPath;
-
-  @override
-  String? get backdropPath => movie.backdropPath ?? movie.posterPath;
-}
-
-class _EpisodeHeroCandidate extends _HeroCandidate {
-  final EpisodeLibraryItem episode;
-  _EpisodeHeroCandidate(this.episode);
-
-  @override
-  String get id => episode.id;
-
-  @override
-  DateTime? get lastPlayedAt => episode.lastPlayedAt;
-
-  @override
-  DateTime get updatedAt =>
-      episode.airDate ?? DateTime.fromMillisecondsSinceEpoch(0);
-
-  @override
-  String get displayTitle => episode.displayName;
-
-  @override
-  String get displaySubtitle => episode.showTitle != null
-      ? '${episode.showTitle} • ${episode.episodeCode} • In Progress'
-      : '${episode.episodeCode} • In Progress';
-
-  @override
-  String? get posterPath => episode.stillPath ?? episode.showPosterPath;
-
-  @override
-  String? get backdropPath => episode.stillPath ?? episode.showPosterPath;
-}
-
-int _compareHeroCandidates(_HeroCandidate a, _HeroCandidate b) {
-  // 1. Recency of playback (lastPlayedAt DESC)
-  if (a.lastPlayedAt != null && b.lastPlayedAt != null) {
-    final cmp = b.lastPlayedAt!.compareTo(a.lastPlayedAt!);
-    if (cmp != 0) return cmp;
-  } else if (a.lastPlayedAt != null) {
-    return -1;
-  } else if (b.lastPlayedAt != null) {
-    return 1;
-  }
-
-  // 2. Tie breaker: updatedAt DESC
-  final updateCmp = b.updatedAt.compareTo(a.updatedAt);
-  if (updateCmp != 0) return updateCmp;
-
-  // 3. Deterministic tie breaker: id ASC
-  return a.id.compareTo(b.id);
 }

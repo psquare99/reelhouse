@@ -191,11 +191,11 @@ void main() {
         .into(db.mediaSources)
         .insert(
           MediaSourcesCompanion.insert(
-            id: 'source-ep1',
+            id: 'source-m2',
             storageId: 'disk-test',
-            episodeId: const drift.Value('ep-1'),
-            relativePath: 'Severance.S01E01.mkv',
-            filename: 'Severance.S01E01',
+            movieId: const drift.Value('m-2'),
+            relativePath: 'Dune.Part.Two.2024.mkv',
+            filename: 'Dune.Part.Two.2024',
             extension: 'mkv',
             fileSize: BigInt.from(1000000),
             sourceType: 'removableStorage',
@@ -237,7 +237,7 @@ void main() {
   });
 
   testWidgets(
-    'HomeScreen renders Recently Added, Hero resume, and excludes separate Continue Watching section',
+    'HomeScreen renders Featured Screening Hero, Recently Added, and excludes separate Continue Watching or Resume sections',
     (tester) async {
       await seedTestData();
 
@@ -257,14 +257,17 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // 1. Separate Continue Watching sections must NOT be present
+      // 1. Separate Continue Watching & Resume Watching sections must NOT be present
       expect(find.text('CONTINUE WATCHING'), findsNothing);
       expect(find.text('TV CONTINUE WATCHING'), findsNothing);
+      expect(find.text('RESUME WATCHING'), findsNothing);
+      expect(find.text('Resume'), findsNothing);
 
-      // 2. Hero provides the in-progress Resume action
-      expect(find.text('RESUME WATCHING'), findsOneWidget);
-      expect(find.text('Resume'), findsOneWidget);
-      expect(find.text('Oppenheimer'), findsWidgets);
+      // 2. Hero provides Featured Screening with Play semantics
+      expect(find.text('FEATURED SCREENING'), findsOneWidget);
+      expect(find.text('Play'), findsOneWidget);
+      expect(find.text('View Details'), findsOneWidget);
+      expect(find.text('Dune: Part Two'), findsWidgets);
 
       // 3. Movie Recently Added section
       expect(find.text('RECENTLY ADDED'), findsOneWidget);
@@ -275,7 +278,6 @@ void main() {
 
       // 5. Favorites section
       expect(find.text('FAVORITES'), findsOneWidget);
-      expect(find.text('Dune: Part Two'), findsWidgets);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
@@ -322,7 +324,7 @@ void main() {
   );
 
   testWidgets(
-    'HomeScreen Hero Resume action directly launches playback with stored position',
+    'HomeScreen Hero Play action directly launches playback with Play semantics',
     (tester) async {
       tester.view.physicalSize = const Size(1280, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -360,15 +362,18 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap Resume button in Hero
-      final resumeBtn = find.text('Resume');
-      expect(resumeBtn, findsOneWidget);
-      await tester.tap(resumeBtn);
+      // Tap Play button in Hero
+      final playBtn = find.text('Play');
+      expect(playBtn, findsOneWidget);
+      await tester.tap(playBtn);
       await tester.pumpAndSettle();
 
-      // Verify that playback was launched with the stored resume position (3600 seconds)
+      // Verify that playback was launched without start-time
       expect(launchedArgs, isNotNull);
-      expect(launchedArgs, contains('--start-time=3600'));
+      expect(
+        launchedArgs!.any((arg) => arg.startsWith('--start-time=')),
+        isFalse,
+      );
       // Verify it did not navigate away
       expect(find.byType(MovieDetailScreen), findsNothing);
 
@@ -378,7 +383,7 @@ void main() {
   );
 
   testWidgets(
-    'HomeScreen Hero Details action tap navigates to MovieDetailScreen',
+    'HomeScreen Hero View Details action tap navigates to MovieDetailScreen',
     (tester) async {
       tester.view.physicalSize = const Size(1280, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -402,7 +407,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap Details button in Hero
+      // Tap View Details button in Hero
       final detailsBtn = find.text('View Details');
       expect(detailsBtn, findsOneWidget);
       await tester.tap(detailsBtn);
@@ -416,67 +421,7 @@ void main() {
   );
 
   testWidgets(
-    'HomeScreen Hero Resume launches without --start-time when position is zero',
-    (tester) async {
-      tester.view.physicalSize = const Size(1280, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-
-      await seedTestData();
-
-      // Set movie playback position to 0
-      await (db.update(db.movies)..where((m) => m.id.equals('m-1'))).write(
-        const MoviesCompanion(playbackPositionSeconds: drift.Value(0)),
-      );
-
-      List<String>? launchedArgs;
-      final launcher = PlaybackLauncherService(
-        database: db,
-        storageAdapter: const _FakeStorageAdapter(
-          connected: true,
-          filePresent: true,
-        ),
-        processStarter: (exec, args, {mode = ProcessStartMode.normal}) async {
-          launchedArgs = args;
-          return _FakeProcess();
-        },
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: CinemaTheme.darkTheme,
-          home: HomeScreen(
-            repository: repository,
-            database: db,
-            playbackLauncher: launcher,
-            onNavigateToMovies: () {},
-            onNavigateToTv: () {},
-            onNavigateToOffline: () {},
-            onNavigateToSettings: () {},
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      final resumeBtn = find.text('Resume');
-      expect(resumeBtn, findsOneWidget);
-      await tester.tap(resumeBtn);
-      await tester.pumpAndSettle();
-
-      expect(launchedArgs, isNotNull);
-      expect(
-        launchedArgs!.any((arg) => arg.startsWith('--start-time=')),
-        isFalse,
-      );
-
-      await tester.pumpWidget(const SizedBox());
-      await tester.pumpAndSettle();
-    },
-  );
-
-  testWidgets(
-    'HomeScreen Hero prioritizes most recently played between Movies and TV Episodes',
+    'HomeScreen Hero does not select in-progress episode or movie as a Resume Hero',
     (tester) async {
       tester.view.physicalSize = const Size(1280, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -485,30 +430,12 @@ void main() {
       await seedTestData();
 
       final now = DateTime.now();
-      // Make movie played 2 hours ago
-      await (db.update(db.movies)..where((m) => m.id.equals('m-1'))).write(
-        MoviesCompanion(
-          lastPlayedAt: drift.Value(now.subtract(const Duration(hours: 2))),
-        ),
-      );
-      // Make episode played 1 hour ago (more recent)
+      // Make episode in-progress and played recently
       await (db.update(db.episodes)..where((e) => e.id.equals('ep-1'))).write(
         EpisodesCompanion(
-          lastPlayedAt: drift.Value(now.subtract(const Duration(hours: 1))),
+          watchState: const drift.Value('IN_PROGRESS'),
+          lastPlayedAt: drift.Value(now),
         ),
-      );
-
-      List<String>? launchedArgs;
-      final launcher = PlaybackLauncherService(
-        database: db,
-        storageAdapter: const _FakeStorageAdapter(
-          connected: true,
-          filePresent: true,
-        ),
-        processStarter: (exec, args, {mode = ProcessStartMode.normal}) async {
-          launchedArgs = args;
-          return _FakeProcess();
-        },
       );
 
       await tester.pumpWidget(
@@ -517,7 +444,6 @@ void main() {
           home: HomeScreen(
             repository: repository,
             database: db,
-            playbackLauncher: launcher,
             onNavigateToMovies: () {},
             onNavigateToTv: () {},
             onNavigateToOffline: () {},
@@ -528,93 +454,11 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Top candidate is now Episode 1 of Severance
-      expect(find.text('Good News About Hell'), findsWidgets);
-      expect(find.text('Severance • S01E01 • In Progress'), findsOneWidget);
-
-      // Tap Resume and verify episode launch with position (1200 seconds)
-      final resumeBtn = find.text('Resume');
-      await tester.tap(resumeBtn);
-      await tester.pumpAndSettle();
-
-      expect(launchedArgs, isNotNull);
-      expect(launchedArgs, contains('--start-time=1200'));
-
-      // Tap Details and verify navigation to TvShowDetailScreen
-      final detailsBtn = find.text('View Details');
-      await tester.tap(detailsBtn);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(TvShowDetailScreen), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox());
-      await tester.pumpAndSettle();
-    },
-  );
-
-  testWidgets(
-    'HomeScreen Hero selects Movie when Movie lastPlayedAt is more recent than Episode',
-    (tester) async {
-      tester.view.physicalSize = const Size(1280, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-
-      await seedTestData();
-
-      final now = DateTime.now();
-      // Make movie played 10 minutes ago
-      await (db.update(db.movies)..where((m) => m.id.equals('m-1'))).write(
-        MoviesCompanion(
-          lastPlayedAt: drift.Value(now.subtract(const Duration(minutes: 10))),
-        ),
-      );
-      // Make episode played 1 hour ago
-      await (db.update(db.episodes)..where((e) => e.id.equals('ep-1'))).write(
-        EpisodesCompanion(
-          lastPlayedAt: drift.Value(now.subtract(const Duration(hours: 1))),
-        ),
-      );
-
-      List<String>? launchedArgs;
-      final launcher = PlaybackLauncherService(
-        database: db,
-        storageAdapter: const _FakeStorageAdapter(
-          connected: true,
-          filePresent: true,
-        ),
-        processStarter: (exec, args, {mode = ProcessStartMode.normal}) async {
-          launchedArgs = args;
-          return _FakeProcess();
-        },
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: CinemaTheme.darkTheme,
-          home: HomeScreen(
-            repository: repository,
-            database: db,
-            playbackLauncher: launcher,
-            onNavigateToMovies: () {},
-            onNavigateToTv: () {},
-            onNavigateToOffline: () {},
-            onNavigateToSettings: () {},
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Top candidate is Movie
-      expect(find.text('Oppenheimer'), findsWidgets);
-      expect(find.text('2023 • In Progress'), findsOneWidget);
-
-      final resumeBtn = find.text('Resume');
-      await tester.tap(resumeBtn);
-      await tester.pumpAndSettle();
-
-      expect(launchedArgs, isNotNull);
-      expect(launchedArgs, contains('--start-time=3600'));
+      // Hero remains FEATURED SCREENING (not Resume Watching)
+      expect(find.text('FEATURED SCREENING'), findsOneWidget);
+      expect(find.text('RESUME WATCHING'), findsNothing);
+      expect(find.text('Resume'), findsNothing);
+      expect(find.text('Play'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
@@ -902,7 +746,10 @@ void main() {
       expect(find.text('Good News About Hell'), findsWidgets);
 
       // Tap episode card in Recently Played to verify navigation
-      final epCard = find.widgetWithText(CinemaPosterCard, 'Good News About Hell');
+      final epCard = find.widgetWithText(
+        CinemaPosterCard,
+        'Good News About Hell',
+      );
       await tester.ensureVisible(epCard);
       await tester.pumpAndSettle();
       await tester.tap(epCard);
