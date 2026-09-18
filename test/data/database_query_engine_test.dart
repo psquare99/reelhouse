@@ -848,4 +848,253 @@ void main() {
       },
     );
   });
+
+  group('Database Query Engine — Token-Safe Genre Matching', () {
+    test('movie genre filter matches exact tokens case-insensitively without substring collisions', () async {
+      final now = DateTime(2026, 1, 1);
+
+      // Movie 1: 'War, Drama' (has War)
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-war-1',
+              detectedTitle: 'Platoon',
+              title: const drift.Value('Platoon'),
+              genres: const drift.Value('War, Drama'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Movie 2: 'Action, Star Wars, Sci-Fi' (has Star Wars, NOT War)
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-sw',
+              detectedTitle: 'Star Wars: A New Hope',
+              title: const drift.Value('Star Wars: A New Hope'),
+              genres: const drift.Value('Action, Star Wars, Sci-Fi'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Movie 3: 'Martial Arts, Action' (has Martial Arts, NOT Art)
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-ma',
+              detectedTitle: 'Ip Man',
+              title: const drift.Value('Ip Man'),
+              genres: const drift.Value('Martial Arts, Action'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Movie 4: 'Art, Documentary' (has Art)
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-art',
+              detectedTitle: 'The Art of Flight',
+              title: const drift.Value('The Art of Flight'),
+              genres: const drift.Value('Art, Documentary'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Filter by 'War' -> should match Platoon ('m-war-1'), NOT Star Wars ('m-sw')
+      final warResult = await db.queryMovies(
+        MovieQuery(filter: const MovieFilter(genre: 'War')),
+      );
+      expect(warResult.totalCount, equals(1));
+      expect(warResult.items.first.id, equals('m-war-1'));
+
+      // Filter by 'war' (lowercase) -> case-insensitive match
+      final warLowerResult = await db.queryMovies(
+        MovieQuery(filter: const MovieFilter(genre: 'war')),
+      );
+      expect(warLowerResult.totalCount, equals(1));
+      expect(warLowerResult.items.first.id, equals('m-war-1'));
+
+      // Filter by 'Art' -> should match The Art of Flight ('m-art'), NOT Ip Man ('m-ma')
+      final artResult = await db.queryMovies(
+        MovieQuery(filter: const MovieFilter(genre: 'Art')),
+      );
+      expect(artResult.totalCount, equals(1));
+      expect(artResult.items.first.id, equals('m-art'));
+
+      // Filter by 'Star Wars' -> should match Star Wars ('m-sw')
+      final swResult = await db.queryMovies(
+        MovieQuery(filter: const MovieFilter(genre: 'Star Wars')),
+      );
+      expect(swResult.totalCount, equals(1));
+      expect(swResult.items.first.id, equals('m-sw'));
+    });
+
+    test('tv show genre filter matches exact tokens case-insensitively without substring collisions', () async {
+      final now = DateTime(2026, 1, 1);
+
+      // Show 1: 'War & Politics, Drama'
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-war-1',
+              detectedTitle: 'Band of Brothers',
+              title: const drift.Value('Band of Brothers'),
+              genres: const drift.Value('War & Politics, Drama'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Show 2: 'War, Action'
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-war-2',
+              detectedTitle: 'The Pacific',
+              title: const drift.Value('The Pacific'),
+              genres: const drift.Value('War, Action'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Show 3: 'Star Wars: The Clone Wars' with genres 'Action, Sci-Fi'
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-sw',
+              detectedTitle: 'The Clone Wars',
+              title: const drift.Value('The Clone Wars'),
+              genres: const drift.Value('Action, Sci-Fi'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Filter TV shows by 'War' -> should match 'tv-war-2', NOT 'tv-war-1' ('War & Politics') or 'tv-sw'
+      final warResult = await db.queryTvShows(
+        TvShowQuery(filter: const TvShowFilter(genre: 'War')),
+      );
+      expect(warResult.totalCount, equals(1));
+      expect(warResult.items.first.id, equals('tv-war-2'));
+    });
+  });
+
+  group('Database Query Engine — System Curation Queries', () {
+    test('getDiscoveredGenres and watchDiscoveredGenres aggregate and sort genres across movies and shows', () async {
+      final now = DateTime(2026, 1, 1);
+
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-1',
+              detectedTitle: 'Movie 1',
+              genres: const drift.Value('Action, Sci-Fi'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-1',
+              detectedTitle: 'Show 1',
+              genres: const drift.Value('Comedy, Action, Drama'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      final genres = await db.queryEngine.getDiscoveredGenres();
+      expect(genres, equals(['Action', 'Comedy', 'Drama', 'Sci-Fi']));
+
+      expect(
+        db.queryEngine.watchDiscoveredGenres(),
+        emits(equals(['Action', 'Comedy', 'Drama', 'Sci-Fi'])),
+      );
+    });
+
+    test('getDiscoveredFranchises and watchDiscoveredFranchises aggregate TMDB collections with counts', () async {
+      final now = DateTime(2026, 1, 1);
+
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-dune-1',
+              detectedTitle: 'Dune: Part One',
+              tmdbCollectionId: const drift.Value(726871),
+              tmdbCollectionName: const drift.Value('Dune Collection'),
+              tmdbCollectionPosterPath: const drift.Value('/dune_col.jpg'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.mediaSources)
+          .insert(
+            MediaSourcesCompanion.insert(
+              id: 'ms-dune-1',
+              movieId: const drift.Value('m-dune-1'),
+              storageId: 'local-device',
+              sourceType: 'localDevice',
+              relativePath: 'Dune.mkv',
+              filename: 'Dune.mkv',
+              extension: '.mkv',
+              fileSize: BigInt.from(1000),
+              createdAt: now,
+              firstSeenAt: now,
+              lastSeenAt: now,
+              available: const drift.Value(true),
+            ),
+          );
+
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-dune-2',
+              detectedTitle: 'Dune: Part Two',
+              tmdbCollectionId: const drift.Value(726871),
+              tmdbCollectionName: const drift.Value('Dune Collection'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      final franchises = await db.queryEngine.getDiscoveredFranchises();
+      expect(franchises.length, equals(1));
+      expect(franchises.first.id, equals(726871));
+      expect(franchises.first.name, equals('Dune Collection'));
+      expect(franchises.first.movieCount, equals(2));
+      expect(franchises.first.availableMovieCount, equals(1));
+
+      expect(
+        db.queryEngine.watchDiscoveredFranchises(),
+        emits(
+          predicate<List<FranchiseLibraryItem>>(
+            (list) =>
+                list.length == 1 &&
+                list.first.name == 'Dune Collection' &&
+                list.first.movieCount == 2,
+          ),
+        ),
+      );
+    });
+  });
 }

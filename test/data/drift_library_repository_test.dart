@@ -403,4 +403,69 @@ void main() {
       expect(repository.watchUnmatchedTotalCount(), emits(2));
     });
   });
+
+  group('DriftLibraryRepository — System Curation & Franchises', () {
+    test(
+      'getFranchises & watchFranchises delegating to DatabaseQueryEngine',
+      () async {
+        final now = DateTime(2026, 1, 1);
+
+        await db
+            .into(db.movies)
+            .insert(
+              MoviesCompanion.insert(
+                id: 'm-lotr-1',
+                detectedTitle: 'The Fellowship of the Ring',
+                tmdbCollectionId: const drift.Value(119),
+                tmdbCollectionName: const drift.Value(
+                  'The Lord of the Rings Collection',
+                ),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+
+        final franchises = await repository.getFranchises();
+        expect(franchises.length, equals(1));
+        expect(franchises.first.id, equals(119));
+        expect(
+          franchises.first.name,
+          equals('The Lord of the Rings Collection'),
+        );
+
+        expect(
+          repository.watchFranchises(),
+          emits(
+            predicate<List<FranchiseLibraryItem>>(
+              (list) => list.length == 1 && list.first.id == 119,
+            ),
+          ),
+        );
+      },
+    );
+
+    test('getDiscoveredGenres & watchDiscoveredGenres delegating to DatabaseQueryEngine', () async {
+      final now = DateTime(2026, 1, 1);
+
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-g-1',
+              detectedTitle: 'Movie 1',
+              genres: const drift.Value('Fantasy, Adventure'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      final genres = await repository.getDiscoveredGenres();
+      expect(genres, equals(['Adventure', 'Fantasy']));
+
+      expect(
+        repository.watchDiscoveredGenres(),
+        emits(equals(['Adventure', 'Fantasy'])),
+      );
+    });
+  });
 }

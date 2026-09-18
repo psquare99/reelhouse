@@ -468,121 +468,23 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  // --- Milestone 2.2: System Curation & Franchises Queries ---
+  // --- Milestone 2.2: System Curation & Franchises Queries (Delegated to DatabaseQueryEngine) ---
 
   /// Stream distinct canonical genres present in the user's library.
-  Stream<List<String>> watchDiscoveredGenres() {
-    return customSelect(
-      '''
-SELECT DISTINCT genres FROM movies WHERE genres IS NOT NULL AND genres != ''
-UNION
-SELECT DISTINCT genres FROM tv_shows WHERE genres IS NOT NULL AND genres != ''
-''',
-      readsFrom: {movies, tvShows},
-    ).watch().map((rows) {
-      final genreSet = <String>{};
-      for (final row in rows) {
-        final raw = row.read<String>('genres');
-        final parts = raw
-            .split(',')
-            .map((s) => s.trim())
-            .where((s) => s.isNotEmpty);
-        genreSet.addAll(parts);
-      }
-      final sorted = genreSet.toList()..sort();
-      return sorted;
-    });
-  }
+  Stream<List<String>> watchDiscoveredGenres() =>
+      _queryEngine.watchDiscoveredGenres();
 
   /// Get distinct canonical genres present in the user's library.
-  Future<List<String>> getDiscoveredGenres() async {
-    final rows = await customSelect(
-      '''
-SELECT DISTINCT genres FROM movies WHERE genres IS NOT NULL AND genres != ''
-UNION
-SELECT DISTINCT genres FROM tv_shows WHERE genres IS NOT NULL AND genres != ''
-''',
-      readsFrom: {movies, tvShows},
-    ).get();
-
-    final genreSet = <String>{};
-    for (final row in rows) {
-      final raw = row.read<String>('genres');
-      final parts = raw
-          .split(',')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty);
-      genreSet.addAll(parts);
-    }
-    final sorted = genreSet.toList()..sort();
-    return sorted;
-  }
+  Future<List<String>> getDiscoveredGenres() =>
+      _queryEngine.getDiscoveredGenres();
 
   /// Stream TMDB collections / franchises grouped across movies in the user's library.
-  Stream<List<FranchiseLibraryItem>> watchDiscoveredFranchises() {
-    return customSelect(
-      '''
-SELECT 
-  m.tmdb_collection_id AS id,
-  m.tmdb_collection_name AS name,
-  MAX(m.tmdb_collection_poster_path) AS poster_path,
-  MAX(m.tmdb_collection_backdrop_path) AS backdrop_path,
-  COUNT(DISTINCT m.id) AS movie_count,
-  COUNT(DISTINCT CASE WHEN ms.available = 1 AND (ms.source_type = 'localDevice' OR st.available = 1) THEN m.id ELSE NULL END) AS available_movie_count
-FROM movies m
-LEFT JOIN media_sources ms ON ms.movie_id = m.id
-LEFT JOIN storages st ON st.id = ms.storage_id
-WHERE m.tmdb_collection_id IS NOT NULL AND m.tmdb_collection_name IS NOT NULL
-GROUP BY m.tmdb_collection_id, m.tmdb_collection_name
-ORDER BY m.tmdb_collection_name ASC
-''',
-      readsFrom: {movies, mediaSources, storages},
-    ).watch().map((rows) {
-      return rows.map((row) {
-        return FranchiseLibraryItem(
-          id: row.read<int>('id'),
-          name: row.read<String>('name'),
-          posterPath: row.readNullable<String>('poster_path'),
-          backdropPath: row.readNullable<String>('backdrop_path'),
-          movieCount: row.read<int>('movie_count'),
-          availableMovieCount: row.read<int>('available_movie_count'),
-        );
-      }).toList();
-    });
-  }
+  Stream<List<FranchiseLibraryItem>> watchDiscoveredFranchises() =>
+      _queryEngine.watchDiscoveredFranchises();
 
   /// Get TMDB collections / franchises grouped across movies in the user's library.
-  Future<List<FranchiseLibraryItem>> getDiscoveredFranchises() async {
-    final rows = await customSelect(
-      '''
-SELECT 
-  m.tmdb_collection_id AS id,
-  m.tmdb_collection_name AS name,
-  MAX(m.tmdb_collection_poster_path) AS poster_path,
-  MAX(m.tmdb_collection_backdrop_path) AS backdrop_path,
-  COUNT(DISTINCT m.id) AS movie_count,
-  COUNT(DISTINCT CASE WHEN ms.available = 1 AND (ms.source_type = 'localDevice' OR st.available = 1) THEN m.id ELSE NULL END) AS available_movie_count
-FROM movies m
-LEFT JOIN media_sources ms ON ms.movie_id = m.id
-LEFT JOIN storages st ON st.id = ms.storage_id
-WHERE m.tmdb_collection_id IS NOT NULL AND m.tmdb_collection_name IS NOT NULL
-GROUP BY m.tmdb_collection_id, m.tmdb_collection_name
-ORDER BY m.tmdb_collection_name ASC
-''',
-      readsFrom: {movies, mediaSources, storages},
-    ).get();
-
-    return rows.map((row) {
-      return FranchiseLibraryItem(
-        id: row.read<int>('id'),
-        name: row.read<String>('name'),
-        posterPath: row.readNullable<String>('poster_path'),
-        backdropPath: row.readNullable<String>('backdrop_path'),
-        movieCount: row.read<int>('movie_count'),
-        availableMovieCount: row.read<int>('available_movie_count'),
-      );
-    }).toList();
-  }
+  Future<List<FranchiseLibraryItem>> getDiscoveredFranchises() =>
+      _queryEngine.getDiscoveredFranchises();
 
   /// Update identification status of a movie.
   Future<int> updateMovieIdentificationStatus(String movieId, String status) {

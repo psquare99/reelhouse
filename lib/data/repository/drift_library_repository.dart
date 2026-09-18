@@ -201,17 +201,19 @@ class DriftLibraryRepository implements LibraryRepository {
 
   @override
   Future<List<FranchiseLibraryItem>> getFranchises() =>
-      db.getDiscoveredFranchises();
+      db.queryEngine.getDiscoveredFranchises();
 
   @override
   Stream<List<FranchiseLibraryItem>> watchFranchises() =>
-      db.watchDiscoveredFranchises();
+      db.queryEngine.watchDiscoveredFranchises();
 
   @override
-  Future<List<String>> getDiscoveredGenres() => db.getDiscoveredGenres();
+  Future<List<String>> getDiscoveredGenres() =>
+      db.queryEngine.getDiscoveredGenres();
 
   @override
-  Stream<List<String>> watchDiscoveredGenres() => db.watchDiscoveredGenres();
+  Stream<List<String>> watchDiscoveredGenres() =>
+      db.queryEngine.watchDiscoveredGenres();
 
   // --- Diagnostics & Counts ---
 

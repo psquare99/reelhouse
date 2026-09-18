@@ -224,10 +224,12 @@ class MovieQueryEngine {
     }
 
     // 11. Genre filter
-    if (filter.genre != null && filter.genre!.isNotEmpty) {
-      whereClauses.add('(m.genres LIKE ? OR LOWER(m.genres) LIKE ?)');
-      whereVariables.add(Variable<String>('%${filter.genre}%'));
-      whereVariables.add(Variable<String>('%${filter.genre!.toLowerCase()}%'));
+    if (filter.genre != null && filter.genre!.trim().isNotEmpty) {
+      final normalizedGenre = filter.genre!.trim().toLowerCase();
+      whereClauses.add(
+        '''(',' || REPLACE(REPLACE(LOWER(COALESCE(m.genres, '')), ', ', ','), ' ,', ',') || ',') LIKE ?''',
+      );
+      whereVariables.add(Variable<String>('%,$normalizedGenre,%'));
     }
 
     // 12. TMDB Collection ID filter

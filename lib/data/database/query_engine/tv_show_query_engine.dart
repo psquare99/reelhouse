@@ -253,10 +253,12 @@ class TvShowQueryEngine {
     }
 
     // 11. Genre filter
-    if (filter.genre != null && filter.genre!.isNotEmpty) {
-      whereClauses.add('(t.genres LIKE ? OR LOWER(t.genres) LIKE ?)');
-      whereVariables.add(Variable<String>('%${filter.genre}%'));
-      whereVariables.add(Variable<String>('%${filter.genre!.toLowerCase()}%'));
+    if (filter.genre != null && filter.genre!.trim().isNotEmpty) {
+      final normalizedGenre = filter.genre!.trim().toLowerCase();
+      whereClauses.add(
+        '''(',' || REPLACE(REPLACE(LOWER(COALESCE(t.genres, '')), ', ', ','), ' ,', ',') || ',') LIKE ?''',
+      );
+      whereVariables.add(Variable<String>('%,$normalizedGenre,%'));
     }
 
     final whereSql = whereClauses.isNotEmpty
