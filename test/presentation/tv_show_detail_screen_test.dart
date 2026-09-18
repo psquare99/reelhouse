@@ -124,6 +124,24 @@ void main() {
             ),
           );
 
+      await db
+          .into(db.mediaSources)
+          .insert(
+            MediaSourcesCompanion.insert(
+              id: 'src-sev-s1e2',
+              episodeId: const drift.Value('ep-sev-s1e2'),
+              storageId: 'hdd-series',
+              sourceType: 'removableStorage',
+              relativePath: 'Severance/Season 1/S01E02.mkv',
+              filename: 'S01E02.mkv',
+              extension: 'mkv',
+              fileSize: BigInt.from(2500000000),
+              createdAt: now,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            ),
+          );
+
       await tester.pumpWidget(
         MaterialApp(
           theme: CinemaTheme.darkTheme,
@@ -145,9 +163,10 @@ void main() {
       // Slate watermark for episode lacking still
       expect(find.text('EP 1'), findsOneWidget);
 
-      // Verify Play button for episode
-      expect(find.text('PLAY'), findsOneWidget);
-      expect(find.text('DOWNLOAD'), findsOneWidget);
+      // Verify Play button for episode and header Play Next Episode
+      expect(find.text('PLAY NEXT EPISODE (S01E01)'), findsOneWidget);
+      expect(find.text('PLAY'), findsNWidgets(2));
+      expect(find.text('DOWNLOAD'), findsNWidgets(2));
 
       // Test Episode watched toggle
       final watchToggle = find.byIcon(Icons.check_circle_outline).first;
@@ -155,6 +174,9 @@ void main() {
       await tester.tap(watchToggle);
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 3));
+
+      // After marking S01E01 watched, header button becomes S01E02
+      expect(find.text('PLAY NEXT EPISODE (S01E02)'), findsOneWidget);
 
       final ep = await (db.select(
         db.episodes,

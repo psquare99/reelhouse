@@ -16,7 +16,9 @@ class NextEpisodeResolver {
   /// Episodes may be in any order and may contain bonus/extras content.
   EpisodeLibraryItem? resolveNextEpisode(List<EpisodeLibraryItem> episodes) {
     // 1. Exclude extras (seasonNumber < 0)
-    final canonicalEpisodes = episodes.where((e) => e.seasonNumber >= 0).toList();
+    final canonicalEpisodes = episodes
+        .where((e) => e.seasonNumber >= 0)
+        .toList();
     if (canonicalEpisodes.isEmpty) return null;
 
     // 2. Sort episodes canonical by seasonNumber ASC, episodeNumber ASC

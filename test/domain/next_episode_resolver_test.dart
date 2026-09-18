@@ -46,9 +46,24 @@ void main() {
 
     test('prioritizes in-progress episode over unwatched earlier or later episodes', () {
       final episodes = [
-        createEp(id: 'e1', seasonNumber: 1, episodeNumber: 1, watchState: WatchState.watched),
-        createEp(id: 'e2', seasonNumber: 1, episodeNumber: 2, watchState: WatchState.inProgress),
-        createEp(id: 'e3', seasonNumber: 1, episodeNumber: 3, watchState: WatchState.unwatched),
+        createEp(
+          id: 'e1',
+          seasonNumber: 1,
+          episodeNumber: 1,
+          watchState: WatchState.watched,
+        ),
+        createEp(
+          id: 'e2',
+          seasonNumber: 1,
+          episodeNumber: 2,
+          watchState: WatchState.inProgress,
+        ),
+        createEp(
+          id: 'e3',
+          seasonNumber: 1,
+          episodeNumber: 3,
+          watchState: WatchState.unwatched,
+        ),
       ];
 
       final next = resolver.resolveNextEpisode(episodes);
@@ -59,10 +74,30 @@ void main() {
 
     test('progresses across seasons when Season 1 is fully watched', () {
       final episodes = [
-        createEp(id: 's1e1', seasonNumber: 1, episodeNumber: 1, watchState: WatchState.watched),
-        createEp(id: 's1e2', seasonNumber: 1, episodeNumber: 2, watchState: WatchState.watched),
-        createEp(id: 's2e1', seasonNumber: 2, episodeNumber: 1, watchState: WatchState.unwatched),
-        createEp(id: 's2e2', seasonNumber: 2, episodeNumber: 2, watchState: WatchState.unwatched),
+        createEp(
+          id: 's1e1',
+          seasonNumber: 1,
+          episodeNumber: 1,
+          watchState: WatchState.watched,
+        ),
+        createEp(
+          id: 's1e2',
+          seasonNumber: 1,
+          episodeNumber: 2,
+          watchState: WatchState.watched,
+        ),
+        createEp(
+          id: 's2e1',
+          seasonNumber: 2,
+          episodeNumber: 1,
+          watchState: WatchState.unwatched,
+        ),
+        createEp(
+          id: 's2e2',
+          seasonNumber: 2,
+          episodeNumber: 2,
+          watchState: WatchState.unwatched,
+        ),
       ];
 
       final next = resolver.resolveNextEpisode(episodes);
@@ -74,8 +109,18 @@ void main() {
 
     test('returns null when all regular episodes are watched', () {
       final episodes = [
-        createEp(id: 's1e1', seasonNumber: 1, episodeNumber: 1, watchState: WatchState.watched),
-        createEp(id: 's1e2', seasonNumber: 1, episodeNumber: 2, watchState: WatchState.watched),
+        createEp(
+          id: 's1e1',
+          seasonNumber: 1,
+          episodeNumber: 1,
+          watchState: WatchState.watched,
+        ),
+        createEp(
+          id: 's1e2',
+          seasonNumber: 1,
+          episodeNumber: 2,
+          watchState: WatchState.watched,
+        ),
       ];
 
       expect(resolver.resolveNextEpisode(episodes), isNull);
@@ -85,8 +130,18 @@ void main() {
       // Regular episodes: all watched
       // Extra: unwatched
       final episodes = [
-        createEp(id: 's1e1', seasonNumber: 1, episodeNumber: 1, watchState: WatchState.watched),
-        createEp(id: 'extra1', seasonNumber: -1, episodeNumber: 1, watchState: WatchState.unwatched),
+        createEp(
+          id: 's1e1',
+          seasonNumber: 1,
+          episodeNumber: 1,
+          watchState: WatchState.watched,
+        ),
+        createEp(
+          id: 'extra1',
+          seasonNumber: -1,
+          episodeNumber: 1,
+          watchState: WatchState.unwatched,
+        ),
       ];
 
       // Since all regular episodes are watched, resolver must return null and NOT the extra
@@ -95,8 +150,18 @@ void main() {
 
     test('ignores in-progress extra when regular episodes exist', () {
       final episodes = [
-        createEp(id: 's1e1', seasonNumber: 1, episodeNumber: 1, watchState: WatchState.unwatched),
-        createEp(id: 'extra1', seasonNumber: -1, episodeNumber: 1, watchState: WatchState.inProgress),
+        createEp(
+          id: 's1e1',
+          seasonNumber: 1,
+          episodeNumber: 1,
+          watchState: WatchState.unwatched,
+        ),
+        createEp(
+          id: 'extra1',
+          seasonNumber: -1,
+          episodeNumber: 1,
+          watchState: WatchState.inProgress,
+        ),
       ];
 
       final next = resolver.resolveNextEpisode(episodes);

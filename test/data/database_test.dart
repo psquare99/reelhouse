@@ -896,7 +896,10 @@ void main() {
             ),
           );
 
-      await db.recordEpisodePlaybackLaunch('ep-launch-test', playedAt: playedAt);
+      await db.recordEpisodePlaybackLaunch(
+        'ep-launch-test',
+        playedAt: playedAt,
+      );
 
       final updated = await db.findEpisodeById('ep-launch-test');
       expect(updated, isNotNull);

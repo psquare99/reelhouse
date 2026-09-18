@@ -208,7 +208,10 @@ void main() {
 
       final svc = PlaybackLauncherService(
         database: db,
-        storageAdapter: const _FakeStorageAdapter(connected: true, filePresent: true),
+        storageAdapter: const _FakeStorageAdapter(
+          connected: true,
+          filePresent: true,
+        ),
         processStarter: (exec, args, {mode = ProcessStartMode.normal}) async {
           launchedExec = exec;
           launchedArgs = args;
@@ -223,6 +226,7 @@ void main() {
 
       expect(result.isSuccess, true);
       expect(result.status, PlaybackStatus.success);
+      expect(launchedExec, isNotNull);
       expect(launchedArgs, contains('--start-time=125'));
 
       // Check database state: movie should be IN_PROGRESS and lastPlayedAt set
@@ -232,21 +236,24 @@ void main() {
       expect(movie.lastPlayedAt, isNotNull);
     });
 
-    test('does not update watchState or lastPlayedAt when launch fails', () async {
-      await seedData();
+    test(
+      'does not update watchState or lastPlayedAt when launch fails',
+      () async {
+        await seedData();
 
-      final svc = PlaybackLauncherService(
-        database: db,
-        storageAdapter: const _FakeStorageAdapter(connected: false),
-      );
+        final svc = PlaybackLauncherService(
+          database: db,
+          storageAdapter: const _FakeStorageAdapter(connected: false),
+        );
 
-      final result = await svc.launchPlayback(mediaSourceId: 'source-1');
-      expect(result.isSuccess, false);
+        final result = await svc.launchPlayback(mediaSourceId: 'source-1');
+        expect(result.isSuccess, false);
 
-      final movie = await db.findMovieById('movie-1');
-      expect(movie!.watchState, 'UNWATCHED');
-      expect(movie.lastPlayedAt, isNull);
-    });
+        final movie = await db.findMovieById('movie-1');
+        expect(movie!.watchState, 'UNWATCHED');
+        expect(movie.lastPlayedAt, isNull);
+      },
+    );
   });
 }
 

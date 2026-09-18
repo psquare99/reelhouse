@@ -490,4 +490,54 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+
+  testWidgets(
+    'HomeScreen renders RECENTLY PLAYED section when items have lastPlayedAt',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await seedTestData();
+
+      // Seed a movie with lastPlayedAt
+      final now = DateTime.now();
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-played',
+              detectedTitle: 'Inception',
+              title: const drift.Value('Inception'),
+              year: const drift.Value(2010),
+              watchState: const drift.Value('WATCHED'),
+              lastPlayedAt: drift.Value(now),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: HomeScreen(
+            repository: repository,
+            database: db,
+            onNavigateToMovies: () {},
+            onNavigateToTv: () {},
+            onNavigateToOffline: () {},
+            onNavigateToSettings: () {},
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('RECENTLY PLAYED'), findsOneWidget);
+      expect(find.text('Inception'), findsWidgets);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
 }

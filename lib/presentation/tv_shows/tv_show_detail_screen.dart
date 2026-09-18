@@ -159,12 +159,25 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
     if (_playbackLauncher != null) {
       final result = await _playbackLauncher!.launchPlayback(
         mediaSourceId: sourceId,
+        startPositionSeconds: episode.playbackPositionSeconds,
       );
       if (!mounted) return;
 
       if (!result.isSuccess) {
         _showPlaybackDiagnosticDialog(result);
       }
+    }
+  }
+
+  PlaybackResolution _resolveEpisodePlayback(EpisodeLibraryItem episode) {
+    switch (episode.availability) {
+      case AvailabilityStatus.availableLocally:
+        return const PlaybackResolution(action: PlaybackAction.playOffline);
+      case AvailabilityStatus.availableOnRemovableStorage:
+      case AvailabilityStatus.availableOnMultipleSources:
+        return const PlaybackResolution(action: PlaybackAction.play);
+      case AvailabilityStatus.unavailable:
+        return const PlaybackResolution(action: PlaybackAction.connectDisk);
     }
   }
 
@@ -460,47 +473,83 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                               ),
                               const SizedBox(height: 18),
 
-                              // Action buttons (Watchlist & Favorite toggles)
-                              Row(
-                                children: [
-                                  IconButton.outlined(
-                                    icon: Icon(
-                                      show.isWatchlist
-                                          ? Icons.bookmark_added
-                                          : Icons.bookmark_add_outlined,
-                                      color: show.isWatchlist
-                                          ? tokens.accent
-                                          : tokens.textSecondary,
-                                    ),
-                                    tooltip: show.isWatchlist
-                                        ? 'In Watchlist'
-                                        : 'Add to Watchlist',
-                                    onPressed: () =>
-                                        widget.repository.toggleTvShowWatchlist(
-                                          show.id,
-                                          !show.isWatchlist,
+                              // Action buttons (Play Next Episode, Watchlist & Favorite toggles)
+                              StreamBuilder<EpisodeLibraryItem?>(
+                                stream: widget.repository
+                                    .watchNextEpisodeForShow(widget.showId),
+                                builder: (context, nextEpSnapshot) {
+                                  final nextEp = nextEpSnapshot.data;
+                                  final isResume =
+                                      nextEp != null &&
+                                      nextEp.watchState ==
+                                          WatchState.inProgress &&
+                                      nextEp.playbackPositionSeconds > 0;
+                                  final sCode = nextEp != null
+                                      ? 'S${nextEp.seasonNumber.toString().padLeft(2, '0')}E${nextEp.episodeNumber.toString().padLeft(2, '0')}'
+                                      : '';
+                                  final buttonLabel = isResume
+                                      ? 'RESUME ${Formatters.formatDurationSeconds(nextEp.playbackPositionSeconds)}'
+                                      : 'PLAY NEXT EPISODE ($sCode)';
+
+                                  return Wrap(
+                                    spacing: 12,
+                                    runSpacing: 10,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      if (nextEp != null)
+                                        AvailabilityActionButton(
+                                          resolution: _resolveEpisodePlayback(
+                                            nextEp,
+                                          ),
+                                          customLabel: buttonLabel,
+                                          watchState: nextEp.watchState,
+                                          playbackPositionSeconds:
+                                              nextEp.playbackPositionSeconds,
+                                          onPlay: () =>
+                                              _handlePlayEpisode(nextEp),
+                                          onConnectDisk: () =>
+                                              _showConnectDiskDialog(null),
                                         ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  IconButton.outlined(
-                                    icon: Icon(
-                                      show.isFavorite
-                                          ? Icons.favorite
-                                          : Icons.favorite_border,
-                                      color: show.isFavorite
-                                          ? tokens.accent
-                                          : tokens.textSecondary,
-                                    ),
-                                    tooltip: show.isFavorite
-                                        ? 'Favorited'
-                                        : 'Add to Favorites',
-                                    onPressed: () =>
-                                        widget.repository.toggleTvShowFavorite(
-                                          show.id,
-                                          !show.isFavorite,
+                                      IconButton.outlined(
+                                        icon: Icon(
+                                          show.isWatchlist
+                                              ? Icons.bookmark_added
+                                              : Icons.bookmark_add_outlined,
+                                          color: show.isWatchlist
+                                              ? tokens.accent
+                                              : tokens.textSecondary,
                                         ),
-                                  ),
-                                ],
+                                        tooltip: show.isWatchlist
+                                            ? 'In Watchlist'
+                                            : 'Add to Watchlist',
+                                        onPressed: () => widget.repository
+                                            .toggleTvShowWatchlist(
+                                              show.id,
+                                              !show.isWatchlist,
+                                            ),
+                                      ),
+                                      IconButton.outlined(
+                                        icon: Icon(
+                                          show.isFavorite
+                                              ? Icons.favorite
+                                              : Icons.favorite_border,
+                                          color: show.isFavorite
+                                              ? tokens.accent
+                                              : tokens.textSecondary,
+                                        ),
+                                        tooltip: show.isFavorite
+                                            ? 'Favorited'
+                                            : 'Add to Favorites',
+                                        onPressed: () => widget.repository
+                                            .toggleTvShowFavorite(
+                                              show.id,
+                                              !show.isFavorite,
+                                            ),
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                               const SizedBox(height: 20),
 
@@ -868,6 +917,8 @@ class _EpisodeCard extends StatelessWidget {
             children: [
               AvailabilityActionButton(
                 resolution: resolution,
+                watchState: episode.watchState,
+                playbackPositionSeconds: episode.playbackPositionSeconds,
                 isCompact: true,
                 onPlay: onPlay,
                 onConnectDisk: () => onConnectDisk(null),

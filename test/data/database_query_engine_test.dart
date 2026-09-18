@@ -687,16 +687,17 @@ void main() {
           );
 
       final result = await db.queryTvShows(
-        const TvShowQuery(
-          filter: TvShowFilter(id: 'tv-show-with-extras'),
-        ),
+        const TvShowQuery(filter: TvShowFilter(id: 'tv-show-with-extras')),
       );
 
       expect(result.totalCount, equals(1));
       final item = result.items.first;
       expect(item.totalSeasons, equals(1)); // Only season 1, not -1
       expect(item.totalEpisodes, equals(1)); // Only episode 1, not extra
-      expect(item.derivedWatchState, equals(WatchState.watched)); // Derived as watched because all regular episodes are watched
+      expect(
+        item.derivedWatchState,
+        equals(WatchState.watched),
+      ); // Derived as watched because all regular episodes are watched
 
       // Verify watch state filter
       final watchedFilterResult = await db.queryTvShows(

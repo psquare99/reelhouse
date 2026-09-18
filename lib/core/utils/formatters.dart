@@ -35,4 +35,19 @@ class Formatters {
       return '${m}m';
     }
   }
+
+  /// Format duration in seconds to MM:SS or H:MM:SS format (e.g. "18:42" or "1:14:22").
+  static String formatDurationSeconds(int seconds) {
+    if (seconds <= 0) return '0:00';
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    final sStr = s.toString().padLeft(2, '0');
+    if (h > 0) {
+      final mStr = m.toString().padLeft(2, '0');
+      return '$h:$mStr:$sStr';
+    } else {
+      return '$m:$sStr';
+    }
+  }
 }

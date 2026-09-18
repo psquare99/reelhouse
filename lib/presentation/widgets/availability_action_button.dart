@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_theme.dart';
+import '../../core/utils/formatters.dart';
 import '../../domain/models/playback_resolution.dart';
+import '../../domain/models/watch_state.dart';
 
 /// Cinematic action button dynamically reflecting physical source availability
 /// and active transfer states.
@@ -12,6 +14,9 @@ class AvailabilityActionButton extends StatelessWidget {
   final VoidCallback? onPlay;
   final VoidCallback? onConnectDisk;
   final bool isCompact;
+  final String? customLabel;
+  final WatchState? watchState;
+  final int? playbackPositionSeconds;
 
   const AvailabilityActionButton({
     super.key,
@@ -21,6 +26,9 @@ class AvailabilityActionButton extends StatelessWidget {
     this.onPlay,
     this.onConnectDisk,
     this.isCompact = false,
+    this.customLabel,
+    this.watchState,
+    this.playbackPositionSeconds,
   });
 
   @override
@@ -67,13 +75,24 @@ class AvailabilityActionButton extends StatelessWidget {
       );
     }
 
+    final isResume =
+        watchState == WatchState.inProgress &&
+        playbackPositionSeconds != null &&
+        playbackPositionSeconds! > 0;
+    final resumeTimeStr = isResume
+        ? Formatters.formatDurationSeconds(playbackPositionSeconds!)
+        : null;
+
     switch (resolution.action) {
       case PlaybackAction.playOffline:
+        final playLabel =
+            customLabel ??
+            (isResume ? 'RESUME $resumeTimeStr' : 'PLAY OFFLINE');
         return ElevatedButton.icon(
           onPressed: onPlay,
           icon: Icon(Icons.play_arrow_rounded, size: isCompact ? 16 : 20),
           label: Text(
-            'PLAY OFFLINE',
+            playLabel,
             style: TextStyle(
               fontSize: isCompact ? 11 : 13,
               fontWeight: FontWeight.w500,
@@ -95,11 +114,13 @@ class AvailabilityActionButton extends StatelessWidget {
         );
 
       case PlaybackAction.play:
+        final playLabel =
+            customLabel ?? (isResume ? 'RESUME $resumeTimeStr' : 'PLAY');
         return ElevatedButton.icon(
           onPressed: onPlay,
           icon: Icon(Icons.play_arrow_rounded, size: isCompact ? 16 : 20),
           label: Text(
-            'PLAY',
+            playLabel,
             style: TextStyle(
               fontSize: isCompact ? 11 : 13,
               fontWeight: FontWeight.w500,

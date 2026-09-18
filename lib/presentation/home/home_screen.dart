@@ -139,14 +139,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 // 6. In-Progress TV Episodes
                 _buildTvContinueWatchingSection(),
 
-                // 7. Recently Added Movies
+                // 7. Recently Played (Movies & TV Episodes)
+                _buildRecentlyPlayedSection(),
+
+                // 8. Recently Added Movies
                 _buildMovieSection(
                   title: 'RECENTLY ADDED',
                   subtitle: 'Latest acquisitions discovered across your disks',
                   query: MovieQuery.recentlyAdded(limit: 10),
                 ),
 
-                // 8. TV Recently Added Shows
+                // 9. TV Recently Added Shows
                 _buildTvRecentlyAddedSection(),
 
                 // 9. Favorites (Omitted entirely when empty)
@@ -600,6 +603,129 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 36),
           ],
+        );
+      },
+    );
+  }
+
+  Widget _buildRecentlyPlayedSection() {
+    return StreamBuilder<LibraryResult<MovieLibraryItem>>(
+      stream: widget.repository.watchMovies(
+        MovieQuery.recentlyPlayed(limit: 10),
+      ),
+      builder: (context, movieSnapshot) {
+        return StreamBuilder<LibraryResult<EpisodeLibraryItem>>(
+          stream: widget.repository.watchEpisodes(
+            EpisodeQuery.recentlyPlayed(limit: 10),
+          ),
+          builder: (context, episodeSnapshot) {
+            final movieItems = movieSnapshot.data?.items ?? [];
+            final episodeItems = episodeSnapshot.data?.items ?? [];
+
+            final merged = <dynamic>[...movieItems, ...episodeItems];
+            merged.sort((a, b) {
+              final aTime = a is MovieLibraryItem
+                  ? a.lastPlayedAt
+                  : (a as EpisodeLibraryItem).lastPlayedAt;
+              final bTime = b is MovieLibraryItem
+                  ? b.lastPlayedAt
+                  : (b as EpisodeLibraryItem).lastPlayedAt;
+              if (aTime == null && bTime == null) return 0;
+              if (aTime == null) return 1;
+              if (bTime == null) return -1;
+              final cmp = bTime.compareTo(aTime);
+              if (cmp != 0) return cmp;
+              final aId = a is MovieLibraryItem
+                  ? a.id
+                  : (a as EpisodeLibraryItem).id;
+              final bId = b is MovieLibraryItem
+                  ? b.id
+                  : (b as EpisodeLibraryItem).id;
+              return aId.compareTo(bId);
+            });
+
+            final topItems = merged.take(10).toList();
+            if (topItems.isEmpty) {
+              return const SizedBox.shrink();
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionHeader(
+                  title: 'RECENTLY PLAYED',
+                  subtitle: 'Pick up where you recently screened media',
+                ),
+                const SizedBox(height: 16),
+                _ResponsiveCardRow(
+                  itemCount: topItems.length,
+                  itemBuilder: (context, index) {
+                    final item = topItems[index];
+                    if (item is MovieLibraryItem) {
+                      return CinemaPosterCard(
+                        title: item.displayTitle,
+                        year: item.displayYear,
+                        posterPath: item.posterPath,
+                        availabilityStatus: item.availability,
+                        isFavorite: item.isFavorite,
+                        watchState: item.watchState.toDbString(),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => MovieDetailScreen(
+                                movieId: item.id,
+                                repository: widget.repository,
+                                database: widget.database,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    } else if (item is EpisodeLibraryItem) {
+                      final progress =
+                          (item.runtime != null &&
+                              item.runtime! > 0 &&
+                              item.playbackPositionSeconds > 0)
+                          ? (item.playbackPositionSeconds /
+                                    (item.runtime! * 60))
+                                .clamp(0.0, 1.0)
+                          : (item.watchState == WatchState.inProgress
+                                ? 0.4
+                                : 0.0);
+                      final epSubtitle = item.showTitle != null
+                          ? '${item.showTitle} • ${item.episodeCode}'
+                          : item.episodeCode;
+
+                      return CinemaPosterCard(
+                        title: item.displayName,
+                        subtitle: epSubtitle,
+                        posterPath: item.stillPath ?? item.showPosterPath,
+                        availabilityStatus: item.availability,
+                        watchState: item.watchState.toDbString(),
+                        watchProgress: progress > 0 ? progress : null,
+                        fallbackIcon: Icons.tv,
+                        onTap: () {
+                          if (item.showId != null) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => TvShowDetailScreen(
+                                  showId: item.showId!,
+                                  repository: widget.repository,
+                                  database: widget.database,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+                const SizedBox(height: 36),
+              ],
+            );
+          },
         );
       },
     );

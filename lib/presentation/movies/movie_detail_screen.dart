@@ -170,7 +170,11 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     );
   }
 
-  void _handlePlay(PlaybackResolution resolution, String mediaTitle) async {
+  void _handlePlay(
+    PlaybackResolution resolution,
+    String mediaTitle, {
+    int? startPositionSeconds,
+  }) async {
     final tokens = CinemaTheme.of(context);
     final sourceId = resolution.selectedSourceId;
     if (sourceId == null) {
@@ -190,6 +194,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
     final result = await _playbackLauncher!.launchPlayback(
       mediaSourceId: sourceId,
+      startPositionSeconds: startPositionSeconds,
     );
     if (!mounted) return;
 
@@ -631,11 +636,16 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                       // Main Playback / Connect Disk action
                                       AvailabilityActionButton(
                                         resolution: resolution,
+                                        watchState: movie.watchState,
+                                        playbackPositionSeconds:
+                                            movie.playbackPositionSeconds,
                                         isDownloading: isDownloading,
                                         downloadProgress: downloadProgress,
                                         onPlay: () => _handlePlay(
                                           resolution,
                                           movie.title ?? movie.detectedTitle,
+                                          startPositionSeconds:
+                                              movie.playbackPositionSeconds,
                                         ),
                                         onConnectDisk: () =>
                                             _showConnectDiskDialog(

@@ -220,7 +220,8 @@ class PlaybackLauncherService {
             isSuccess: true,
             resolvedPath: filePath,
             playerUsed: 'VLC Media Player',
-            commandOrIntent: '$vlcExecutable ${args.map((a) => '"$a"').join(' ')}',
+            commandOrIntent:
+                '$vlcExecutable ${args.map((a) => '"$a"').join(' ')}',
           );
         } else {
           // VLC not in standard directory, attempt launch by system PATH
