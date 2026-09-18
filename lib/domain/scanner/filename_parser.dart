@@ -201,7 +201,70 @@ class FilenameParser {
       }
     }
 
-    // 3. Fallback to Movie
+    // 3. Check for TV Extras / Bonus / Specials content within TV show directories
+    final normalizedPath = relativePath.replaceAll('\\', '/');
+    final pathSegments = normalizedPath
+        .split('/')
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (pathSegments.isNotEmpty) {
+      pathSegments.removeLast(); // remove filename
+    }
+
+    final hasExtrasFolder = pathSegments.any(
+      (seg) => RegExp(
+        r'^(?:extras?|bonus|specials?|featurettes?|behind\s*the\s*scenes|deleted\s*scenes?|bonus\s*material)$',
+        caseSensitive: false,
+      ).hasMatch(seg),
+    );
+
+    final hasSeasonFolder = pathSegments.any(
+      (seg) => RegExp(
+        r'^(?:season|s)\s*\d+|^got\s*s\d+|^thf\s*s\d+',
+        caseSensitive: false,
+      ).hasMatch(seg),
+    );
+
+    final hasBonusFilenamePattern = RegExp(
+      r'^(?:deleted\s*scenes?|featurettes?|behind\s*the\s*scenes?|character\s*profile|history\s*[-–]|making\s*of|interview|bonus\s*feature|locations\s*[-–]|rebelion|religons|rountable|taming)',
+      caseSensitive: false,
+    ).hasMatch(nameWithoutExt);
+
+    if (hasExtrasFolder || (hasSeasonFolder && hasBonusFilenamePattern)) {
+      final showTitle = _findShowTitleFromPath(relativePath);
+      if (showTitle.isNotEmpty) {
+        var extraTitle = _cleanEpisodeTitle(nameWithoutExt);
+        if (extraTitle.isEmpty) {
+          extraTitle = _cleanTitle(nameWithoutExt);
+        }
+
+        final episodeNumberMatch = RegExp(
+          r'\b(?:ep?|episode|extra|special\s*)?(\d{1,3})\b',
+          caseSensitive: false,
+        ).firstMatch(nameWithoutExt);
+        final epNum = episodeNumberMatch != null
+            ? int.tryParse(episodeNumberMatch.group(1) ?? '')
+            : null;
+
+        return ParsedMediaInfo(
+          type: ParsedMediaType.tvEpisode,
+          title: showTitle,
+          seasonNumber: 0, // Season 0 for Specials / Extras
+          episodeNumber: epNum,
+          episodeTitle: extraTitle.isNotEmpty ? extraTitle : nameWithoutExt,
+          resolution: resolution,
+          videoCodec: videoCodec,
+          audioCodec: audioCodec,
+          audioChannels: audioChannels,
+          rawFilename: rawFilename,
+          relativePath: relativePath,
+          fileSize: fileSize,
+          extension: ext,
+        );
+      }
+    }
+
+    // 4. Fallback to Movie
     int? year;
     String rawTitle = nameWithoutExt;
 
@@ -258,7 +321,7 @@ class FilenameParser {
   }
 
   /// Traverses path segments upwards to discover the TV Show name,
-  /// skipping "Season XX" or "Specials" directories.
+  /// skipping "Season XX", "Specials", or "Extras" directories.
   String _findShowTitleFromPath(String relativePath) {
     final normalized = relativePath.replaceAll('\\', '/');
     final segments = normalized.split('/').where((s) => s.isNotEmpty).toList();
@@ -270,11 +333,11 @@ class FilenameParser {
 
     for (var i = segments.length - 1; i >= 0; i--) {
       final seg = segments[i];
-      final isSeasonFolder = RegExp(
-        r'^(?:season|s)\s*\d+$|^specials$',
+      final isNonShowFolder = RegExp(
+        r'^(?:season|s)\s*\d+$|^specials?$|^extras?$|^bonus$|^featurettes?$|^behind\s*the\s*scenes$|^deleted\s*scenes?$|^got\s*s\d+$|^thf\s*s\d+$',
         caseSensitive: false,
       ).hasMatch(seg);
-      if (!isSeasonFolder) {
+      if (!isNonShowFolder) {
         final clean = _cleanTitle(seg);
         if (clean.isNotEmpty) {
           return clean;
@@ -328,7 +391,7 @@ class FilenameParser {
     s = s.replaceAll(_audioCodecPattern, ' ');
     s = s.replaceAll(_audioChannelsPattern, ' ');
     s = s.replaceAll(RegExp(r'[._]'), ' ');
-    s = s.replaceAll(RegExp(r'^\s*-\s*'), '');
+    s = s.replaceAll(RegExp(r'\s*-\s*'), ' ');
     s = s.replaceAll(RegExp(r'[\[\]\(\)\{\}]'), ' ');
     return s.replaceAll(RegExp(r'\s+'), ' ').trim();
   }

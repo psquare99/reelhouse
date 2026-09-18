@@ -5,6 +5,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:reelhouse/data/database/database.dart';
+import 'package:reelhouse/data/repository/drift_library_repository.dart';
+import 'package:reelhouse/domain/query/query.dart';
 import 'package:reelhouse/domain/scanner/library_scanner_service.dart';
 import 'package:reelhouse/domain/scanner/media_scanner.dart';
 import 'package:reelhouse/domain/services/storage_identity_service.dart';
@@ -604,5 +606,109 @@ void main() {
     expect(movies2.first.id, movie.id);
     expect(movies2.first.title, 'Iron Man');
     expect(movies2.first.detectedTitle, '1 Iron Man');
+  });
+
+  test('Part 12 Extras: TV bonus/extras are associated with parent TV show Season 0 and not emitted as independent TvShows', () async {
+    final storageCompanion = StoragesCompanion.insert(
+      id: 'hdd-got',
+      name: 'GOT HDD',
+      storageType: 'REMOVABLE_VOLUME',
+      filesystemIdentifier: '0xGOT',
+      rootUri: tempDir.path,
+      lastSeenAt: DateTime.now(),
+      available: const drift.Value(true),
+    );
+    await db.upsertStorage(storageCompanion);
+    final storage = (await db.getAllStorages()).firstWhere(
+      (s) => s.id == 'hdd-got',
+    );
+
+    // Create Game of Thrones S2 episodes and extras
+    createTestFile(r'GAME OF THRONES\GOT S2\Game of Thrones S02E01.mkv', 2048);
+    createTestFile(r'GAME OF THRONES\GOT S2\Game of Thrones S02E02.mkv', 2048);
+    createTestFile(
+      r'GAME OF THRONES\GOT S2\Extras\History- Nightwatch.mkv',
+      1024,
+    );
+    createTestFile(
+      r'GAME OF THRONES\GOT S2\Extras\History- Wildfire.mkv',
+      1024,
+    );
+    createTestFile(
+      r'GAME OF THRONES\GOT S2\Extras\Creating the Battle of Blackwater Bay.mkv',
+      1024,
+    );
+    createTestFile(
+      r'GAME OF THRONES\GOT S2\Extras\Deleted Scene- Sansa and Clegane.mkv',
+      1024,
+    );
+
+    // Initial scan
+    final s1 = await libraryScanner.scanStorage(storage);
+    expect(s1.newSourcesAdded, 6);
+
+    // 1. Exactly ONE TV show ("GAME OF THRONES") exists in catalogue
+    final shows = await db.getAllTvShows();
+    expect(shows.length, 1);
+    expect(shows.first.detectedTitle, 'GAME OF THRONES');
+
+    // 2. NO separate Movie or TvShow entities created for extras!
+    final movies = await db.getAllMovies();
+    expect(movies.isEmpty, isTrue);
+
+    // 3. Parent TV show has Season 2 and Season 0 (Specials)
+    final seasons = await (db.select(
+      db.seasons,
+    )..where((s) => s.showId.equals(shows.first.id))).get();
+    expect(seasons.length, 2);
+    final seasonNums = seasons.map((s) => s.seasonNumber).toSet();
+    expect(seasonNums, containsAll([0, 2]));
+
+    // 4. Season 0 has 4 episodes (the 4 extras)
+    final season0 = seasons.firstWhere((s) => s.seasonNumber == 0);
+    expect(season0.name, 'Specials');
+    final extrasEpisodes = await (db.select(
+      db.episodes,
+    )..where((e) => e.seasonId.equals(season0.id))).get();
+    expect(extrasEpisodes.length, 4);
+
+    final extraNames = extrasEpisodes.map((e) => e.name).toSet();
+    expect(
+      extraNames,
+      containsAll([
+        'History Nightwatch',
+        'History Wildfire',
+        'Creating the Battle of Blackwater Bay',
+        'Deleted Scene Sansa and Clegane',
+      ]),
+    );
+
+    // 5. Each extra retains its physical MediaSource linked to the episode
+    for (final ep in extrasEpisodes) {
+      final sources = await (db.select(
+        db.mediaSources,
+      )..where((m) => m.episodeId.equals(ep.id))).get();
+      expect(sources.length, 1);
+      expect(sources.first.movieId, isNull);
+      expect(sources.first.available, isTrue);
+    }
+
+    // 6. Master TvShowQuery naturally returns only actual TV shows
+    final repo = DriftLibraryRepository(db);
+    final queryResult = await repo.watchTvShows(TvShowQuery.all()).first;
+    expect(queryResult.items.length, 1);
+    expect(queryResult.items.first.detectedTitle, 'GAME OF THRONES');
+
+    // 7. Rescanning does NOT duplicate extras or TV shows
+    final s2 = await libraryScanner.scanStorage(storage);
+    expect(s2.newSourcesAdded, 0);
+
+    final showsAfter = await db.getAllTvShows();
+    expect(showsAfter.length, 1);
+
+    final episodesAfter = await (db.select(
+      db.episodes,
+    )..where((e) => e.seasonId.equals(season0.id))).get();
+    expect(episodesAfter.length, 4);
   });
 }

@@ -425,13 +425,10 @@ class MetadataMatcher {
   /// Extracts an alternate title candidate if [title] begins with a recognized numeric ordering prefix pattern.
   ///
   /// Supported prefix patterns:
-  /// - "1 Movie", "01 Movie" (1-2 digits followed by whitespace)
-  /// - "1. Movie", "01. Movie" (1-3 digits followed by '.' and separator)
-  /// - "1 - Movie", "01 - Movie" (1-3 digits followed by '-' and separator)
-  /// - "1_Movie", "01_Movie", "1_ Movie" (1-3 digits followed by '_' and separator)
-  ///
-  /// Protects legitimate 4-digit numeric titles/years (e.g. "1917", "2001: A Space Odyssey")
-  /// and 3-digit titles without separator (e.g. "300", "500 Days of Summer").
+  /// - "1 Movie", "01 Movie", "2 2 Fast 2 Furious", "21 Jump Street" (digits followed by whitespace)
+  /// - "1. Movie", "01. Movie" (digits followed by '.' and separator)
+  /// - "1 - Movie", "01 - Movie" (digits followed by '-' and separator)
+  /// - "1_Movie", "01_Movie", "1_ Movie" (digits followed by '_' and separator)
   ///
   /// Returns `null` if no ordering prefix pattern is detected or if stripping would leave an invalid/short title.
   static String? extractOrderingPrefixStrippedCandidate(String title) {
@@ -448,8 +445,8 @@ class MetadataMatcher {
       }
     }
 
-    // 2. Space-separated 1-2 digit prefix: e.g. "1 Harry Potter...", "1 Iron Man", "29 Doctor Strange..."
-    // 4-digit years (1917, 2001) and 3-digit titles (300, 500 Days) are protected by \d{1,2}
+    // 2. Space-separated prefix: e.g. "1 The Fast And The Furious", "2 2 Fast 2 Furious", "21 Jump Street"
+    // Limited to 1-2 digits to protect 3+ digit numbers/years (e.g. "2001 A Space Odyssey", "500 Days of Summer")
     final spaceMatch = RegExp(r'^\s*(\d{1,2})\s+(.+)$').firstMatch(trimmed);
     if (spaceMatch != null) {
       final remainder = spaceMatch.group(2)?.trim();
@@ -463,7 +460,7 @@ class MetadataMatcher {
 
   /// Generates an ordered list of title candidates for discovery and matching:
   /// 1. Original detected title (evaluated first with highest priority)
-  /// 2. Normalized title with ordering prefix removed (evaluated if primary candidate yields no automatic match)
+  /// 2. Normalized title with ordering prefix removed
   static List<String> getTitleCandidates(String title) {
     final candidates = <String>[title.trim()];
     final stripped = extractOrderingPrefixStrippedCandidate(title);
@@ -471,5 +468,68 @@ class MetadataMatcher {
       candidates.add(stripped);
     }
     return candidates;
+  }
+
+  /// Compares candidate decisions for Candidate A (original detected title) and
+  /// Candidate B (possible ordering prefix stripped) against canonical metadata.
+  ///
+  /// Selection Principle:
+  /// - Candidate B wins only if removing the leading number produces a materially
+  ///   better valid canonical title match.
+  /// - If Candidate A is already an exact/strong canonical match (e.g. "21 Jump Street",
+  ///   "10 Things I Hate About You", "12 Angry Men", "17 Again", "1917", "2001: A Space Odyssey", "300"),
+  ///   Candidate A wins and remains protected.
+  static MatchDecision<TmdbMovieSearchResult> selectStrongestMovieMatch({
+    required String candidateA,
+    required MatchDecision<TmdbMovieSearchResult> decisionA,
+    required String candidateB,
+    required MatchDecision<TmdbMovieSearchResult> decisionB,
+  }) {
+    // 1. If only B is automatic, B wins
+    if (!decisionA.isAutomatic && decisionB.isAutomatic) {
+      return decisionB;
+    }
+    // 2. If only A is automatic, A wins
+    if (decisionA.isAutomatic && !decisionB.isAutomatic) {
+      return decisionA;
+    }
+    // 3. If both are automatic:
+    if (decisionA.isAutomatic && decisionB.isAutomatic) {
+      // Candidate B is chosen only if it is materially better (> 4% confidence margin)
+      if (decisionB.confidence > decisionA.confidence + 0.04) {
+        return decisionB;
+      }
+      return decisionA;
+    }
+    // 4. If neither is automatic: pick Candidate B only if materially better
+    if (decisionB.confidence > decisionA.confidence + 0.05) {
+      return decisionB;
+    }
+    return decisionA;
+  }
+
+  /// Compares provider candidate decisions across generic providers (TMDB, OMDb, TVmaze).
+  static MatchDecision<ProviderCandidate> selectStrongestProviderMatch({
+    required String candidateA,
+    required MatchDecision<ProviderCandidate> decisionA,
+    required String candidateB,
+    required MatchDecision<ProviderCandidate> decisionB,
+  }) {
+    if (!decisionA.isAutomatic && decisionB.isAutomatic) {
+      return decisionB;
+    }
+    if (decisionA.isAutomatic && !decisionB.isAutomatic) {
+      return decisionA;
+    }
+    if (decisionA.isAutomatic && decisionB.isAutomatic) {
+      if (decisionB.confidence > decisionA.confidence + 0.04) {
+        return decisionB;
+      }
+      return decisionA;
+    }
+    if (decisionB.confidence > decisionA.confidence + 0.05) {
+      return decisionB;
+    }
+    return decisionA;
   }
 }

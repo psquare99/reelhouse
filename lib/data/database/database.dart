@@ -224,6 +224,108 @@ class AppDatabase extends _$AppDatabase {
           ))
           .getSingleOrNull();
 
+  /// Find an episode by its ID.
+  Future<Episode?> findEpisodeById(String episodeId) => (select(
+    episodes,
+  )..where((e) => e.id.equals(episodeId))).getSingleOrNull();
+
+  /// Find an episode in a season by matching its name.
+  Future<Episode?> findEpisodeBySeasonAndName(String seasonId, String name) =>
+      (select(episodes)..where(
+            (e) =>
+                e.seasonId.equals(seasonId) &
+                e.name.collate(Collate.noCase).equals(name),
+          ))
+          .getSingleOrNull();
+
+  /// Get the next available episode number for a season.
+  Future<int> getNextEpisodeNumberForSeason(String seasonId) async {
+    final maxExp = episodes.episodeNumber.max();
+    final query = selectOnly(episodes)
+      ..addColumns([maxExp])
+      ..where(episodes.seasonId.equals(seasonId));
+    final maxVal = await query.map((row) => row.read(maxExp)).getSingleOrNull();
+    return (maxVal ?? 0) + 1;
+  }
+
+  /// Find a media source by storage ID and relative path.
+  Future<MediaSource?> findMediaSourceByStorageAndPath(
+    String storageId,
+    String relativePath,
+  ) =>
+      (select(mediaSources)..where(
+            (m) =>
+                m.storageId.equals(storageId) &
+                m.relativePath.equals(relativePath),
+          ))
+          .getSingleOrNull();
+
+  /// Converts an incorrectly created Movie record representing a TV extra into a Season 0 Episode under its parent TvShow.
+  /// Preserves the physical MediaSource, watch state, and playback position, and removes the erroneous Movie record.
+  Future<void> convertMovieToEpisodeExtra({
+    required String movieId,
+    required String targetTvShowId,
+    required String extraTitle,
+    int? explicitEpisodeNumber,
+  }) async {
+    await transaction(() async {
+      // 1. Ensure Season 0 (Specials) exists for the parent TV show
+      var season0 = await findSeason(targetTvShowId, 0);
+      String season0Id;
+      if (season0 == null) {
+        season0Id = 'season_${targetTvShowId}_0';
+        await into(seasons).insert(
+          SeasonsCompanion.insert(
+            id: season0Id,
+            showId: targetTvShowId,
+            seasonNumber: 0,
+            name: const Value('Specials'),
+          ),
+        );
+      } else {
+        season0Id = season0.id;
+      }
+
+      // 2. Fetch the movie record to preserve watch state
+      final movie = await findMovieById(movieId);
+      if (movie == null) return;
+
+      // 3. Determine episode number
+      final epNum =
+          explicitEpisodeNumber ??
+          await getNextEpisodeNumberForSeason(season0Id);
+      final episodeId = 'ep_${season0Id}_$epNum';
+
+      // 4. Create or reuse Episode in Season 0
+      final existingEp = await findEpisode(season0Id, epNum);
+      if (existingEp == null) {
+        await into(episodes).insert(
+          EpisodesCompanion.insert(
+            id: episodeId,
+            seasonId: season0Id,
+            episodeNumber: epNum,
+            name: Value(extraTitle),
+            watchState: Value(movie.watchState),
+            playbackPositionSeconds: Value(movie.playbackPositionSeconds),
+          ),
+        );
+      }
+
+      // 5. Update all MediaSources pointing to movieId to point to episodeId
+      await (update(
+        mediaSources,
+      )..where((s) => s.movieId.equals(movieId))).write(
+        MediaSourcesCompanion(
+          movieId: const Value(null),
+          episodeId: Value(existingEp?.id ?? episodeId),
+        ),
+      );
+
+      // 6. Delete the erroneous Movie record
+      await (delete(movies)..where((m) => m.id.equals(movieId))).go();
+    });
+  }
+
   /// Update availability status of a single media source.
   Future<int> updateSourceAvailability(
     String sourceId, {

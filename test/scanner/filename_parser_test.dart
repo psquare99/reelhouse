@@ -130,6 +130,55 @@ void main() {
       expect(result.seasonNumber, 3);
       expect(result.episodeNumber, 4);
     });
+
+    test('parses TV bonus and extras content associating them with parent TV show as Season 0', () {
+      // Game of Thrones Season 2 Extras from user's library
+      final nightwatch = parser.parse(
+        relativePath: 'GAME OF THRONES/GOT S2/Extras/History- Nightwatch.mkv',
+        fileSize: 500000000,
+      );
+      expect(nightwatch.type, ParsedMediaType.tvEpisode);
+      expect(nightwatch.title, 'GAME OF THRONES');
+      expect(nightwatch.seasonNumber, 0);
+      expect(nightwatch.episodeTitle, 'History Nightwatch');
+
+      final battle = parser.parse(
+        relativePath: 'GAME OF THRONES/GOT S2/Extras/Creating the Battle of Blackwater Bay.mkv',
+        fileSize: 800000000,
+      );
+      expect(battle.type, ParsedMediaType.tvEpisode);
+      expect(battle.title, 'GAME OF THRONES');
+      expect(battle.seasonNumber, 0);
+      expect(battle.episodeTitle, 'Creating the Battle of Blackwater Bay');
+
+      final deletedScene = parser.parse(
+        relativePath: 'GAME OF THRONES/GOT S2/Extras/Deleted Scene- Sansa and Clegane.mkv',
+        fileSize: 200000000,
+      );
+      expect(deletedScene.type, ParsedMediaType.tvEpisode);
+      expect(deletedScene.title, 'GAME OF THRONES');
+      expect(deletedScene.seasonNumber, 0);
+      expect(deletedScene.episodeTitle, 'Deleted Scene Sansa and Clegane');
+
+      // Extras under show root
+      final breakingBadExtra = parser.parse(
+        relativePath: 'Breaking Bad/Extras/Inside Breaking Bad.mkv',
+        fileSize: 400000000,
+      );
+      expect(breakingBadExtra.type, ParsedMediaType.tvEpisode);
+      expect(breakingBadExtra.title, 'Breaking Bad');
+      expect(breakingBadExtra.seasonNumber, 0);
+
+      // Bonus under season folder
+      final lastOfUsBonus = parser.parse(
+        relativePath:
+            'The Last of Us/Season 1/Bonus/Making of The Last of Us.mkv',
+        fileSize: 600000000,
+      );
+      expect(lastOfUsBonus.type, ParsedMediaType.tvEpisode);
+      expect(lastOfUsBonus.title, 'The Last of Us');
+      expect(lastOfUsBonus.seasonNumber, 0);
+    });
   });
 
   group('FilenameParser — Supported Media & Samples', () {

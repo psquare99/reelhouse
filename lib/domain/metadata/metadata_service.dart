@@ -23,6 +23,23 @@ class MetadataPipelineSummary {
       'MetadataPipelineSummary(processed: $totalProcessed, matched: $automaticallyMatched, needsVerification: $routedToVerification, errors: $errors)';
 }
 
+/// Results of a library catalogue repair pass (numeric prefixes and TV extras).
+class LibraryRepairResult {
+  final int correctedMoviesCount;
+  final int convertedExtrasCount;
+  final int unresolvedCount;
+
+  const LibraryRepairResult({
+    required this.correctedMoviesCount,
+    required this.convertedExtrasCount,
+    required this.unresolvedCount,
+  });
+
+  @override
+  String toString() =>
+      'LibraryRepairResult(correctedMovies: $correctedMoviesCount, convertedExtras: $convertedExtrasCount, unresolved: $unresolvedCount)';
+}
+
 /// Metadata Pipeline orchestrator for REELHOUSE.
 ///
 /// Implements Sections 13, 14, 15, and 44:
@@ -56,53 +73,60 @@ class MetadataService {
     }
 
     try {
-      final searchTitle = movie.title ?? movie.detectedTitle;
+      final searchTitle = movie.detectedTitle;
       final searchYear = movie.year ?? movie.detectedYear;
 
-      // 1. Primary candidate search (exact/full filename-derived title)
-      var candidates = await tmdbClient.searchMovies(
+      // 1. Generate candidates: Primary (A) and Optional Ordering-Prefix Stripped (B)
+      final candidateA = searchTitle;
+      final candidateB = MetadataMatcher.extractOrderingPrefixStrippedCandidate(
         searchTitle,
+      );
+
+      // Search and evaluate Candidate A
+      final candidatesA = await tmdbClient.searchMovies(
+        candidateA,
         year: searchYear,
       );
-
-      var decision = matcher.evaluateMovieCandidates(
-        detectedTitle: searchTitle,
+      final decisionA = matcher.evaluateMovieCandidates(
+        detectedTitle: candidateA,
         detectedYear: searchYear,
-        candidates: candidates,
+        candidates: candidatesA,
       );
 
-      // 2. Candidate Normalization fallback:
-      // If primary search did not yield an automatic match, check if stripping a leading
-      // ordering prefix (e.g. "1 Iron Man" -> "Iron Man") matches canonical provider metadata.
-      if (!decision.isAutomatic) {
-        final strippedCandidate =
-            MetadataMatcher.extractOrderingPrefixStrippedCandidate(searchTitle);
-        if (strippedCandidate != null && strippedCandidate != searchTitle) {
-          final altCandidates = await tmdbClient.searchMovies(
-            strippedCandidate,
+      var finalDecision = decisionA;
+
+      // 2. If Candidate B exists, search and evaluate Candidate B, then compare against canonical metadata
+      if (candidateB != null && candidateB != candidateA) {
+        try {
+          final candidatesB = await tmdbClient.searchMovies(
+            candidateB,
             year: searchYear,
           );
-          final altDecision = matcher.evaluateMovieCandidates(
-            detectedTitle: strippedCandidate,
+          final decisionB = matcher.evaluateMovieCandidates(
+            detectedTitle: candidateB,
             detectedYear: searchYear,
-            candidates: altCandidates,
+            candidates: candidatesB,
           );
-          if (altDecision.isAutomatic && altDecision.bestMatch != null) {
-            decision = altDecision;
-          }
-        }
+
+          finalDecision = MetadataMatcher.selectStrongestMovieMatch(
+            candidateA: candidateA,
+            decisionA: decisionA,
+            candidateB: candidateB,
+            decisionB: decisionB,
+          );
+        } catch (_) {}
       }
 
-      if (decision.isAutomatic && decision.bestMatch != null) {
-        await applyMovieMatch(movie.id, decision.bestMatch!);
-      } else if (decision.needsVerification) {
+      if (finalDecision.isAutomatic && finalDecision.bestMatch != null) {
+        await applyMovieMatch(movie.id, finalDecision.bestMatch!);
+      } else if (finalDecision.needsVerification) {
         await database.updateMovieIdentificationStatus(
           movie.id,
           'NEEDS_VERIFICATION',
         );
       }
 
-      return decision;
+      return finalDecision;
     } catch (e) {
       return MatchDecision(
         type: MatchDecisionType.needsVerification,
@@ -212,48 +236,55 @@ class MetadataService {
     }
 
     try {
-      final searchTitle = show.title ?? show.detectedTitle;
+      final searchTitle = show.detectedTitle;
 
-      // 1. Primary candidate search
-      var candidates = await tmdbClient.searchTvShows(searchTitle);
-
-      var decision = matcher.evaluateTvCandidates(
-        detectedTitle: searchTitle,
-        candidates: candidates,
+      // 1. Generate candidates
+      final candidateA = searchTitle;
+      final candidateB = MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+        searchTitle,
       );
 
-      // 2. Candidate Normalization fallback
-      if (!decision.isAutomatic) {
-        final strippedCandidate =
-            MetadataMatcher.extractOrderingPrefixStrippedCandidate(searchTitle);
-        if (strippedCandidate != null && strippedCandidate != searchTitle) {
-          final altCandidates = await tmdbClient.searchTvShows(
-            strippedCandidate,
+      final candidatesA = await tmdbClient.searchTvShows(candidateA);
+      final decisionA = matcher.evaluateTvCandidates(
+        detectedTitle: candidateA,
+        candidates: candidatesA,
+      );
+
+      var finalDecision = decisionA;
+
+      // 2. If Candidate B exists, search and evaluate Candidate B
+      if (candidateB != null && candidateB != candidateA) {
+        try {
+          final candidatesB = await tmdbClient.searchTvShows(candidateB);
+          final decisionB = matcher.evaluateTvCandidates(
+            detectedTitle: candidateB,
+            candidates: candidatesB,
           );
-          final altDecision = matcher.evaluateTvCandidates(
-            detectedTitle: strippedCandidate,
-            candidates: altCandidates,
-          );
-          if (altDecision.isAutomatic && altDecision.bestMatch != null) {
-            decision = altDecision;
+
+          if (!decisionA.isAutomatic && decisionB.isAutomatic) {
+            finalDecision = decisionB;
+          } else if (decisionA.isAutomatic && decisionB.isAutomatic) {
+            if (decisionB.confidence > decisionA.confidence + 0.04) {
+              finalDecision = decisionB;
+            }
           }
-        }
+        } catch (_) {}
       }
 
-      if (decision.isAutomatic && decision.bestMatch != null) {
-        await applyTvShowMatch(show.id, decision.bestMatch!);
-      } else if (decision.needsVerification) {
+      if (finalDecision.isAutomatic && finalDecision.bestMatch != null) {
+        await applyTvShowMatch(show.id, finalDecision.bestMatch!);
+      } else if (finalDecision.needsVerification) {
         await database.updateTvShowIdentificationStatus(
           show.id,
           'NEEDS_VERIFICATION',
         );
       }
 
-      return decision;
+      return finalDecision;
     } catch (e) {
       return MatchDecision(
         type: MatchDecisionType.needsVerification,
-        reason: 'TV identification error: $e',
+        reason: 'Identification error: $e',
       );
     }
   }
@@ -292,9 +323,9 @@ class MetadataService {
           posterPath: candidate.posterPath,
           backdropPath: candidate.backdropPath,
           voteAverage: candidate.voteAverage,
-          voteCount: candidate.voteCount,
         );
 
+    // Cache poster and backdrop locally on disk
     String? localPoster;
     String? remotePosterUrl;
     if (tmdbItem.posterPath != null) {
@@ -315,9 +346,9 @@ class MetadataService {
       );
     }
 
-    DateTime? firstAirDate;
+    DateTime? parsedAirDate;
     if (tmdbItem.firstAirDate != null) {
-      firstAirDate = DateTime.tryParse(tmdbItem.firstAirDate!);
+      parsedAirDate = DateTime.tryParse(tmdbItem.firstAirDate!);
     }
 
     await database.updateTvShowMetadata(
@@ -325,10 +356,9 @@ class MetadataService {
       title: tmdbItem.name,
       identificationStatus: 'IDENTIFIED',
       tmdbId: tmdbItem.id,
-      imdbId: tmdbItem.imdbId,
       originalTitle: tmdbItem.originalName,
       overview: tmdbItem.overview,
-      firstAirDate: firstAirDate,
+      firstAirDate: parsedAirDate,
       posterPath: localPoster ?? remotePosterUrl ?? tmdbItem.posterPath,
       backdropPath: localBackdrop ?? remoteBackdropUrl ?? tmdbItem.backdropPath,
       rating: tmdbItem.voteAverage,
@@ -417,8 +447,8 @@ class MetadataService {
     return enrichedCount;
   }
 
-  /// Enriches an already-identified [Movie] with missing metadata (genres, TMDB collections)
-  /// without altering its canonical identity, local media sources, or watch state.
+  /// Enriches an already-identified [Movie] with missing metadata (canonical title, genres, TMDB collections)
+  /// without altering its detectedTitle, local media sources, or watch state.
   Future<bool> enrichMovieMetadata(Movie movie) async {
     if (!tmdbClient.hasApiKey || movie.tmdbId == null) return false;
 
@@ -428,6 +458,8 @@ class MetadataService {
 
       await database.updateMovieMetadata(
         movie.id,
+        title: details.title,
+        year: details.releaseYear,
         tmdbId: details.id,
         genres: details.genres.isNotEmpty ? details.genres.join(', ') : null,
         tmdbCollectionId: details.tmdbCollectionId,
@@ -448,8 +480,8 @@ class MetadataService {
     }
   }
 
-  /// Enriches an already-identified [TvShow] with missing metadata (genres)
-  /// without altering its canonical identity, seasons, episodes, or sources.
+  /// Enriches an already-identified [TvShow] with missing metadata (canonical title, genres)
+  /// without altering its detectedTitle, seasons, episodes, or sources.
   Future<bool> enrichTvShowMetadata(TvShow show) async {
     if (!tmdbClient.hasApiKey || show.tmdbId == null) return false;
 
@@ -459,6 +491,7 @@ class MetadataService {
 
       await database.updateTvShowMetadata(
         show.id,
+        title: details.name,
         tmdbId: details.id,
         genres: details.genres.isNotEmpty ? details.genres.join(', ') : null,
         imdbId: show.imdbId ?? details.imdbId,
@@ -468,6 +501,126 @@ class MetadataService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Repairs existing library records for:
+  /// 1. Movies with numeric ordering prefixes in their canonical titles
+  /// 2. TV bonus/extras incorrectly created as standalone movies
+  Future<LibraryRepairResult> repairCatalogueIdentities({
+    void Function(String message)? onProgress,
+  }) async {
+    var correctedMovieCount = 0;
+    var convertedExtrasCount = 0;
+    var unresolvedCount = 0;
+
+    // 1. Repair numeric prefix movie identities
+    final allMovies = await database.getAllMovies();
+    for (final movie in allMovies) {
+      // Check if movie is identified and has a numeric prefix in its title
+      if (movie.tmdbId != null) {
+        final stripped = MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+          movie.detectedTitle,
+        );
+        if (stripped != null &&
+            (movie.title == null ||
+                movie.title == movie.detectedTitle ||
+                MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+                      movie.title!,
+                    ) !=
+                    null)) {
+          onProgress?.call(
+            'Refreshing canonical title for: ${movie.detectedTitle}',
+          );
+          try {
+            final details = await tmdbClient.getMovieDetails(movie.tmdbId!);
+            if (details != null && details.title != movie.title) {
+              await database.updateMovieMetadata(
+                movie.id,
+                title: details.title,
+                year: details.releaseYear ?? movie.year,
+                tmdbId: details.id,
+              );
+              correctedMovieCount++;
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    // 2. Repair TV bonus/extras incorrectly stored in Movies table
+    final remainingMovies = await database.getAllMovies();
+    for (final movie in remainingMovies) {
+      final sources = await database.getSourcesForMovie(movie.id);
+      if (sources.isEmpty) continue;
+
+      final isExtra = sources.any((src) {
+        final path = src.relativePath.replaceAll('\\', '/');
+        final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+        final hasExtraFolder = segments.any(
+          (seg) => RegExp(
+            r'^(?:extras?|bonus|specials?|featurettes?|behind\s*the\s*scenes|deleted\s*scenes?)$',
+            caseSensitive: false,
+          ).hasMatch(seg),
+        );
+        final hasSeasonFolder = segments.any(
+          (seg) => RegExp(
+            r'^(?:season|s)\s*\d+|^got\s*s\d+|^thf\s*s\d+',
+            caseSensitive: false,
+          ).hasMatch(seg),
+        );
+        return hasExtraFolder || hasSeasonFolder;
+      });
+
+      if (isExtra) {
+        // Resolve parent TV show
+        final samplePath = sources.first.relativePath.replaceAll('\\', '/');
+        final segments = samplePath
+            .split('/')
+            .where((s) => s.isNotEmpty)
+            .toList();
+        if (segments.isNotEmpty) segments.removeLast(); // remove filename
+
+        String parentTitle = '';
+        for (var i = segments.length - 1; i >= 0; i--) {
+          final seg = segments[i];
+          final isNonShow = RegExp(
+            r'^(?:season|s)\s*\d+$|^specials?$|^extras?$|^bonus$|^featurettes?$|^behind\s*the\s*scenes$|^deleted\s*scenes?$|^got\s*s\d+$|^thf\s*s\d+$',
+            caseSensitive: false,
+          ).hasMatch(seg);
+          if (!isNonShow) {
+            parentTitle = seg.replaceAll(RegExp(r'[._]'), ' ').trim();
+            break;
+          }
+        }
+
+        if (parentTitle.isNotEmpty) {
+          final parentShow =
+              await database.findTvShowByDetectedTitle(parentTitle) ??
+              await database.findTvShowByTitle(parentTitle);
+          if (parentShow != null) {
+            onProgress?.call(
+              'Converting extra "${movie.detectedTitle}" to parent show "${parentShow.title ?? parentShow.detectedTitle}"',
+            );
+            await database.convertMovieToEpisodeExtra(
+              movieId: movie.id,
+              targetTvShowId: parentShow.id,
+              extraTitle: movie.detectedTitle,
+            );
+            convertedExtrasCount++;
+          } else {
+            unresolvedCount++;
+          }
+        } else {
+          unresolvedCount++;
+        }
+      }
+    }
+
+    return LibraryRepairResult(
+      correctedMoviesCount: correctedMovieCount,
+      convertedExtrasCount: convertedExtrasCount,
+      unresolvedCount: unresolvedCount,
+    );
   }
 
   /// One-time or background backfill for existing identified media lacking newly supported metadata

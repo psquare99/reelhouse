@@ -400,6 +400,7 @@ class LibraryScannerService {
 
     // 2. Find or create Season
     final seasonNum = parsed.seasonNumber ?? 1;
+    final seasonName = seasonNum == 0 ? 'Specials' : null;
     final existingSeason = await database.findSeason(showId, seasonNum);
     String seasonId;
     if (existingSeason != null) {
@@ -413,30 +414,76 @@ class LibraryScannerService {
               id: seasonId,
               showId: showId,
               seasonNumber: seasonNum,
+              name: seasonName != null
+                  ? Value(seasonName)
+                  : const Value.absent(),
             ),
           );
     }
 
     // 3. Find or create Episode
-    final epNum = parsed.episodeNumber ?? 1;
-    final existingEpisode = await database.findEpisode(seasonId, epNum);
     String episodeId;
-    if (existingEpisode != null) {
-      episodeId = existingEpisode.id;
+    if (parsed.episodeNumber != null) {
+      final epNum = parsed.episodeNumber!;
+      final existingEpisode = await database.findEpisode(seasonId, epNum);
+      if (existingEpisode != null) {
+        episodeId = existingEpisode.id;
+      } else {
+        episodeId = _uuid.v4();
+        await database
+            .into(database.episodes)
+            .insert(
+              EpisodesCompanion.insert(
+                id: episodeId,
+                seasonId: seasonId,
+                episodeNumber: epNum,
+                name: parsed.episodeTitle != null
+                    ? Value(parsed.episodeTitle)
+                    : const Value.absent(),
+              ),
+            );
+      }
     } else {
-      episodeId = _uuid.v4();
-      await database
-          .into(database.episodes)
-          .insert(
-            EpisodesCompanion.insert(
-              id: episodeId,
-              seasonId: seasonId,
-              episodeNumber: epNum,
-              name: parsed.episodeTitle != null
-                  ? Value(parsed.episodeTitle)
-                  : const Value.absent(),
-            ),
+      // Unnumbered episode / TV Extra
+      Episode? existingEpisode;
+      if (parsed.episodeTitle != null && parsed.episodeTitle!.isNotEmpty) {
+        existingEpisode = await database.findEpisodeBySeasonAndName(
+          seasonId,
+          parsed.episodeTitle!,
+        );
+      }
+      if (existingEpisode == null) {
+        final existingSource = await database.findMediaSourceByStorageAndPath(
+          storage.id,
+          normPath,
+        );
+        if (existingSource?.episodeId != null) {
+          existingEpisode = await database.findEpisodeById(
+            existingSource!.episodeId!,
           );
+        }
+      }
+
+      if (existingEpisode != null) {
+        episodeId = existingEpisode.id;
+      } else {
+        final nextEpNum = await database.getNextEpisodeNumberForSeason(
+          seasonId,
+        );
+        episodeId = _uuid.v4();
+        await database
+            .into(database.episodes)
+            .insert(
+              EpisodesCompanion.insert(
+                id: episodeId,
+                seasonId: seasonId,
+                episodeNumber: nextEpNum,
+                name: parsed.episodeTitle != null
+                    ? Value(parsed.episodeTitle)
+                    : const Value.absent(),
+              ),
+            );
+      }
     }
 
     // 4. Insert physical MediaSource record

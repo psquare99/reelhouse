@@ -1255,6 +1255,7 @@ void main() {
               200,
             );
           }
+          return http.Response(jsonEncode({'results': []}), 200);
         }
 
         if (path.startsWith('/3/movie/')) {
