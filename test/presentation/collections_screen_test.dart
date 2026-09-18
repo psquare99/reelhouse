@@ -415,4 +415,92 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+
+  testWidgets(
+    'Genre chip strip displays right edge fade when scrollable and updates on scroll',
+    (tester) async {
+      // Set narrow width to ensure genres overflow horizontally
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final now = DateTime.now();
+
+      // Seed multiple movies across many distinct genres
+      final genres = [
+        'Action',
+        'Adventure',
+        'Comedy',
+        'Crime',
+        'Documentary',
+        'Drama',
+        'Fantasy',
+        'Horror',
+        'Mystery',
+        'Romance',
+        'Science Fiction',
+        'Thriller',
+        'Western',
+      ];
+
+      for (var i = 0; i < genres.length; i++) {
+        await db
+            .into(db.movies)
+            .insert(
+              MoviesCompanion.insert(
+                id: 'm-$i',
+                detectedTitle: 'Film $i',
+                title: drift.Value('Film $i'),
+                genres: drift.Value(genres[i]),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: CollectionsScreen(database: db),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Right edge chevron hint should be visible because genres overflow
+      expect(find.byIcon(Icons.chevron_right_rounded), findsWidgets);
+
+      // Find the horizontal genre list scrollable
+      final genreListView = find.byWidgetPredicate(
+        (widget) =>
+            widget is ListView && widget.scrollDirection == Axis.horizontal,
+      );
+      expect(genreListView, findsOneWidget);
+
+      final genreScrollable = find.descendant(
+        of: genreListView,
+        matching: find.byType(Scrollable),
+      );
+      expect(genreScrollable, findsOneWidget);
+
+      // Scroll to the far right end of the chip strip using the Scrollable's position
+      final scrollableState = tester.state<ScrollableState>(genreScrollable);
+      scrollableState.position.jumpTo(scrollableState.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Western'), findsOneWidget);
+
+      // Edge fade icon should be gone when scrolled all the way to the right
+      expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+
+      // Scroll back to the start
+      scrollableState.position.jumpTo(0.0);
+      await tester.pumpAndSettle();
+
+      // Fade chevron icon reappears
+      expect(find.byIcon(Icons.chevron_right_rounded), findsWidgets);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
 }
