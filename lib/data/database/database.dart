@@ -234,6 +234,10 @@ class AppDatabase extends _$AppDatabase {
   Future<List<MediaSource>> getSourcesForEpisode(String episodeId) =>
       (select(mediaSources)..where((s) => s.episodeId.equals(episodeId))).get();
 
+  /// Insert a media source.
+  Future<int> insertMediaSource(MediaSourcesCompanion source) =>
+      into(mediaSources).insert(source);
+
   /// Stream count of movies.
   Stream<int> watchMovieCount() {
     final countExpr = countAll();
@@ -344,13 +348,17 @@ class AppDatabase extends _$AppDatabase {
   Future<MediaSource?> findMediaSourceByStorageAndPath(
     String storageId,
     String relativePath,
-  ) =>
-      (select(mediaSources)..where(
-            (m) =>
-                m.storageId.equals(storageId) &
-                m.relativePath.equals(relativePath),
-          ))
-          .getSingleOrNull();
+  ) {
+    final forward = relativePath.replaceAll('\\', '/');
+    final backward = relativePath.replaceAll('/', '\\');
+    return (select(mediaSources)..where(
+          (m) =>
+              m.storageId.equals(storageId) &
+              (m.relativePath.equals(forward) |
+                  m.relativePath.equals(backward)),
+        ))
+        .getSingleOrNull();
+  }
 
   /// Converts an incorrectly created Movie record representing a TV extra into a Season -1 ("Extras") Episode under its parent TvShow.
   /// Preserves the physical MediaSource, watch state, and playback position, and removes the erroneous Movie record.

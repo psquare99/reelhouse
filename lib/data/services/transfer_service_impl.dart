@@ -1153,6 +1153,184 @@ class TransferServiceImpl implements TransferService {
     }
   }
 
+  @override
+  Future<MediaSource> registerCompletedTransfer(String transferId) async {
+    // 1. Fetch transfer job
+    final job = await database.getTransferJobById(transferId);
+    if (job == null) {
+      throw TransferException(
+        'Transfer job $transferId not found.',
+        mediaId: null,
+      );
+    }
+
+    // 2. Validate transfer state is strictly COMPLETED
+    if (job.status != 'COMPLETED') {
+      throw TransferException(
+        'Transfer job $transferId is in state ${job.status}, not COMPLETED. Only verified and finalized transfers can be registered as MediaSources.',
+        mediaId: job.mediaId,
+      );
+    }
+
+    // 3. Lookup destination storage
+    final storage = await database.getStorageById(job.destinationStorageId);
+    if (storage == null || storage.rootUri.isEmpty) {
+      throw TransferException(
+        'Destination storage ${job.destinationStorageId} is missing or inaccessible.',
+        mediaId: job.mediaId,
+      );
+    }
+
+    // 4. Construct and validate finalized destination path (ensure not partial)
+    final normRelPath = p
+        .normalize(job.destinationRelativePath)
+        .replaceAll('\\', '/');
+    if (normRelPath.endsWith('.reelhouse-partial')) {
+      throw TransferException(
+        'Cannot register unfinalized temporary partial artifact $normRelPath as a MediaSource.',
+        mediaId: job.mediaId,
+      );
+    }
+
+    final fullPath = _resolveSafeDestinationPath(
+      destinationRoot: storage.rootUri,
+      relativePath: normRelPath,
+    );
+    final finalFile = File(fullPath);
+    if (!finalFile.existsSync()) {
+      throw TransferException(
+        'Final destination file does not exist at $fullPath.',
+        mediaId: job.mediaId,
+      );
+    }
+
+    // 5. Verify logical media item existence
+    if (job.mediaType == 'movie') {
+      final movie = await database.findMovieById(job.mediaId);
+      if (movie == null) {
+        throw TransferException(
+          'Logical movie ${job.mediaId} not found in library.',
+          mediaId: job.mediaId,
+        );
+      }
+    } else {
+      final episode = await database.findEpisodeById(job.mediaId);
+      if (episode == null) {
+        throw TransferException(
+          'Logical episode ${job.mediaId} not found in library.',
+          mediaId: job.mediaId,
+        );
+      }
+    }
+
+    // 6. Idempotency & Collision check
+    final existingSource = await database.findMediaSourceByStorageAndPath(
+      storage.id,
+      normRelPath,
+    );
+
+    if (existingSource != null) {
+      if (job.mediaType == 'movie' && existingSource.movieId == job.mediaId) {
+        return existingSource;
+      }
+      if (job.mediaType == 'episode' &&
+          existingSource.episodeId == job.mediaId) {
+        return existingSource;
+      }
+      throw TransferException(
+        'MediaSource collision: Path $normRelPath on storage ${storage.id} is already registered to a different media item (movie: ${existingSource.movieId}, episode: ${existingSource.episodeId}).',
+        mediaId: job.mediaId,
+      );
+    }
+
+    // 7. Inherit metadata from original source if available
+    final origSource = await database.getMediaSourceById(
+      job.sourceMediaSourceId,
+    );
+    final filename = p.basename(normRelPath);
+    final extension = p.extension(normRelPath).replaceAll('.', '');
+    final fileSize = finalFile.lengthSync();
+    final now = DateTime.now();
+    final newSourceId = _uuid.v4();
+
+    final companion = MediaSourcesCompanion.insert(
+      id: newSourceId,
+      movieId: job.mediaType == 'movie'
+          ? Value(job.mediaId)
+          : const Value.absent(),
+      episodeId: job.mediaType == 'episode'
+          ? Value(job.mediaId)
+          : const Value.absent(),
+      storageId: storage.id,
+      sourceType: 'localDevice',
+      relativePath: normRelPath,
+      filename: filename,
+      extension: extension,
+      fileSize: BigInt.from(fileSize),
+      videoCodec: origSource?.videoCodec != null
+          ? Value(origSource!.videoCodec)
+          : const Value.absent(),
+      audioCodec: origSource?.audioCodec != null
+          ? Value(origSource!.audioCodec)
+          : const Value.absent(),
+      resolution: origSource?.resolution != null
+          ? Value(origSource!.resolution)
+          : const Value.absent(),
+      audioChannels: origSource?.audioChannels != null
+          ? Value(origSource!.audioChannels)
+          : const Value.absent(),
+      subtitleInformation: origSource?.subtitleInformation != null
+          ? Value(origSource!.subtitleInformation)
+          : const Value.absent(),
+      fingerprint: origSource?.fingerprint != null
+          ? Value(origSource!.fingerprint)
+          : const Value.absent(),
+      duration: origSource?.duration != null
+          ? Value(origSource!.duration)
+          : const Value.absent(),
+      createdAt: now,
+      firstSeenAt: now,
+      lastSeenAt: now,
+      available: const Value(true),
+    );
+
+    await database.insertMediaSource(companion);
+    return (await database.getMediaSourceById(newSourceId))!;
+  }
+
+  @override
+  Future<List<MediaSource>> registerCompletedSeasonTransfers(
+    String seasonId,
+  ) async {
+    final season = await database.findSeasonById(seasonId);
+    if (season == null) {
+      throw TransferException('Season $seasonId not found.', mediaId: seasonId);
+    }
+
+    if (season.seasonNumber < 0) {
+      throw TransferException(
+        'TV Extras (Season ${season.seasonNumber}) are excluded from canonical season transfers.',
+        mediaId: seasonId,
+      );
+    }
+
+    final allEpisodes = await database.getEpisodesForSeason(seasonId);
+    final results = <MediaSource>[];
+
+    for (final ep in allEpisodes) {
+      final jobs = await database.getTransferJobsForMedia(ep.id);
+      final completedJob = jobs
+          .where((j) => j.status == 'COMPLETED')
+          .lastOrNull;
+      if (completedJob != null) {
+        final registered = await registerCompletedTransfer(completedJob.id);
+        results.add(registered);
+      }
+    }
+
+    return results;
+  }
+
   void dispose() {
     for (final token in _activeTokens.values) {
       token.cancel('Service disposed.');

@@ -1,3 +1,4 @@
+import '../../data/database/database.dart' show MediaSource;
 import '../models/transfer_models.dart';
 
 /// Abstract service contract for copying cinema media onto application-managed device storage.
@@ -67,4 +68,19 @@ abstract class TransferService {
   ///
   /// Only deletes partial files that are confirmed not to belong to any active transfer.
   Future<int> cleanStalePartials();
+
+  /// Registers a finalized and verified [TransferJob] as an active, playable [MediaSource]
+  /// for the corresponding canonical logical Movie or Episode.
+  ///
+  /// Validation & Security:
+  /// - Transfer must exist and have status strictly `COMPLETED`.
+  /// - Final destination file must exist on disk (`.reelhouse-partial` is rejected).
+  /// - Target logical media item (Movie or Episode) must exist.
+  /// - Destination storage must be registered.
+  ///
+  /// Idempotent: safe to call repeatedly without creating duplicate [MediaSource] records.
+  Future<MediaSource> registerCompletedTransfer(String transferId);
+
+  /// Registers all completed episode transfers for a TV season.
+  Future<List<MediaSource>> registerCompletedSeasonTransfers(String seasonId);
 }
