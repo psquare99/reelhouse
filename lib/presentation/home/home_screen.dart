@@ -129,27 +129,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildHeroSection(context, tokens),
                 const SizedBox(height: 36),
 
-                // 5. In-Progress Movies (Continue Watching)
-                _buildMovieSection(
-                  title: 'CONTINUE WATCHING',
-                  subtitle: 'Resume playback where you left off',
-                  query: MovieQuery.continueWatching(limit: 10),
-                ),
-
-                // 6. In-Progress TV Episodes
-                _buildTvContinueWatchingSection(),
-
-                // 7. Recently Played (Movies & TV Episodes)
+                // 5. Recently Played (Movies & TV Episodes)
                 _buildRecentlyPlayedSection(),
 
-                // 8. Recently Added Movies
+                // 6. Recently Added Movies
                 _buildMovieSection(
                   title: 'RECENTLY ADDED',
                   subtitle: 'Latest acquisitions discovered across your disks',
                   query: MovieQuery.recentlyAdded(limit: 10),
                 ),
 
-                // 9. TV Recently Added Shows
+                // 7. TV Recently Added Shows
                 _buildTvRecentlyAddedSection(),
 
                 // 9. Favorites (Omitted entirely when empty)
@@ -529,85 +519,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTvContinueWatchingSection() {
-    return StreamBuilder<LibraryResult<EpisodeLibraryItem>>(
-      stream: widget.repository.watchEpisodes(
-        EpisodeQuery.continueWatching(limit: 10),
-      ),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return CinemaErrorSection(
-            title: 'TV CONTINUE WATCHING',
-            message: snapshot.error.toString(),
-            onRetry: () => setState(() {}),
-          );
-        }
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData) {
-          return const CinemaCarouselSkeleton(
-            title: 'TV CONTINUE WATCHING',
-            subtitle: 'Resume episodes where you left off',
-          );
-        }
-
-        final inProgressEpisodes = snapshot.data?.items ?? [];
-        if (inProgressEpisodes.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _SectionHeader(
-              title: 'TV CONTINUE WATCHING',
-              subtitle: 'Resume episodes where you left off',
-            ),
-            const SizedBox(height: 16),
-            _ResponsiveCardRow(
-              itemCount: inProgressEpisodes.length,
-              itemBuilder: (context, index) {
-                final ep = inProgressEpisodes[index];
-                final progress =
-                    (ep.runtime != null &&
-                        ep.runtime! > 0 &&
-                        ep.playbackPositionSeconds > 0)
-                    ? (ep.playbackPositionSeconds / (ep.runtime! * 60)).clamp(
-                        0.0,
-                        1.0,
-                      )
-                    : 0.4;
-
-                return CinemaPosterCard(
-                  title: ep.displayName,
-                  subtitle: ep.episodeCode,
-                  posterPath: ep.stillPath,
-                  availabilityStatus: ep.availability,
-                  watchState: ep.watchState.toDbString(),
-                  watchProgress: progress,
-                  fallbackIcon: Icons.tv,
-                  onTap: () {
-                    if (ep.showId != null) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => TvShowDetailScreen(
-                            showId: ep.showId!,
-                            repository: widget.repository,
-                            database: widget.database,
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                );
-              },
-            ),
-            const SizedBox(height: 36),
-          ],
-        );
-      },
-    );
-  }
-
   Widget _buildRecentlyPlayedSection() {
     return StreamBuilder<LibraryResult<MovieLibraryItem>>(
       stream: widget.repository.watchMovies(
@@ -654,7 +565,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const _SectionHeader(
                   title: 'RECENTLY PLAYED',
-                  subtitle: 'Pick up where you recently screened media',
+                  subtitle: 'Your latest screenings',
                 ),
                 const SizedBox(height: 16),
                 _ResponsiveCardRow(

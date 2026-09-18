@@ -144,7 +144,7 @@ void main() {
   });
 
   testWidgets(
-    'HomeScreen renders Movie and TV Continue Watching and Recently Added sections',
+    'HomeScreen renders Recently Added, Hero resume, and excludes separate Continue Watching section',
     (tester) async {
       await seedTestData();
 
@@ -164,14 +164,14 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // 1. Movie Continue Watching section
-      expect(find.text('CONTINUE WATCHING'), findsOneWidget);
-      expect(find.text('Oppenheimer'), findsWidgets);
+      // 1. Separate Continue Watching sections must NOT be present
+      expect(find.text('CONTINUE WATCHING'), findsNothing);
+      expect(find.text('TV CONTINUE WATCHING'), findsNothing);
 
-      // 2. TV Continue Watching section
-      expect(find.text('TV CONTINUE WATCHING'), findsOneWidget);
-      expect(find.text('Good News About Hell'), findsOneWidget);
-      expect(find.text('S01E01'), findsOneWidget);
+      // 2. Hero provides the in-progress Resume action
+      expect(find.text('RESUME WATCHING'), findsOneWidget);
+      expect(find.text('Resume'), findsOneWidget);
+      expect(find.text('Oppenheimer'), findsWidgets);
 
       // 3. Movie Recently Added section
       expect(find.text('RECENTLY ADDED'), findsOneWidget);
@@ -189,46 +189,8 @@ void main() {
     },
   );
 
-  testWidgets('HomeScreen movie card tap navigates to MovieDetailScreen', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(1280, 1600);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-
-    await seedTestData();
-
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: CinemaTheme.darkTheme,
-        home: HomeScreen(
-          repository: repository,
-          database: db,
-          onNavigateToMovies: () {},
-          onNavigateToTv: () {},
-          onNavigateToOffline: () {},
-          onNavigateToSettings: () {},
-        ),
-      ),
-    );
-
-    await tester.pumpAndSettle();
-
-    // Tap the Oppenheimer movie card
-    final oppenheimerCard = find.text('Oppenheimer').first;
-    await tester.ensureVisible(oppenheimerCard);
-    await tester.pumpAndSettle();
-    await tester.tap(oppenheimerCard);
-    await tester.pumpAndSettle();
-
-    expect(find.byType(MovieDetailScreen), findsOneWidget);
-
-    await tester.pumpWidget(const SizedBox());
-    await tester.pumpAndSettle();
-  });
-
   testWidgets(
-    'HomeScreen TV episode card tap navigates to TvShowDetailScreen',
+    'HomeScreen movie card tap in Recently Added navigates to MovieDetailScreen',
     (tester) async {
       tester.view.physicalSize = const Size(1280, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -252,14 +214,52 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap the episode card in TV Continue Watching
-      final episodeCard = find.text('Good News About Hell');
-      await tester.ensureVisible(episodeCard);
+      // Tap the Dune movie card
+      final duneCard = find.text('Dune: Part Two').first;
+      await tester.ensureVisible(duneCard);
       await tester.pumpAndSettle();
-      await tester.tap(episodeCard);
+      await tester.tap(duneCard);
       await tester.pumpAndSettle();
 
-      expect(find.byType(TvShowDetailScreen), findsOneWidget);
+      expect(find.byType(MovieDetailScreen), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'HomeScreen Hero Resume action tap navigates to MovieDetailScreen',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await seedTestData();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: HomeScreen(
+            repository: repository,
+            database: db,
+            onNavigateToMovies: () {},
+            onNavigateToTv: () {},
+            onNavigateToOffline: () {},
+            onNavigateToSettings: () {},
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Tap Resume button in Hero
+      final resumeBtn = find.text('Resume');
+      expect(resumeBtn, findsOneWidget);
+      await tester.tap(resumeBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MovieDetailScreen), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
@@ -399,7 +399,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
 
-      expect(find.text('CONTINUE WATCHING'), findsOneWidget);
+      expect(find.text('RECENTLY ADDED'), findsOneWidget);
+      expect(find.text('CONTINUE WATCHING'), findsNothing);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
@@ -492,7 +493,7 @@ void main() {
   );
 
   testWidgets(
-    'HomeScreen renders RECENTLY PLAYED section when items have lastPlayedAt',
+    'HomeScreen renders RECENTLY PLAYED section with "Your latest screenings" when items have lastPlayedAt',
     (tester) async {
       tester.view.physicalSize = const Size(1280, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -500,7 +501,7 @@ void main() {
 
       await seedTestData();
 
-      // Seed a movie with lastPlayedAt
+      // Seed a movie and episode with lastPlayedAt
       final now = DateTime.now();
       await db
           .into(db.movies)
@@ -516,6 +517,13 @@ void main() {
               updatedAt: now,
             ),
           );
+
+      // Update ep-1 with lastPlayedAt
+      await (db.update(db.episodes)..where((e) => e.id.equals('ep-1'))).write(
+        EpisodesCompanion(
+          lastPlayedAt: drift.Value(now.subtract(const Duration(minutes: 5))),
+        ),
+      );
 
       await tester.pumpWidget(
         MaterialApp(
@@ -534,7 +542,50 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('RECENTLY PLAYED'), findsOneWidget);
+      expect(find.text('Your latest screenings'), findsOneWidget);
       expect(find.text('Inception'), findsWidgets);
+      expect(find.text('Good News About Hell'), findsOneWidget);
+
+      // Tap episode card in Recently Played to verify navigation
+      final epCard = find.text('Good News About Hell');
+      await tester.ensureVisible(epCard);
+      await tester.pumpAndSettle();
+      await tester.tap(epCard);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TvShowDetailScreen), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'HomeScreen omits RECENTLY PLAYED section when no playback history exists',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await seedTestData();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: HomeScreen(
+            repository: repository,
+            database: db,
+            onNavigateToMovies: () {},
+            onNavigateToTv: () {},
+            onNavigateToOffline: () {},
+            onNavigateToSettings: () {},
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('RECENTLY PLAYED'), findsNothing);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
