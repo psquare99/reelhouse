@@ -881,4 +881,116 @@ void main() {
     expect(ep.stillPath, isNotNull);
     expect(File(ep.stillPath!).existsSync(), isTrue);
   });
+
+  test('backfillMissingMetadata populates genres and TMDB collection for existing identified media', () async {
+    final mockClient = MockClient((request) async {
+      final path = request.url.path;
+
+      if (path == '/3/movie/11') {
+        return http.Response(
+          jsonEncode({
+            'id': 11,
+            'title': 'Star Wars: A New Hope',
+            'genres': [
+              {'id': 28, 'name': 'Action'},
+              {'id': 12, 'name': 'Adventure'},
+              {'id': 878, 'name': 'Science Fiction'},
+            ],
+            'belongs_to_collection': {
+              'id': 10,
+              'name': 'Star Wars Collection',
+              'poster_path': '/sw_col_poster.jpg',
+              'backdrop_path': '/sw_col_backdrop.jpg',
+            },
+          }),
+          200,
+        );
+      }
+
+      if (path == '/3/tv/1668') {
+        return http.Response(
+          jsonEncode({
+            'id': 1668,
+            'name': 'Friends',
+            'genres': [
+              {'id': 35, 'name': 'Comedy'},
+              {'id': 18, 'name': 'Drama'},
+            ],
+          }),
+          200,
+        );
+      }
+
+      return http.Response('Not Found', 404);
+    });
+
+    final tmdbClient = TmdbApiClient(
+      apiKey: 'test-api-key',
+      httpClient: mockClient,
+      minRequestInterval: Duration.zero,
+    );
+    final imageCache = ImageCacheService(
+      localStorageManager: storageManager,
+      httpClient: mockClient,
+    );
+    final service = MetadataService(
+      database: db,
+      tmdbClient: tmdbClient,
+      imageCacheService: imageCache,
+    );
+
+    final now = DateTime.now();
+
+    // Seed already identified movie lacking genres and collection (simulating v4 -> v5 migration)
+    await db
+        .into(db.movies)
+        .insert(
+          MoviesCompanion.insert(
+            id: 'movie-sw',
+            detectedTitle: 'Star Wars A New Hope',
+            title: const drift.Value('Star Wars: A New Hope'),
+            year: const drift.Value(1977),
+            tmdbId: const drift.Value(11),
+            identificationStatus: const drift.Value('IDENTIFIED'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+
+    // Seed already identified TV show lacking genres
+    await db
+        .into(db.tvShows)
+        .insert(
+          TvShowsCompanion.insert(
+            id: 'show-friends',
+            detectedTitle: 'Friends',
+            title: const drift.Value('Friends'),
+            tmdbId: const drift.Value(1668),
+            identificationStatus: const drift.Value('IDENTIFIED'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+
+    // Run backfill
+    final summary = await service.backfillMissingMetadata();
+    expect(summary.totalProcessed, 2);
+    expect(summary.automaticallyMatched, 2);
+    expect(summary.errors, 0);
+
+    // Verify movie was enriched
+    final movie = await db.findMovieById('movie-sw');
+    expect(movie, isNotNull);
+    expect(movie!.genres, 'Action, Adventure, Science Fiction');
+    expect(movie.tmdbCollectionId, 10);
+    expect(movie.tmdbCollectionName, 'Star Wars Collection');
+    expect(movie.title, 'Star Wars: A New Hope');
+    expect(movie.year, 1977);
+
+    // Verify TV show was enriched
+    final show = await db.findTvShowById('show-friends');
+    expect(show, isNotNull);
+    expect(show!.genres, 'Comedy, Drama');
+    expect(show.title, 'Friends');
+  });
 }

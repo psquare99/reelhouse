@@ -373,8 +373,117 @@ class MetadataService {
     return enrichedCount;
   }
 
+  /// Enriches an already-identified [Movie] with missing metadata (genres, TMDB collections)
+  /// without altering its canonical identity, local media sources, or watch state.
+  Future<bool> enrichMovieMetadata(Movie movie) async {
+    if (!tmdbClient.hasApiKey || movie.tmdbId == null) return false;
+
+    try {
+      final details = await tmdbClient.getMovieDetails(movie.tmdbId!);
+      if (details == null) return false;
+
+      await database.updateMovieMetadata(
+        movie.id,
+        tmdbId: details.id,
+        genres: details.genres.isNotEmpty ? details.genres.join(', ') : null,
+        tmdbCollectionId: details.tmdbCollectionId,
+        tmdbCollectionName: details.tmdbCollectionName,
+        tmdbCollectionPosterPath: details.tmdbCollectionPosterPath != null
+            ? tmdbClient.getPosterUrl(details.tmdbCollectionPosterPath)
+            : null,
+        tmdbCollectionBackdropPath: details.tmdbCollectionBackdropPath != null
+            ? tmdbClient.getBackdropUrl(details.tmdbCollectionBackdropPath)
+            : null,
+        imdbId: movie.imdbId ?? details.imdbId,
+        runtime: movie.runtime ?? details.runtime,
+        overview: movie.overview ?? details.overview,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Enriches an already-identified [TvShow] with missing metadata (genres)
+  /// without altering its canonical identity, seasons, episodes, or sources.
+  Future<bool> enrichTvShowMetadata(TvShow show) async {
+    if (!tmdbClient.hasApiKey || show.tmdbId == null) return false;
+
+    try {
+      final details = await tmdbClient.getTvShowDetails(show.tmdbId!);
+      if (details == null) return false;
+
+      await database.updateTvShowMetadata(
+        show.id,
+        tmdbId: details.id,
+        genres: details.genres.isNotEmpty ? details.genres.join(', ') : null,
+        imdbId: show.imdbId ?? details.imdbId,
+        overview: show.overview ?? details.overview,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// One-time or background backfill for existing identified media lacking newly supported metadata
+  /// (such as genres or franchise collections added in schema v5).
+  Future<MetadataPipelineSummary> backfillMissingMetadata({
+    void Function(int current, int total, String currentTitle)? onProgress,
+  }) async {
+    final moviesNeedingMetadata = await database
+        .getIdentifiedMoviesMissingGenres();
+    final showsNeedingMetadata = await database
+        .getIdentifiedTvShowsMissingGenres();
+    final total = moviesNeedingMetadata.length + showsNeedingMetadata.length;
+
+    var processed = 0;
+    var matched = 0;
+    var errors = 0;
+
+    for (final movie in moviesNeedingMetadata) {
+      processed++;
+      onProgress?.call(processed, total, movie.title ?? movie.detectedTitle);
+
+      try {
+        final success = await enrichMovieMetadata(movie);
+        if (success) {
+          matched++;
+        } else {
+          errors++;
+        }
+      } catch (_) {
+        errors++;
+      }
+    }
+
+    for (final show in showsNeedingMetadata) {
+      processed++;
+      onProgress?.call(processed, total, show.title ?? show.detectedTitle);
+
+      try {
+        final success = await enrichTvShowMetadata(show);
+        if (success) {
+          matched++;
+        } else {
+          errors++;
+        }
+      } catch (_) {
+        errors++;
+      }
+    }
+
+    return MetadataPipelineSummary(
+      totalProcessed: processed,
+      automaticallyMatched: matched,
+      routedToVerification: 0,
+      errors: errors,
+    );
+  }
+
   /// Runs identification on all currently unmatched movies and shows,
-  /// as well as enriching any identified TV shows with missing episode metadata.
+  /// as well as enriching any identified TV shows with missing episode metadata,
+  /// and backfilling metadata for existing identified media missing genres/collections.
   Future<MetadataPipelineSummary> identifyAllUnmatched({
     void Function(int current, int total, String currentTitle)? onProgress,
   }) async {
@@ -382,10 +491,24 @@ class MetadataService {
     final unmatchedShows = await database.getUnmatchedTvShows();
     final showsNeedingEpisodeEnrichment = await database
         .getIdentifiedTvShowsNeedingEpisodeEnrichment();
+    final moviesNeedingMetadata = await database
+        .getIdentifiedMoviesMissingGenres();
+    final showsNeedingMetadata = await database
+        .getIdentifiedTvShowsMissingGenres();
+
+    final episodeEnrichmentShowIds = showsNeedingEpisodeEnrichment
+        .map((s) => s.id)
+        .toSet();
+    final remainingShowsNeedingMetadata = showsNeedingMetadata
+        .where((s) => !episodeEnrichmentShowIds.contains(s.id))
+        .toList();
+
     final total =
         unmatchedMovies.length +
         unmatchedShows.length +
-        showsNeedingEpisodeEnrichment.length;
+        showsNeedingEpisodeEnrichment.length +
+        moviesNeedingMetadata.length +
+        remainingShowsNeedingMetadata.length;
 
     var processed = 0;
     var matched = 0;
@@ -429,9 +552,44 @@ class MetadataService {
       onProgress?.call(processed, total, show.title ?? show.detectedTitle);
 
       try {
+        if (show.genres == null || show.genres!.trim().isEmpty) {
+          await enrichTvShowMetadata(show);
+        }
         final count = await enrichTvShowEpisodes(show);
         if (count > 0) {
           matched++;
+        }
+      } catch (_) {
+        errors++;
+      }
+    }
+
+    for (final movie in moviesNeedingMetadata) {
+      processed++;
+      onProgress?.call(processed, total, movie.title ?? movie.detectedTitle);
+
+      try {
+        final success = await enrichMovieMetadata(movie);
+        if (success) {
+          matched++;
+        } else {
+          errors++;
+        }
+      } catch (_) {
+        errors++;
+      }
+    }
+
+    for (final show in remainingShowsNeedingMetadata) {
+      processed++;
+      onProgress?.call(processed, total, show.title ?? show.detectedTitle);
+
+      try {
+        final success = await enrichTvShowMetadata(show);
+        if (success) {
+          matched++;
+        } else {
+          errors++;
         }
       } catch (_) {
         errors++;

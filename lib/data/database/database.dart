@@ -294,6 +294,24 @@ class AppDatabase extends _$AppDatabase {
     return query.map((row) => row.readTable(tvShows)).get();
   }
 
+  /// Get all identified movies currently missing genres or franchise metadata.
+  Future<List<Movie>> getIdentifiedMoviesMissingGenres() =>
+      (select(movies)..where(
+            (m) =>
+                m.tmdbId.isNotNull() &
+                (m.genres.isNull() | m.genres.equals('')),
+          ))
+          .get();
+
+  /// Get all identified TV shows currently missing genres metadata.
+  Future<List<TvShow>> getIdentifiedTvShowsMissingGenres() =>
+      (select(tvShows)..where(
+            (t) =>
+                t.tmdbId.isNotNull() &
+                (t.genres.isNull() | t.genres.equals('')),
+          ))
+          .get();
+
   /// Watch count of movies currently in the Needs Verification / Unmatched queue.
   Stream<int> watchUnmatchedMovieCount() {
     final movieCount = countAll();
