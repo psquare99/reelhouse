@@ -129,7 +129,53 @@ class FallbackMetadataOrchestrator {
         }
       }
 
-      // If ambiguous or below threshold on primary, report diagnostic
+      // If ambiguous on primary, check if ordering prefix stripped candidate matches on primary
+      final strippedCandidate =
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(detectedTitle);
+      if (strippedCandidate != null && strippedCandidate != detectedTitle) {
+        try {
+          final altPrimaryCandidates = await primaryProvider.searchMovies(
+            strippedCandidate,
+            year: detectedYear,
+          );
+          if (altPrimaryCandidates.isNotEmpty) {
+            final altDecision = matcher.evaluateProviderCandidates(
+              detectedTitle: strippedCandidate,
+              detectedYear: detectedYear,
+              candidates: altPrimaryCandidates,
+            );
+            if (altDecision.isAutomatic && altDecision.bestMatch != null) {
+              final details = await primaryProvider.getMovieDetails(
+                altDecision.bestMatch!.providerItemId,
+              );
+              if (details != null) {
+                return OrchestratedMovieResult(
+                  isSuccess: true,
+                  details: details,
+                  providerId: primaryProvider.id,
+                  providerItemId: altDecision.bestMatch!.providerItemId,
+                  confidence: altDecision.confidence,
+                  isFallbackUsed: false,
+                  diagnostic: MetadataDiagnostic(
+                    mediaId: mediaId,
+                    detectedTitle: detectedTitle,
+                    detectedYear: detectedYear,
+                    category: MetadataFailureCategory.providerUnknownTitle,
+                    providerId: primaryProvider.id,
+                    message:
+                        'Successfully identified via ${primaryProvider.id} using normalized candidate',
+                    candidatesCount: altPrimaryCandidates.length,
+                    topConfidence: altDecision.confidence,
+                  ),
+                  candidates: altDecision.candidates,
+                );
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      // If still ambiguous or below threshold on primary, report diagnostic without querying fallback
       if (decision.needsVerification) {
         return OrchestratedMovieResult(
           isSuccess: false,
@@ -150,6 +196,54 @@ class FallbackMetadataOrchestrator {
       }
     }
 
+    // 1b. If primary returned 0 candidates, check if stripped candidate on primary finds anything
+    final strippedCandidate =
+        MetadataMatcher.extractOrderingPrefixStrippedCandidate(detectedTitle);
+    if (primaryProvider.isConfigured &&
+        strippedCandidate != null &&
+        strippedCandidate != detectedTitle) {
+      try {
+        final altPrimaryCandidates = await primaryProvider.searchMovies(
+          strippedCandidate,
+          year: detectedYear,
+        );
+        if (altPrimaryCandidates.isNotEmpty) {
+          final altDecision = matcher.evaluateProviderCandidates(
+            detectedTitle: strippedCandidate,
+            detectedYear: detectedYear,
+            candidates: altPrimaryCandidates,
+          );
+          if (altDecision.isAutomatic && altDecision.bestMatch != null) {
+            final details = await primaryProvider.getMovieDetails(
+              altDecision.bestMatch!.providerItemId,
+            );
+            if (details != null) {
+              return OrchestratedMovieResult(
+                isSuccess: true,
+                details: details,
+                providerId: primaryProvider.id,
+                providerItemId: altDecision.bestMatch!.providerItemId,
+                confidence: altDecision.confidence,
+                isFallbackUsed: false,
+                diagnostic: MetadataDiagnostic(
+                  mediaId: mediaId,
+                  detectedTitle: detectedTitle,
+                  detectedYear: detectedYear,
+                  category: MetadataFailureCategory.providerUnknownTitle,
+                  providerId: primaryProvider.id,
+                  message:
+                      'Successfully identified via ${primaryProvider.id} using normalized candidate',
+                  candidatesCount: altPrimaryCandidates.length,
+                  topConfidence: altDecision.confidence,
+                ),
+                candidates: altDecision.candidates,
+              );
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
     // 2. Primary failed or returned 0 candidates -> Query Movie Fallback (OMDb)
     if (movieFallbackProvider != null && movieFallbackProvider!.isConfigured) {
       List<ProviderCandidate> fallbackCandidates = [];
@@ -160,9 +254,21 @@ class FallbackMetadataOrchestrator {
         );
       } catch (_) {}
 
+      // Try normalized candidate on fallback provider if primary search yielded nothing
+      if (fallbackCandidates.isEmpty &&
+          strippedCandidate != null &&
+          strippedCandidate != detectedTitle) {
+        try {
+          fallbackCandidates = await movieFallbackProvider!.searchMovies(
+            strippedCandidate,
+            year: detectedYear,
+          );
+        } catch (_) {}
+      }
+
       if (fallbackCandidates.isNotEmpty) {
         final fallbackDecision = matcher.evaluateProviderCandidates(
-          detectedTitle: detectedTitle,
+          detectedTitle: strippedCandidate ?? detectedTitle,
           detectedYear: detectedYear,
           candidates: fallbackCandidates,
         );
@@ -291,6 +397,51 @@ class FallbackMetadataOrchestrator {
         }
       }
 
+      // If ambiguous on primary, check if ordering prefix stripped candidate matches on primary
+      final strippedCandidate =
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(detectedTitle);
+      if (strippedCandidate != null && strippedCandidate != detectedTitle) {
+        try {
+          final altPrimaryCandidates = await primaryProvider.searchTvShows(
+            strippedCandidate,
+          );
+          if (altPrimaryCandidates.isNotEmpty) {
+            final altDecision = matcher.evaluateProviderCandidates(
+              detectedTitle: strippedCandidate,
+              detectedYear: detectedYear,
+              candidates: altPrimaryCandidates,
+            );
+            if (altDecision.isAutomatic && altDecision.bestMatch != null) {
+              final details = await primaryProvider.getTvShowDetails(
+                altDecision.bestMatch!.providerItemId,
+              );
+              if (details != null) {
+                return OrchestratedTvResult(
+                  isSuccess: true,
+                  details: details,
+                  providerId: primaryProvider.id,
+                  providerItemId: altDecision.bestMatch!.providerItemId,
+                  confidence: altDecision.confidence,
+                  isFallbackUsed: false,
+                  diagnostic: MetadataDiagnostic(
+                    mediaId: mediaId,
+                    detectedTitle: detectedTitle,
+                    detectedYear: detectedYear,
+                    category: MetadataFailureCategory.providerUnknownTitle,
+                    providerId: primaryProvider.id,
+                    message:
+                        'Successfully identified via ${primaryProvider.id} using normalized candidate',
+                    candidatesCount: altPrimaryCandidates.length,
+                    topConfidence: altDecision.confidence,
+                  ),
+                  candidates: altDecision.candidates,
+                );
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
       if (decision.needsVerification) {
         return OrchestratedTvResult(
           isSuccess: false,
@@ -311,6 +462,53 @@ class FallbackMetadataOrchestrator {
       }
     }
 
+    // 1b. If primary returned 0 candidates, check if stripped candidate on primary finds anything
+    final strippedCandidate =
+        MetadataMatcher.extractOrderingPrefixStrippedCandidate(detectedTitle);
+    if (primaryProvider.isConfigured &&
+        strippedCandidate != null &&
+        strippedCandidate != detectedTitle) {
+      try {
+        final altPrimaryCandidates = await primaryProvider.searchTvShows(
+          strippedCandidate,
+        );
+        if (altPrimaryCandidates.isNotEmpty) {
+          final altDecision = matcher.evaluateProviderCandidates(
+            detectedTitle: strippedCandidate,
+            detectedYear: detectedYear,
+            candidates: altPrimaryCandidates,
+          );
+          if (altDecision.isAutomatic && altDecision.bestMatch != null) {
+            final details = await primaryProvider.getTvShowDetails(
+              altDecision.bestMatch!.providerItemId,
+            );
+            if (details != null) {
+              return OrchestratedTvResult(
+                isSuccess: true,
+                details: details,
+                providerId: primaryProvider.id,
+                providerItemId: altDecision.bestMatch!.providerItemId,
+                confidence: altDecision.confidence,
+                isFallbackUsed: false,
+                diagnostic: MetadataDiagnostic(
+                  mediaId: mediaId,
+                  detectedTitle: detectedTitle,
+                  detectedYear: detectedYear,
+                  category: MetadataFailureCategory.providerUnknownTitle,
+                  providerId: primaryProvider.id,
+                  message:
+                      'Successfully identified via ${primaryProvider.id} using normalized candidate',
+                  candidatesCount: altPrimaryCandidates.length,
+                  topConfidence: altDecision.confidence,
+                ),
+                candidates: altDecision.candidates,
+              );
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
     // 2. Primary failed or returned 0 candidates -> Query TV Fallback (TVmaze)
     if (tvFallbackProvider != null && tvFallbackProvider!.isConfigured) {
       List<ProviderCandidate> fallbackCandidates = [];
@@ -320,9 +518,20 @@ class FallbackMetadataOrchestrator {
         );
       } catch (_) {}
 
+      // Try normalized candidate on fallback provider if primary search yielded nothing
+      if (fallbackCandidates.isEmpty &&
+          strippedCandidate != null &&
+          strippedCandidate != detectedTitle) {
+        try {
+          fallbackCandidates = await tvFallbackProvider!.searchTvShows(
+            strippedCandidate,
+          );
+        } catch (_) {}
+      }
+
       if (fallbackCandidates.isNotEmpty) {
         final fallbackDecision = matcher.evaluateProviderCandidates(
-          detectedTitle: detectedTitle,
+          detectedTitle: strippedCandidate ?? detectedTitle,
           detectedYear: detectedYear,
           candidates: fallbackCandidates,
         );

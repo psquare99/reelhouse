@@ -5,6 +5,133 @@ import 'package:reelhouse/domain/metadata/metadata_matcher.dart';
 void main() {
   const matcher = MetadataMatcher();
 
+  group(
+    'MetadataMatcher — Candidate Normalization & Ordering Prefix Extraction',
+    () {
+      test('extracts ordering prefixes correctly for common conventions', () {
+        // Space-separated prefixes
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+            "1 Harry Potter and the Sorcerer's Stone",
+          ),
+          "Harry Potter and the Sorcerer's Stone",
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate("1 Iron Man"),
+          "Iron Man",
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+            "2 The Dark Knight",
+          ),
+          "The Dark Knight",
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+            "10 Captain America The Winter Soldier",
+          ),
+          "Captain America The Winter Soldier",
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+            "29 Doctor Strange in the Multiverse of Madness",
+          ),
+          "Doctor Strange in the Multiverse of Madness",
+        );
+
+        // Separator-based prefixes (dot, dash, underscore)
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate("1. Iron Man"),
+          "Iron Man",
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+            "01. Iron Man",
+          ),
+          "Iron Man",
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+            "01 - The Dark Knight",
+          ),
+          "The Dark Knight",
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate("1 - Movie"),
+          "Movie",
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+            "02_The Matrix",
+          ),
+          "The Matrix",
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate("1_Movie"),
+          "Movie",
+        );
+      });
+
+      test('protects legitimate numeric titles and 4-digit years from prefix stripping', () {
+        // 4-digit years/titles MUST NOT be stripped
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate("1917"),
+          isNull,
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+            "2001: A Space Odyssey",
+          ),
+          isNull,
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+            "2001 A Space Odyssey",
+          ),
+          isNull,
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate("1984"),
+          isNull,
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate("2012"),
+          isNull,
+        );
+
+        // 3-digit titles without separator MUST NOT be stripped
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate("300"),
+          isNull,
+        );
+        expect(
+          MetadataMatcher.extractOrderingPrefixStrippedCandidate(
+            "500 Days of Summer",
+          ),
+          isNull,
+        );
+      });
+
+      test('getTitleCandidates returns original title first, then stripped candidate if present', () {
+        final hpCandidates = MetadataMatcher.getTitleCandidates(
+          "1 Harry Potter and the Sorcerer's Stone",
+        );
+        expect(hpCandidates, [
+          "1 Harry Potter and the Sorcerer's Stone",
+          "Harry Potter and the Sorcerer's Stone",
+        ]);
+
+        final yearCandidates = MetadataMatcher.getTitleCandidates("1917");
+        expect(yearCandidates, ["1917"]);
+
+        final spaceOdysseyCandidates = MetadataMatcher.getTitleCandidates(
+          "2001 A Space Odyssey",
+        );
+        expect(spaceOdysseyCandidates, ["2001 A Space Odyssey"]);
+      });
+    },
+  );
+
   group('MetadataMatcher — Movies', () {
     test('produces automaticMatch for exact title and year', () {
       final candidates = [

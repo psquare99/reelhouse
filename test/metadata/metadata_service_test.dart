@@ -993,4 +993,393 @@ void main() {
     expect(show!.genres, 'Comedy, Drama');
     expect(show.title, 'Friends');
   });
+
+  group('MetadataService — Candidate Normalization & Ordering Prefix Flow', () {
+    test('identifies ordering prefix titles (1 Harry Potter, 1 Iron Man, 01 - The Dark Knight, 02_The Matrix) while preserving detectedTitle', () async {
+      final mockClient = MockClient((request) async {
+        final query = request.url.queryParameters['query'] ?? '';
+        final path = request.url.path;
+
+        if (path == '/3/search/movie') {
+          // If search is for stripped candidate, return canonical result
+          if (query == "Harry Potter and the Sorcerer's Stone") {
+            return http.Response(
+              jsonEncode({
+                'results': [
+                  {
+                    'id': 671,
+                    'title': "Harry Potter and the Sorcerer's Stone",
+                    'release_date': '2001-11-16',
+                  },
+                ],
+              }),
+              200,
+            );
+          }
+          if (query == 'Iron Man') {
+            return http.Response(
+              jsonEncode({
+                'results': [
+                  {
+                    'id': 1726,
+                    'title': 'Iron Man',
+                    'release_date': '2008-04-30',
+                  },
+                ],
+              }),
+              200,
+            );
+          }
+          if (query == 'The Dark Knight') {
+            return http.Response(
+              jsonEncode({
+                'results': [
+                  {
+                    'id': 155,
+                    'title': 'The Dark Knight',
+                    'release_date': '2008-07-16',
+                  },
+                ],
+              }),
+              200,
+            );
+          }
+          if (query == 'The Matrix') {
+            return http.Response(
+              jsonEncode({
+                'results': [
+                  {
+                    'id': 603,
+                    'title': 'The Matrix',
+                    'release_date': '1999-03-30',
+                  },
+                ],
+              }),
+              200,
+            );
+          }
+
+          // If search is for original unnormalized candidate with numeric prefix, return 0 results
+          return http.Response(jsonEncode({'results': []}), 200);
+        }
+
+        if (path.startsWith('/3/movie/')) {
+          final id = int.tryParse(path.split('/').last) ?? 0;
+          final titleMap = {
+            671: "Harry Potter and the Sorcerer's Stone",
+            1726: 'Iron Man',
+            155: 'The Dark Knight',
+            603: 'The Matrix',
+          };
+          return http.Response(
+            jsonEncode({
+              'id': id,
+              'title': titleMap[id] ?? 'Unknown',
+              'release_date': '2000-01-01',
+            }),
+            200,
+          );
+        }
+
+        return http.Response.bytes([1, 2], 200);
+      });
+
+      final tmdbClient = TmdbApiClient(
+        apiKey: 'test-api-key',
+        httpClient: mockClient,
+        minRequestInterval: Duration.zero,
+      );
+      final service = MetadataService(
+        database: db,
+        tmdbClient: tmdbClient,
+        imageCacheService: ImageCacheService(
+          localStorageManager: storageManager,
+          httpClient: mockClient,
+        ),
+      );
+
+      final now = DateTime.now();
+
+      // Seed 4 movies with various ordering prefix conventions
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-hp',
+              detectedTitle: "1 Harry Potter and the Sorcerer's Stone",
+              detectedYear: const drift.Value(2001),
+              identificationStatus: const drift.Value('PENDING'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-im',
+              detectedTitle: '1 Iron Man',
+              detectedYear: const drift.Value(2008),
+              identificationStatus: const drift.Value('PENDING'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-tdk',
+              detectedTitle: '01 - The Dark Knight',
+              detectedYear: const drift.Value(2008),
+              identificationStatus: const drift.Value('PENDING'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-matrix',
+              detectedTitle: '02_The Matrix',
+              detectedYear: const drift.Value(1999),
+              identificationStatus: const drift.Value('PENDING'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Run identification on all 4
+      final hp = await db.findMovieById('m-hp');
+      final decisionHp = await service.identifyMovie(hp!);
+      expect(decisionHp.isAutomatic, isTrue);
+      expect(
+        decisionHp.bestMatch?.title,
+        "Harry Potter and the Sorcerer's Stone",
+      );
+
+      final im = await db.findMovieById('m-im');
+      final decisionIm = await service.identifyMovie(im!);
+      expect(decisionIm.isAutomatic, isTrue);
+      expect(decisionIm.bestMatch?.title, 'Iron Man');
+
+      final tdk = await db.findMovieById('m-tdk');
+      final decisionTdk = await service.identifyMovie(tdk!);
+      expect(decisionTdk.isAutomatic, isTrue);
+      expect(decisionTdk.bestMatch?.title, 'The Dark Knight');
+
+      final matrix = await db.findMovieById('m-matrix');
+      final decisionMatrix = await service.identifyMovie(matrix!);
+      expect(decisionMatrix.isAutomatic, isTrue);
+      expect(decisionMatrix.bestMatch?.title, 'The Matrix');
+
+      // Verify that database reflects canonical title while preserving detectedTitle!
+      final hpAfter = await db.findMovieById('m-hp');
+      expect(hpAfter!.detectedTitle, "1 Harry Potter and the Sorcerer's Stone");
+      expect(hpAfter.title, "Harry Potter and the Sorcerer's Stone");
+      expect(hpAfter.identificationStatus, 'IDENTIFIED');
+
+      final imAfter = await db.findMovieById('m-im');
+      expect(imAfter!.detectedTitle, '1 Iron Man');
+      expect(imAfter.title, 'Iron Man');
+      expect(imAfter.identificationStatus, 'IDENTIFIED');
+
+      final tdkAfter = await db.findMovieById('m-tdk');
+      expect(tdkAfter!.detectedTitle, '01 - The Dark Knight');
+      expect(tdkAfter.title, 'The Dark Knight');
+      expect(tdkAfter.identificationStatus, 'IDENTIFIED');
+
+      final matrixAfter = await db.findMovieById('m-matrix');
+      expect(matrixAfter!.detectedTitle, '02_The Matrix');
+      expect(matrixAfter.title, 'The Matrix');
+      expect(matrixAfter.identificationStatus, 'IDENTIFIED');
+    });
+
+    test('protects legitimate numeric titles (10 Things I Hate About You, 12 Angry Men, 1917, 2001 A Space Odyssey)', () async {
+      final mockClient = MockClient((request) async {
+        final query = request.url.queryParameters['query'] ?? '';
+        final path = request.url.path;
+
+        if (path == '/3/search/movie') {
+          if (query == '10 Things I Hate About You') {
+            return http.Response(
+              jsonEncode({
+                'results': [
+                  {
+                    'id': 4951,
+                    'title': '10 Things I Hate About You',
+                    'release_date': '1999-03-31',
+                  },
+                ],
+              }),
+              200,
+            );
+          }
+          if (query == '12 Angry Men') {
+            return http.Response(
+              jsonEncode({
+                'results': [
+                  {
+                    'id': 389,
+                    'title': '12 Angry Men',
+                    'release_date': '1957-04-10',
+                  },
+                ],
+              }),
+              200,
+            );
+          }
+          if (query == '1917') {
+            return http.Response(
+              jsonEncode({
+                'results': [
+                  {'id': 530915, 'title': '1917', 'release_date': '2019-12-25'},
+                ],
+              }),
+              200,
+            );
+          }
+          if (query == '2001: A Space Odyssey' ||
+              query == '2001 A Space Odyssey') {
+            return http.Response(
+              jsonEncode({
+                'results': [
+                  {
+                    'id': 62,
+                    'title': '2001: A Space Odyssey',
+                    'release_date': '1968-04-02',
+                  },
+                ],
+              }),
+              200,
+            );
+          }
+        }
+
+        if (path.startsWith('/3/movie/')) {
+          final id = int.tryParse(path.split('/').last) ?? 0;
+          final titleMap = {
+            4951: '10 Things I Hate About You',
+            389: '12 Angry Men',
+            530915: '1917',
+            62: '2001: A Space Odyssey',
+          };
+          return http.Response(
+            jsonEncode({
+              'id': id,
+              'title': titleMap[id] ?? 'Unknown',
+              'release_date': '2000-01-01',
+            }),
+            200,
+          );
+        }
+
+        return http.Response.bytes([1, 2], 200);
+      });
+
+      final tmdbClient = TmdbApiClient(
+        apiKey: 'test-api-key',
+        httpClient: mockClient,
+        minRequestInterval: Duration.zero,
+      );
+      final service = MetadataService(
+        database: db,
+        tmdbClient: tmdbClient,
+        imageCacheService: ImageCacheService(
+          localStorageManager: storageManager,
+          httpClient: mockClient,
+        ),
+      );
+
+      final now = DateTime.now();
+
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-10things',
+              detectedTitle: '10 Things I Hate About You',
+              detectedYear: const drift.Value(1999),
+              identificationStatus: const drift.Value('PENDING'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-12angry',
+              detectedTitle: '12 Angry Men',
+              detectedYear: const drift.Value(1957),
+              identificationStatus: const drift.Value('PENDING'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-1917',
+              detectedTitle: '1917',
+              detectedYear: const drift.Value(2019),
+              identificationStatus: const drift.Value('PENDING'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-2001',
+              detectedTitle: '2001 A Space Odyssey',
+              detectedYear: const drift.Value(1968),
+              identificationStatus: const drift.Value('PENDING'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Verify legitimate titles identify as themselves
+      final m1 = await db.findMovieById('m-10things');
+      final d1 = await service.identifyMovie(m1!);
+      expect(d1.isAutomatic, isTrue);
+      expect(d1.bestMatch?.title, '10 Things I Hate About You');
+
+      final m2 = await db.findMovieById('m-12angry');
+      final d2 = await service.identifyMovie(m2!);
+      expect(d2.isAutomatic, isTrue);
+      expect(d2.bestMatch?.title, '12 Angry Men');
+
+      final m3 = await db.findMovieById('m-1917');
+      final d3 = await service.identifyMovie(m3!);
+      expect(d3.isAutomatic, isTrue);
+      expect(d3.bestMatch?.title, '1917');
+
+      final m4 = await db.findMovieById('m-2001');
+      final d4 = await service.identifyMovie(m4!);
+      expect(d4.isAutomatic, isTrue);
+      expect(d4.bestMatch?.title, '2001: A Space Odyssey');
+
+      // Check DB values
+      final m1After = await db.findMovieById('m-10things');
+      expect(m1After!.title, '10 Things I Hate About You');
+      expect(m1After.detectedTitle, '10 Things I Hate About You');
+
+      final m2After = await db.findMovieById('m-12angry');
+      expect(m2After!.title, '12 Angry Men');
+      expect(m2After.detectedTitle, '12 Angry Men');
+
+      final m3After = await db.findMovieById('m-1917');
+      expect(m3After!.title, '1917');
+      expect(m3After.detectedTitle, '1917');
+
+      final m4After = await db.findMovieById('m-2001');
+      expect(m4After!.title, '2001: A Space Odyssey');
+      expect(m4After.detectedTitle, '2001 A Space Odyssey');
+    });
+  });
 }

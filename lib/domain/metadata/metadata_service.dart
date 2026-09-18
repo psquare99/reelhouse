@@ -58,16 +58,40 @@ class MetadataService {
     try {
       final searchTitle = movie.title ?? movie.detectedTitle;
       final searchYear = movie.year ?? movie.detectedYear;
-      final candidates = await tmdbClient.searchMovies(
+
+      // 1. Primary candidate search (exact/full filename-derived title)
+      var candidates = await tmdbClient.searchMovies(
         searchTitle,
         year: searchYear,
       );
 
-      final decision = matcher.evaluateMovieCandidates(
-        detectedTitle: movie.detectedTitle,
-        detectedYear: movie.detectedYear ?? movie.year,
+      var decision = matcher.evaluateMovieCandidates(
+        detectedTitle: searchTitle,
+        detectedYear: searchYear,
         candidates: candidates,
       );
+
+      // 2. Candidate Normalization fallback:
+      // If primary search did not yield an automatic match, check if stripping a leading
+      // ordering prefix (e.g. "1 Iron Man" -> "Iron Man") matches canonical provider metadata.
+      if (!decision.isAutomatic) {
+        final strippedCandidate =
+            MetadataMatcher.extractOrderingPrefixStrippedCandidate(searchTitle);
+        if (strippedCandidate != null && strippedCandidate != searchTitle) {
+          final altCandidates = await tmdbClient.searchMovies(
+            strippedCandidate,
+            year: searchYear,
+          );
+          final altDecision = matcher.evaluateMovieCandidates(
+            detectedTitle: strippedCandidate,
+            detectedYear: searchYear,
+            candidates: altCandidates,
+          );
+          if (altDecision.isAutomatic && altDecision.bestMatch != null) {
+            decision = altDecision;
+          }
+        }
+      }
 
       if (decision.isAutomatic && decision.bestMatch != null) {
         await applyMovieMatch(movie.id, decision.bestMatch!);
@@ -189,12 +213,32 @@ class MetadataService {
 
     try {
       final searchTitle = show.title ?? show.detectedTitle;
-      final candidates = await tmdbClient.searchTvShows(searchTitle);
 
-      final decision = matcher.evaluateTvCandidates(
-        detectedTitle: show.detectedTitle,
+      // 1. Primary candidate search
+      var candidates = await tmdbClient.searchTvShows(searchTitle);
+
+      var decision = matcher.evaluateTvCandidates(
+        detectedTitle: searchTitle,
         candidates: candidates,
       );
+
+      // 2. Candidate Normalization fallback
+      if (!decision.isAutomatic) {
+        final strippedCandidate =
+            MetadataMatcher.extractOrderingPrefixStrippedCandidate(searchTitle);
+        if (strippedCandidate != null && strippedCandidate != searchTitle) {
+          final altCandidates = await tmdbClient.searchTvShows(
+            strippedCandidate,
+          );
+          final altDecision = matcher.evaluateTvCandidates(
+            detectedTitle: strippedCandidate,
+            candidates: altCandidates,
+          );
+          if (altDecision.isAutomatic && altDecision.bestMatch != null) {
+            decision = altDecision;
+          }
+        }
+      }
 
       if (decision.isAutomatic && decision.bestMatch != null) {
         await applyTvShowMatch(show.id, decision.bestMatch!);

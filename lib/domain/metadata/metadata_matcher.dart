@@ -421,4 +421,55 @@ class MetadataMatcher {
     }
     return list;
   }
+
+  /// Extracts an alternate title candidate if [title] begins with a recognized numeric ordering prefix pattern.
+  ///
+  /// Supported prefix patterns:
+  /// - "1 Movie", "01 Movie" (1-2 digits followed by whitespace)
+  /// - "1. Movie", "01. Movie" (1-3 digits followed by '.' and separator)
+  /// - "1 - Movie", "01 - Movie" (1-3 digits followed by '-' and separator)
+  /// - "1_Movie", "01_Movie", "1_ Movie" (1-3 digits followed by '_' and separator)
+  ///
+  /// Protects legitimate 4-digit numeric titles/years (e.g. "1917", "2001: A Space Odyssey")
+  /// and 3-digit titles without separator (e.g. "300", "500 Days of Summer").
+  ///
+  /// Returns `null` if no ordering prefix pattern is detected or if stripping would leave an invalid/short title.
+  static String? extractOrderingPrefixStrippedCandidate(String title) {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) return null;
+
+    // 1. Separator-based prefixes: e.g. "01 - The Dark Knight", "1. Iron Man", "02_The Matrix", "1 - Movie"
+    final sepMatch = RegExp(r'^\s*(\d{1,3})\s*[-._]\s*(.+)$')
+        .firstMatch(trimmed);
+    if (sepMatch != null) {
+      final remainder = sepMatch.group(2)?.trim();
+      if (remainder != null && remainder.length >= 2) {
+        return remainder;
+      }
+    }
+
+    // 2. Space-separated 1-2 digit prefix: e.g. "1 Harry Potter...", "1 Iron Man", "29 Doctor Strange..."
+    // 4-digit years (1917, 2001) and 3-digit titles (300, 500 Days) are protected by \d{1,2}
+    final spaceMatch = RegExp(r'^\s*(\d{1,2})\s+(.+)$').firstMatch(trimmed);
+    if (spaceMatch != null) {
+      final remainder = spaceMatch.group(2)?.trim();
+      if (remainder != null && remainder.length >= 2) {
+        return remainder;
+      }
+    }
+
+    return null;
+  }
+
+  /// Generates an ordered list of title candidates for discovery and matching:
+  /// 1. Original detected title (evaluated first with highest priority)
+  /// 2. Normalized title with ordering prefix removed (evaluated if primary candidate yields no automatic match)
+  static List<String> getTitleCandidates(String title) {
+    final candidates = <String>[title.trim()];
+    final stripped = extractOrderingPrefixStrippedCandidate(title);
+    if (stripped != null && stripped.isNotEmpty && stripped != title.trim()) {
+      candidates.add(stripped);
+    }
+    return candidates;
+  }
 }

@@ -556,4 +556,53 @@ void main() {
     final showTitles = shows.map((s) => s.detectedTitle).toSet();
     expect(showTitles, containsAll(['The Office', 'The Office UK']));
   });
+
+  test('I: Scanning files with manual numeric prefixes preserves single logical entity across scans after canonical identification', () async {
+    final storageCompanion = StoragesCompanion.insert(
+      id: 'hdd-prefixes',
+      name: 'Prefix HDD',
+      storageType: 'REMOVABLE_VOLUME',
+      filesystemIdentifier: '0xPREFIX',
+      rootUri: tempDir.path,
+      lastSeenAt: DateTime.now(),
+      available: const drift.Value(true),
+    );
+    await db.upsertStorage(storageCompanion);
+    final storage = (await db.getAllStorages()).firstWhere(
+      (s) => s.id == 'hdd-prefixes',
+    );
+
+    // Initial scan of "1 Iron Man.2008.mkv"
+    createTestFile('1 Iron Man.2008.mkv', 2048);
+    final s1 = await libraryScanner.scanStorage(storage);
+    expect(s1.newSourcesAdded, 1);
+    expect(s1.moviesIdentified, 1);
+
+    final movies1 = await db.getAllMovies();
+    expect(movies1.length, 1);
+    final movie = movies1.first;
+    expect(movie.detectedTitle, '1 Iron Man');
+    expect(movie.detectedYear, 2008);
+
+    // Simulate canonical identification updating title to "Iron Man"
+    await (db.update(db.movies)..where((m) => m.id.equals(movie.id))).write(
+      const MoviesCompanion(
+        title: drift.Value('Iron Man'),
+        year: drift.Value(2008),
+        tmdbId: drift.Value(1726),
+        identificationStatus: drift.Value('IDENTIFIED'),
+      ),
+    );
+
+    // Rescan unchanged storage
+    final s2 = await libraryScanner.scanStorage(storage);
+    expect(s2.newSourcesAdded, 0);
+
+    // Verify still exactly one movie, with canonical title "Iron Man" and detectedTitle "1 Iron Man"
+    final movies2 = await db.getAllMovies();
+    expect(movies2.length, 1);
+    expect(movies2.first.id, movie.id);
+    expect(movies2.first.title, 'Iron Man');
+    expect(movies2.first.detectedTitle, '1 Iron Man');
+  });
 }
