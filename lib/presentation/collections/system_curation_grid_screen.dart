@@ -14,9 +14,19 @@ import '../widgets/cinema_error_state.dart';
 import '../widgets/cinema_loading_skeleton.dart';
 import '../widgets/cinema_poster_card.dart';
 
+/// Supported media-type filtering modes on the curation grid screen.
+enum CurationMediaTypeFilter {
+  all('All'),
+  movies('Movies'),
+  tvShows('TV Shows');
+
+  final String label;
+  const CurationMediaTypeFilter(this.label);
+}
+
 /// Screen presenting catalogue views (e.g. Genre or Franchise grouping)
-/// over the user's local cinema catalogue.
-class SystemCurationGridScreen extends StatelessWidget {
+/// over the user's local cinema catalogue with compact media-type filtering.
+class SystemCurationGridScreen extends StatefulWidget {
   final String title;
   final String? subtitle;
   final String? genre;
@@ -37,32 +47,45 @@ class SystemCurationGridScreen extends StatelessWidget {
   });
 
   @override
+  State<SystemCurationGridScreen> createState() =>
+      _SystemCurationGridScreenState();
+}
+
+class _SystemCurationGridScreenState extends State<SystemCurationGridScreen> {
+  CurationMediaTypeFilter _mediaTypeFilter = CurationMediaTypeFilter.all;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = CinemaTheme.of(context);
-    final isFranchise = tmdbCollectionId != null || tmdbCollectionName != null;
+    final isFranchise =
+        widget.tmdbCollectionId != null || widget.tmdbCollectionName != null;
 
-    final movieQuery = MovieQuery(
-      filter: MovieFilter(
-        genre: genre,
-        tmdbCollectionId: tmdbCollectionId,
-        tmdbCollectionName: tmdbCollectionName,
-      ),
-    );
+    final movieQuery = _mediaTypeFilter == CurationMediaTypeFilter.tvShows
+        ? null
+        : MovieQuery(
+            filter: MovieFilter(
+              genre: widget.genre,
+              tmdbCollectionId: widget.tmdbCollectionId,
+              tmdbCollectionName: widget.tmdbCollectionName,
+            ),
+          );
 
-    final tvQuery = genre != null
-        ? TvShowQuery(filter: TvShowFilter(genre: genre))
-        : null;
+    final tvQuery =
+        (_mediaTypeFilter == CurationMediaTypeFilter.movies ||
+            widget.genre == null)
+        ? null
+        : TvShowQuery(filter: TvShowFilter(genre: widget.genre));
 
     return Scaffold(
       backgroundColor: tokens.background,
       appBar: AppBar(
-        title: subtitle != null && subtitle!.isNotEmpty
+        title: widget.subtitle != null && widget.subtitle!.isNotEmpty
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title),
+                  Text(widget.title),
                   Text(
-                    subtitle!,
+                    widget.subtitle!,
                     style: TextStyle(
                       color: tokens.textSecondary,
                       fontSize: 12,
@@ -71,130 +94,315 @@ class SystemCurationGridScreen extends StatelessWidget {
                   ),
                 ],
               )
-            : Text(title),
+            : Text(widget.title),
+        actions: [
+          if (widget.genre != null && !isFranchise)
+            PopupMenuButton<CurationMediaTypeFilter>(
+              tooltip: 'Filter by media type',
+              color: tokens.surface2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: tokens.border, width: 1),
+              ),
+              offset: const Offset(0, 40),
+              onSelected: (filter) {
+                setState(() {
+                  _mediaTypeFilter = filter;
+                });
+              },
+              itemBuilder: (context) => [
+                _buildFilterMenuItem(
+                  context,
+                  tokens,
+                  CurationMediaTypeFilter.all,
+                ),
+                _buildFilterMenuItem(
+                  context,
+                  tokens,
+                  CurationMediaTypeFilter.movies,
+                ),
+                _buildFilterMenuItem(
+                  context,
+                  tokens,
+                  CurationMediaTypeFilter.tvShows,
+                ),
+              ],
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                margin: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: tokens.surface1,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: tokens.border, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _mediaTypeFilter.label,
+                      style: TextStyle(
+                        color: tokens.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_drop_down_rounded,
+                      color: tokens.textSecondary,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Movies Section
-            StreamBuilder<LibraryResult<MovieLibraryItem>>(
-              stream: repository.watchMovies(movieQuery),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return CinemaErrorState(
-                    title: 'Unable to Load Movies',
-                    message: snapshot.error.toString(),
-                  );
-                }
+        child: _buildBody(context, tokens, isFranchise, movieQuery, tvQuery),
+      ),
+    );
+  }
 
-                if (snapshot.connectionState == ConnectionState.waiting &&
-                    !snapshot.hasData) {
-                  return const CinemaGridSkeleton();
-                }
-
-                final movies = snapshot.data?.items ?? [];
-
-                if (movies.isEmpty && isFranchise) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(48),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.movie_outlined,
-                            size: 48,
-                            color: tokens.textMuted,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No movies found for $title',
-                            style: TextStyle(
-                              color: tokens.textPrimary,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                if (movies.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!isFranchise) ...[
-                      Row(
-                        children: [
-                          Text(
-                            'MOVIES (${movies.length})',
-                            style: CinemaTheme.eyebrow(context, fontSize: 12),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Container(height: 1, color: tokens.border),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    _buildMoviesGrid(context, movies),
-                    const SizedBox(height: 32),
-                  ],
-                );
-              },
+  PopupMenuItem<CurationMediaTypeFilter> _buildFilterMenuItem(
+    BuildContext context,
+    CinemaThemeData tokens,
+    CurationMediaTypeFilter filter,
+  ) {
+    final isSelected = _mediaTypeFilter == filter;
+    return PopupMenuItem<CurationMediaTypeFilter>(
+      value: filter,
+      height: 38,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            filter.label,
+            style: TextStyle(
+              color: isSelected ? tokens.accent : tokens.textPrimary,
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
             ),
+          ),
+          if (isSelected) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.check_rounded, color: tokens.accent, size: 16),
+          ],
+        ],
+      ),
+    );
+  }
 
-            // TV Shows Section (Only for Genres)
-            if (tvQuery != null)
-              StreamBuilder<LibraryResult<TvShowLibraryItem>>(
-                stream: repository.watchTvShows(tvQuery),
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return const SizedBox.shrink();
-                  }
+  Widget _buildBody(
+    BuildContext context,
+    CinemaThemeData tokens,
+    bool isFranchise,
+    MovieQuery? movieQuery,
+    TvShowQuery? tvQuery,
+  ) {
+    if (movieQuery != null && tvQuery != null) {
+      // Both Movies and TV Shows (All mode)
+      return StreamBuilder<LibraryResult<MovieLibraryItem>>(
+        stream: widget.repository.watchMovies(movieQuery),
+        builder: (context, movieSnapshot) {
+          if (movieSnapshot.hasError) {
+            return CinemaErrorState(
+              title: 'Unable to Load Movies',
+              message: movieSnapshot.error.toString(),
+            );
+          }
 
-                  if (snapshot.connectionState == ConnectionState.waiting &&
-                      !snapshot.hasData) {
-                    return const SizedBox.shrink();
-                  }
+          return StreamBuilder<LibraryResult<TvShowLibraryItem>>(
+            stream: widget.repository.watchTvShows(tvQuery),
+            builder: (context, tvSnapshot) {
+              if (tvSnapshot.hasError) {
+                return CinemaErrorState(
+                  title: 'Unable to Load TV Shows',
+                  message: tvSnapshot.error.toString(),
+                );
+              }
 
-                  final shows = snapshot.data?.items ?? [];
-                  if (shows.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
+              final isWaiting =
+                  (movieSnapshot.connectionState == ConnectionState.waiting &&
+                      !movieSnapshot.hasData) ||
+                  (tvSnapshot.connectionState == ConnectionState.waiting &&
+                      !tvSnapshot.hasData);
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'TV SHOWS (${shows.length})',
-                            style: CinemaTheme.eyebrow(context, fontSize: 12),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Container(height: 1, color: tokens.border),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _buildTvShowsGrid(context, shows),
-                      const SizedBox(height: 24),
-                    ],
-                  );
-                },
+              if (isWaiting) {
+                return const CinemaGridSkeleton();
+              }
+
+              final movies = movieSnapshot.data?.items ?? [];
+              final shows = tvSnapshot.data?.items ?? [];
+
+              if (movies.isEmpty && shows.isEmpty) {
+                return _buildEmptyState(
+                  context,
+                  tokens,
+                  'No media found for ${widget.title}',
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (movies.isNotEmpty) ...[
+                    _buildSectionHeader(
+                      context,
+                      tokens,
+                      'MOVIES (${movies.length})',
+                    ),
+                    const SizedBox(height: 16),
+                    _buildMoviesGrid(context, movies),
+                    if (shows.isNotEmpty) const SizedBox(height: 32),
+                  ],
+                  if (shows.isNotEmpty) ...[
+                    _buildSectionHeader(
+                      context,
+                      tokens,
+                      'TV SHOWS (${shows.length})',
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTvShowsGrid(context, shows),
+                    const SizedBox(height: 24),
+                  ],
+                ],
+              );
+            },
+          );
+        },
+      );
+    } else if (movieQuery != null) {
+      // Movies only
+      return StreamBuilder<LibraryResult<MovieLibraryItem>>(
+        stream: widget.repository.watchMovies(movieQuery),
+        builder: (context, movieSnapshot) {
+          if (movieSnapshot.hasError) {
+            return CinemaErrorState(
+              title: 'Unable to Load Movies',
+              message: movieSnapshot.error.toString(),
+            );
+          }
+
+          if (movieSnapshot.connectionState == ConnectionState.waiting &&
+              !movieSnapshot.hasData) {
+            return const CinemaGridSkeleton();
+          }
+
+          final movies = movieSnapshot.data?.items ?? [];
+          if (movies.isEmpty) {
+            return _buildEmptyState(
+              context,
+              tokens,
+              'No movies found for ${widget.title}',
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isFranchise) ...[
+                _buildSectionHeader(
+                  context,
+                  tokens,
+                  'MOVIES (${movies.length})',
+                ),
+                const SizedBox(height: 16),
+              ],
+              _buildMoviesGrid(context, movies),
+              const SizedBox(height: 32),
+            ],
+          );
+        },
+      );
+    } else if (tvQuery != null) {
+      // TV Shows only
+      return StreamBuilder<LibraryResult<TvShowLibraryItem>>(
+        stream: widget.repository.watchTvShows(tvQuery),
+        builder: (context, tvSnapshot) {
+          if (tvSnapshot.hasError) {
+            return CinemaErrorState(
+              title: 'Unable to Load TV Shows',
+              message: tvSnapshot.error.toString(),
+            );
+          }
+
+          if (tvSnapshot.connectionState == ConnectionState.waiting &&
+              !tvSnapshot.hasData) {
+            return const CinemaGridSkeleton();
+          }
+
+          final shows = tvSnapshot.data?.items ?? [];
+          if (shows.isEmpty) {
+            return _buildEmptyState(
+              context,
+              tokens,
+              'No TV shows found for ${widget.title}',
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(
+                context,
+                tokens,
+                'TV SHOWS (${shows.length})',
               ),
+              const SizedBox(height: 16),
+              _buildTvShowsGrid(context, shows),
+              const SizedBox(height: 24),
+            ],
+          );
+        },
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildEmptyState(
+    BuildContext context,
+    CinemaThemeData tokens,
+    String message,
+  ) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(48),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.movie_outlined, size: 48, color: tokens.textMuted),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: TextStyle(color: tokens.textPrimary, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(
+    BuildContext context,
+    CinemaThemeData tokens,
+    String title,
+  ) {
+    return Row(
+      children: [
+        Text(title, style: CinemaTheme.eyebrow(context, fontSize: 12)),
+        const SizedBox(width: 8),
+        Expanded(child: Container(height: 1, color: tokens.border)),
+      ],
     );
   }
 
@@ -232,8 +440,8 @@ class SystemCurationGridScreen extends StatelessWidget {
               MaterialPageRoute(
                 builder: (_) => MovieDetailScreen(
                   movieId: movie.id,
-                  repository: repository,
-                  database: database,
+                  repository: widget.repository,
+                  database: widget.database,
                 ),
               ),
             );
@@ -280,8 +488,8 @@ class SystemCurationGridScreen extends StatelessWidget {
               MaterialPageRoute(
                 builder: (_) => TvShowDetailScreen(
                   showId: show.id,
-                  repository: repository,
-                  database: database,
+                  repository: widget.repository,
+                  database: widget.database,
                 ),
               ),
             );

@@ -188,6 +188,82 @@ void main() {
   );
 
   testWidgets(
+    'Media-type filter toggles between All, Movies only, and TV Shows only with correct query-level rendering',
+    (tester) async {
+      await seedComprehensiveMedia();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: SystemCurationGridScreen(
+            title: 'Action & Adventure',
+            genre: 'Action & Adventure',
+            repository: repository,
+            database: db,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // 1. Default (All): Both MOVIES and TV SHOWS headers are visible
+      expect(find.text('MOVIES (3)'), findsOneWidget);
+      expect(find.text('TV SHOWS (1)'), findsOneWidget);
+      expect(find.text('Die Hard'), findsOneWidget);
+      expect(find.text('The Mandalorian'), findsOneWidget);
+
+      // 2. Select 'Movies' filter
+      final filterDropdown = find.text('All');
+      expect(filterDropdown, findsOneWidget);
+      await tester.tap(filterDropdown);
+      await tester.pumpAndSettle();
+
+      final moviesOption = find.text('Movies').last;
+      await tester.tap(moviesOption);
+      await tester.pumpAndSettle();
+
+      // Movies header and items are visible; TV SHOWS is completely omitted
+      expect(find.text('MOVIES (3)'), findsOneWidget);
+      expect(find.text('TV SHOWS (1)'), findsNothing);
+      expect(find.text('Die Hard'), findsOneWidget);
+      expect(find.text('The Mandalorian'), findsNothing);
+
+      // 3. Select 'TV Shows' filter
+      final moviesDropdown = find.text('Movies');
+      expect(moviesDropdown, findsOneWidget);
+      await tester.tap(moviesDropdown);
+      await tester.pumpAndSettle();
+
+      final tvShowsOption = find.text('TV Shows').last;
+      await tester.tap(tvShowsOption);
+      await tester.pumpAndSettle();
+
+      // TV Shows header and items are visible; MOVIES is completely omitted
+      expect(find.text('TV SHOWS (1)'), findsOneWidget);
+      expect(find.text('MOVIES (3)'), findsNothing);
+      expect(find.text('The Mandalorian'), findsOneWidget);
+      expect(find.text('Die Hard'), findsNothing);
+
+      // 4. Return to 'All'
+      final tvDropdown = find.text('TV Shows');
+      expect(tvDropdown, findsOneWidget);
+      await tester.tap(tvDropdown);
+      await tester.pumpAndSettle();
+
+      final allOption = find.text('All').last;
+      await tester.tap(allOption);
+      await tester.pumpAndSettle();
+
+      // Both sections reappear
+      expect(find.text('MOVIES (3)'), findsOneWidget);
+      expect(find.text('TV SHOWS (1)'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
     'Sci-Fi & Fantasy cross-media curation returns Science Fiction, Fantasy, and combined titles without unassociated genres',
     (tester) async {
       await seedComprehensiveMedia();
@@ -295,6 +371,83 @@ void main() {
       // Sci-Fi only and Drama excluded
       expect(find.text('Interstellar'), findsNothing);
       expect(find.text('The Godfather'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'Missing media type in a genre does not produce empty section headers',
+    (tester) async {
+      await seedComprehensiveMedia();
+
+      // 'Adventure' has Indiana Jones movie, but 0 TV Shows
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: SystemCurationGridScreen(
+            title: 'Adventure',
+            genre: 'Adventure',
+            repository: repository,
+            database: db,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('MOVIES (1)'), findsOneWidget);
+      expect(find.text('Indiana Jones'), findsOneWidget);
+
+      // Does NOT show TV SHOWS (0)
+      expect(find.text('TV SHOWS (0)'), findsNothing);
+      expect(find.text('TV SHOWS'), findsNothing);
+
+      // Select TV Shows filter when 0 TV Shows exist -> shows clean empty message
+      final filterDropdown = find.text('All');
+      expect(filterDropdown, findsOneWidget);
+      await tester.tap(filterDropdown);
+      await tester.pumpAndSettle();
+
+      final tvShowsOption = find.text('TV Shows').last;
+      await tester.tap(tvShowsOption);
+      await tester.pumpAndSettle();
+
+      expect(find.text('No TV shows found for Adventure'), findsOneWidget);
+      expect(find.text('TV SHOWS'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'SystemCurationGridScreen header and media filter render cleanly on narrow 360px viewport without overflow',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await seedComprehensiveMedia();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: SystemCurationGridScreen(
+            title: 'Sci-Fi & Fantasy',
+            genre: 'Sci-Fi & Fantasy',
+            repository: repository,
+            database: db,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Sci-Fi & Fantasy'), findsOneWidget);
+      expect(find.text('All'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
