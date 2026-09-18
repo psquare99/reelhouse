@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelhouse/core/theme/cinema_theme.dart';
 import 'package:reelhouse/data/database/database.dart';
+import 'package:reelhouse/presentation/collections/all_franchises_screen.dart';
+import 'package:reelhouse/presentation/collections/all_genres_screen.dart';
 import 'package:reelhouse/presentation/collections/collection_detail_screen.dart';
 import 'package:reelhouse/presentation/collections/collections_screen.dart';
-import 'package:reelhouse/presentation/collections/system_curation_grid_screen.dart';
 
 void main() {
   late AppDatabase db;
@@ -20,22 +21,41 @@ void main() {
   });
 
   testWidgets(
-    'CollectionsScreen displays clean headings, discovered genres, franchises, and personal collections',
+    'CollectionsScreen displays prominent genre rows, franchises, View All links, and personal collections',
     (tester) async {
+      tester.view.physicalSize = const Size(1280, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       final now = DateTime.now();
 
-      // Seed a movie with Sci-Fi genre & Star Wars franchise
+      // Seed a movie with Action & Sci-Fi genres & Star Wars franchise
       await db
           .into(db.movies)
           .insert(
             MoviesCompanion.insert(
               id: 'm-sw',
-              detectedTitle: 'Star Wars',
-              title: const drift.Value('Star Wars'),
+              detectedTitle: 'Star Wars: A New Hope',
+              title: const drift.Value('Star Wars: A New Hope'),
               year: const drift.Value(1977),
               genres: const drift.Value('Action, Science Fiction'),
               tmdbCollectionId: const drift.Value(10),
               tmdbCollectionName: const drift.Value('Star Wars Collection'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Seed another Action movie
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-matrix',
+              detectedTitle: 'The Matrix',
+              title: const drift.Value('The Matrix'),
+              year: const drift.Value(1999),
+              genres: const drift.Value('Action, Science Fiction'),
               createdAt: now,
               updatedAt: now,
             ),
@@ -64,12 +84,17 @@ void main() {
       expect(find.text('Custom lists curated by you'), findsNothing);
       expect(find.text('FRANCHISES & SAGAS'), findsNothing);
 
-      // Verify discovered genres
-      expect(find.text('Action'), findsOneWidget);
-      expect(find.text('Science Fiction'), findsOneWidget);
+      // Verify prominent genre row headers
+      expect(find.text('ACTION'), findsOneWidget);
+      expect(find.text('SCIENCE FICTION'), findsOneWidget);
+
+      // Multi-genre media appears in both genre rows
+      expect(find.text('Star Wars: A New Hope'), findsWidgets);
+      expect(find.text('The Matrix'), findsWidgets);
+
       // Non-represented genres are NOT shown
-      expect(find.text('Documentary'), findsNothing);
-      expect(find.text('Western'), findsNothing);
+      expect(find.text('DOCUMENTARY'), findsNothing);
+      expect(find.text('WESTERN'), findsNothing);
 
       // Verify franchise card
       expect(find.text('Star Wars Collection'), findsOneWidget);
@@ -99,16 +124,38 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
-      // Tap genre chip navigates to SystemCurationGridScreen
-      final actionChip = find.widgetWithText(ActionChip, 'Science Fiction');
-      expect(actionChip, findsOneWidget);
-      await tester.ensureVisible(actionChip);
+      // Tap main 'GENRES' View All opens AllGenresScreen
+      final viewAllGenresButton = find
+          .widgetWithText(TextButton, 'View All')
+          .first;
+      await tester.ensureVisible(viewAllGenresButton);
       await tester.pumpAndSettle();
-      await tester.tap(actionChip);
+      await tester.tap(viewAllGenresButton);
       await tester.pumpAndSettle();
 
-      expect(find.byType(SystemCurationGridScreen), findsOneWidget);
-      expect(find.text('Science Fiction'), findsWidgets);
+      expect(find.byType(AllGenresScreen), findsOneWidget);
+      expect(find.text('Action'), findsOneWidget);
+      expect(find.text('Science Fiction'), findsOneWidget);
+
+      // Pop AllGenresScreen
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      // Tap main 'FRANCHISES' View All opens AllFranchisesScreen
+      final viewAllFranchisesButton = find
+          .widgetWithText(TextButton, 'View All')
+          .last;
+      await tester.ensureVisible(viewAllFranchisesButton);
+      await tester.pumpAndSettle();
+      await tester.tap(viewAllFranchisesButton);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AllFranchisesScreen), findsOneWidget);
+      expect(find.text('Star Wars Collection'), findsOneWidget);
+
+      // Pop AllFranchisesScreen
+      await tester.pageBack();
+      await tester.pumpAndSettle();
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();

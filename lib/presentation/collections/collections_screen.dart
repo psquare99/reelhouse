@@ -4,18 +4,39 @@ import '../../core/theme/cinema_theme.dart';
 import '../../data/database/database.dart';
 import '../../data/repository/drift_library_repository.dart';
 import '../../domain/query/collection_query.dart';
+import '../../domain/query/filter_spec.dart';
 import '../../domain/query/library_result.dart';
+import '../../domain/query/movie_query.dart';
+import '../../domain/query/pagination_spec.dart';
 import '../../domain/query/query_projections.dart';
 import '../../domain/repository/library_repository.dart';
+import '../movies/movie_detail_screen.dart';
 import '../widgets/cinema_error_state.dart';
 import '../widgets/cinema_loading_skeleton.dart';
 import '../widgets/cinema_poster_card.dart';
+import 'all_franchises_screen.dart';
+import 'all_genres_screen.dart';
 import 'collection_detail_screen.dart';
 import 'system_curation_grid_screen.dart';
 
+/// Prominent genres prioritized for horizontal discovery rows on the landing page.
+const List<String> kProminentGenres = [
+  'Action',
+  'Adventure',
+  'Comedy',
+  'Crime',
+  'Drama',
+  'Fantasy',
+  'Horror',
+  'Romance',
+  'Science Fiction',
+  'Thriller',
+];
+
 /// Collections / Curation Screen featuring:
-/// 1. Genres & Franchises discovered in the library.
-/// 2. Personal Collections created by the user.
+/// 1. Prominent Genre discovery rows with full browse option.
+/// 2. Franchises carousel with full browse option.
+/// 3. Personal Collections created by the user.
 class CollectionsScreen extends StatelessWidget {
   final LibraryRepository repository;
   final AppDatabase? database;
@@ -126,11 +147,11 @@ class CollectionsScreen extends StatelessWidget {
           children: [
             // 1. Section: Genres
             _buildGenresSection(context, tokens),
-            const SizedBox(height: 32),
+            const SizedBox(height: 36),
 
             // 2. Section: Franchises
             _buildFranchisesSection(context, tokens),
-            const SizedBox(height: 32),
+            const SizedBox(height: 36),
 
             // 3. Section: Your Collections
             _buildPersonalCollectionsSection(context, tokens),
@@ -171,60 +192,121 @@ class CollectionsScreen extends StatelessWidget {
   }
 
   Widget _buildGenresSection(BuildContext context, CinemaThemeData tokens) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(context, tokens, title: 'GENRES'),
-        const SizedBox(height: 14),
-        StreamBuilder<List<String>>(
-          stream: repository.watchDiscoveredGenres(),
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Text(
+    return StreamBuilder<List<String>>(
+      stream: repository.watchDiscoveredGenres(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(context, tokens, title: 'GENRES'),
+              const SizedBox(height: 14),
+              Text(
                 'Unable to load genres',
                 style: TextStyle(color: tokens.textMuted, fontSize: 13),
-              );
-            }
+              ),
+            ],
+          );
+        }
 
-            final genres = snapshot.data ?? [];
-            if (genres.isEmpty) {
-              return Text(
+        final discoveredGenres = snapshot.data ?? [];
+        if (discoveredGenres.isEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(context, tokens, title: 'GENRES'),
+              const SizedBox(height: 14),
+              Text(
                 'No genres found in library.',
                 style: TextStyle(color: tokens.textMuted, fontSize: 13),
-              );
-            }
+              ),
+            ],
+          );
+        }
 
-            return Wrap(
-              spacing: 8,
-              runSpacing: 10,
-              children: genres.map((genre) {
-                return ActionChip(
-                  label: Text(genre),
-                  backgroundColor: tokens.surface1,
-                  side: BorderSide(color: tokens.border, width: 1),
-                  labelStyle: TextStyle(
-                    color: tokens.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => SystemCurationGridScreen(
-                          title: genre,
-                          genre: genre,
-                          repository: repository,
-                          database: database,
-                        ),
+        // Determine active genres to display as discovery rows:
+        // Match kProminentGenres that exist in discoveredGenres first.
+        final activeGenres = <String>[];
+        for (final pg in kProminentGenres) {
+          final match = discoveredGenres.firstWhere(
+            (g) => g.toLowerCase() == pg.toLowerCase(),
+            orElse: () => '',
+          );
+          if (match.isNotEmpty) {
+            activeGenres.add(match);
+          }
+        }
+
+        // If none of the prominent genres matched, take first 5 discovered
+        if (activeGenres.isEmpty) {
+          activeGenres.addAll(discoveredGenres.take(5));
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              context,
+              tokens,
+              title: 'GENRES',
+              trailing: TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AllGenresScreen(
+                        repository: repository,
+                        database: database,
                       ),
-                    );
-                  },
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'View All',
+                      style: TextStyle(
+                        color: tokens.accent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      color: tokens.accent,
+                      size: 14,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: activeGenres.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 24),
+              itemBuilder: (context, index) {
+                final genre = activeGenres[index];
+                return _GenreDiscoveryRow(
+                  genre: genre,
+                  repository: repository,
+                  database: database,
                 );
-              }).toList(),
-            );
-          },
-        ),
-      ],
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -244,7 +326,50 @@ class CollectionsScreen extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(context, tokens, title: 'FRANCHISES'),
+            _buildSectionHeader(
+              context,
+              tokens,
+              title: 'FRANCHISES',
+              trailing: TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AllFranchisesScreen(
+                        repository: repository,
+                        database: database,
+                      ),
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'View All',
+                      style: TextStyle(
+                        color: tokens.accent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      color: tokens.accent,
+                      size: 14,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
             SizedBox(
               height: 240,
@@ -479,6 +604,139 @@ class CollectionsScreen extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+/// A horizontal poster row presenting a subset of films in a specific genre.
+class _GenreDiscoveryRow extends StatelessWidget {
+  final String genre;
+  final LibraryRepository repository;
+  final AppDatabase? database;
+
+  const _GenreDiscoveryRow({
+    required this.genre,
+    required this.repository,
+    this.database,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = CinemaTheme.of(context);
+
+    return StreamBuilder<LibraryResult<MovieLibraryItem>>(
+      stream: repository.watchMovies(
+        MovieQuery(
+          filter: MovieFilter(genre: genre),
+          pagination: const PaginationSpec(limit: 15),
+        ),
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const SizedBox.shrink();
+        }
+
+        final movies = snapshot.data?.items ?? [];
+        if (movies.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  genre.toUpperCase(),
+                  style: TextStyle(
+                    color: tokens.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SystemCurationGridScreen(
+                          title: genre,
+                          genre: genre,
+                          repository: repository,
+                          database: database,
+                        ),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View All',
+                        style: TextStyle(
+                          color: tokens.accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: tokens.accent,
+                        size: 14,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 240,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: movies.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 14),
+                itemBuilder: (context, index) {
+                  final movie = movies[index];
+                  return SizedBox(
+                    width: 140,
+                    child: CinemaPosterCard(
+                      title: movie.displayTitle,
+                      subtitle: movie.displayYear?.toString() ?? '',
+                      posterPath: movie.posterPath,
+                      availability: movie.availability,
+                      isFavorite: movie.isFavorite,
+                      isWatchlist: movie.isWatchlist,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => MovieDetailScreen(
+                              movieId: movie.id,
+                              repository: repository,
+                              database: database,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
