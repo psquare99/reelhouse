@@ -7,6 +7,8 @@ import '../../domain/query/collection_query.dart';
 import '../../domain/query/library_result.dart';
 import '../../domain/query/query_projections.dart';
 import '../../domain/repository/library_repository.dart';
+import '../widgets/cinema_error_state.dart';
+import '../widgets/cinema_loading_skeleton.dart';
 import 'collection_detail_screen.dart';
 
 /// Screen displaying all user-curated cinema collections.
@@ -112,6 +114,18 @@ class CollectionsScreen extends StatelessWidget {
       body: StreamBuilder<LibraryResult<CollectionLibraryItem>>(
         stream: repository.watchCollections(CollectionQuery.all()),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return CinemaErrorState(
+              title: 'Unable to Load Collections',
+              message: snapshot.error.toString(),
+            );
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
+            return const CinemaListSkeleton();
+          }
+
           final collections = snapshot.data?.items ?? [];
           if (collections.isEmpty) {
             return Center(

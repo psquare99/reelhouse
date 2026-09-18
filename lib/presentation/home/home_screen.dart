@@ -5,11 +5,15 @@ import '../../data/database/database.dart';
 import '../../domain/query/query.dart';
 import '../../domain/repository/library_repository.dart';
 import '../movies/movie_detail_screen.dart';
+import '../tv_shows/tv_show_detail_screen.dart';
+import '../widgets/cinema_error_state.dart';
+import '../widgets/cinema_loading_skeleton.dart';
 import '../widgets/cinema_poster_card.dart';
 
 /// Cinematic Home screen displaying dynamic, state-aware cinema sections
-/// (Continue Watching, Recently Added, Favorites, Watchlist) and catalogue gateways.
-class HomeScreen extends StatelessWidget {
+/// (Continue Watching, TV Continue Watching, Recently Added, TV Recently Added,
+/// Favorites, Watchlist) and catalogue gateways.
+class HomeScreen extends StatefulWidget {
   final LibraryRepository repository;
   final AppDatabase database;
   final VoidCallback onNavigateToMovies;
@@ -27,6 +31,11 @@ class HomeScreen extends StatelessWidget {
     required this.onNavigateToSettings,
   });
 
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,15 +82,15 @@ class HomeScreen extends StatelessWidget {
                       color: CinemaColors.textSecondary,
                     ),
                     tooltip: 'Settings & Storage',
-                    onPressed: onNavigateToSettings,
+                    onPressed: widget.onNavigateToSettings,
                   ),
                 ],
               ),
               const SizedBox(height: 28),
 
-              // Storage & Cinema Status Banner (belongs to storage infrastructure)
+              // Storage & Cinema Status Banner
               StreamBuilder<List<Storage>>(
-                stream: database.watchAllStorages(),
+                stream: widget.database.watchAllStorages(),
                 builder: (context, snapshot) {
                   final storages = snapshot.data ?? [];
                   final externalStorages = storages
@@ -140,7 +149,7 @@ class HomeScreen extends StatelessWidget {
                       );
 
                       final button = OutlinedButton.icon(
-                        onPressed: onNavigateToSettings,
+                        onPressed: widget.onNavigateToSettings,
                         icon: const Icon(Icons.storage, size: 16),
                         label: const Text('Manage Storage'),
                         style: OutlinedButton.styleFrom(
@@ -184,12 +193,27 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 36),
 
-              // 1. CONTINUE WATCHING (Smart View Query)
+              // 1. CONTINUE WATCHING (Movies)
               StreamBuilder<LibraryResult<MovieLibraryItem>>(
-                stream: repository.watchMovies(
+                stream: widget.repository.watchMovies(
                   MovieQuery.continueWatching(limit: 10),
                 ),
                 builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return CinemaErrorSection(
+                      title: 'CONTINUE WATCHING',
+                      message: snapshot.error.toString(),
+                      onRetry: () => setState(() {}),
+                    );
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return const CinemaCarouselSkeleton(
+                      title: 'CONTINUE WATCHING',
+                      subtitle: 'Resume playback where you left off',
+                    );
+                  }
+
                   final inProgressMovies = snapshot.data?.items ?? [];
                   if (inProgressMovies.isEmpty) return const SizedBox.shrink();
 
@@ -223,8 +247,8 @@ class HomeScreen extends StatelessWidget {
                                     MaterialPageRoute(
                                       builder: (_) => MovieDetailScreen(
                                         movieId: movie.id,
-                                        repository: repository,
-                                        database: database,
+                                        repository: widget.repository,
+                                        database: widget.database,
                                       ),
                                     ),
                                   );
@@ -240,12 +264,113 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
 
-              // 2. RECENTLY ADDED (Smart View Query)
+              // 2. TV CONTINUE WATCHING (Episodes)
+              StreamBuilder<LibraryResult<EpisodeLibraryItem>>(
+                stream: widget.repository.watchEpisodes(
+                  EpisodeQuery.continueWatching(limit: 10),
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return CinemaErrorSection(
+                      title: 'TV CONTINUE WATCHING',
+                      message: snapshot.error.toString(),
+                      onRetry: () => setState(() {}),
+                    );
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return const CinemaCarouselSkeleton(
+                      title: 'TV CONTINUE WATCHING',
+                      subtitle: 'Resume episodes where you left off',
+                    );
+                  }
+
+                  final inProgressEpisodes = snapshot.data?.items ?? [];
+                  if (inProgressEpisodes.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _SectionHeader(
+                        title: 'TV CONTINUE WATCHING',
+                        subtitle: 'Resume episodes where you left off',
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 275,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: inProgressEpisodes.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 20),
+                          itemBuilder: (context, index) {
+                            final ep = inProgressEpisodes[index];
+                            final progress =
+                                (ep.runtime != null &&
+                                    ep.runtime! > 0 &&
+                                    ep.playbackPositionSeconds > 0)
+                                ? (ep.playbackPositionSeconds /
+                                          (ep.runtime! * 60))
+                                      .clamp(0.0, 1.0)
+                                : 0.4;
+
+                            return SizedBox(
+                              width: 170,
+                              child: CinemaPosterCard(
+                                title: ep.displayName,
+                                subtitle: ep.episodeCode,
+                                posterPath: ep.stillPath,
+                                availabilityStatus: ep.availability,
+                                watchState: ep.watchState.toDbString(),
+                                watchProgress: progress,
+                                fallbackIcon: Icons.tv,
+                                onTap: () {
+                                  if (ep.showId != null) {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => TvShowDetailScreen(
+                                          showId: ep.showId!,
+                                          repository: widget.repository,
+                                          database: widget.database,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 38),
+                    ],
+                  );
+                },
+              ),
+
+              // 3. RECENTLY ADDED (Movies)
               StreamBuilder<LibraryResult<MovieLibraryItem>>(
-                stream: repository.watchMovies(
+                stream: widget.repository.watchMovies(
                   MovieQuery.recentlyAdded(limit: 10),
                 ),
                 builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return CinemaErrorSection(
+                      title: 'RECENTLY ADDED',
+                      message: snapshot.error.toString(),
+                      onRetry: () => setState(() {}),
+                    );
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return const CinemaCarouselSkeleton(
+                      title: 'RECENTLY ADDED',
+                      subtitle:
+                          'Latest acquisitions discovered across your disks',
+                    );
+                  }
+
                   final recent = snapshot.data?.items ?? [];
                   if (recent.isEmpty) return const SizedBox.shrink();
 
@@ -280,8 +405,8 @@ class HomeScreen extends StatelessWidget {
                                     MaterialPageRoute(
                                       builder: (_) => MovieDetailScreen(
                                         movieId: movie.id,
-                                        repository: repository,
-                                        database: database,
+                                        repository: widget.repository,
+                                        database: widget.database,
                                       ),
                                     ),
                                   );
@@ -297,10 +422,97 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
 
-              // 3. FAVORITES (Smart View Query)
-              StreamBuilder<LibraryResult<MovieLibraryItem>>(
-                stream: repository.watchMovies(MovieQuery.favorites()),
+              // 4. TV RECENTLY ADDED (Shows)
+              StreamBuilder<LibraryResult<TvShowLibraryItem>>(
+                stream: widget.repository.watchTvShows(
+                  TvShowQuery.recentlyAdded(limit: 10),
+                ),
                 builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return CinemaErrorSection(
+                      title: 'TV RECENTLY ADDED',
+                      message: snapshot.error.toString(),
+                      onRetry: () => setState(() {}),
+                    );
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return const CinemaCarouselSkeleton(
+                      title: 'TV RECENTLY ADDED',
+                      subtitle: 'Latest series and seasons discovered across your disks',
+                    );
+                  }
+
+                  final recentShows = snapshot.data?.items ?? [];
+                  if (recentShows.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _SectionHeader(
+                        title: 'TV RECENTLY ADDED',
+                        subtitle: 'Latest series and seasons discovered across your disks',
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 275,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: recentShows.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 20),
+                          itemBuilder: (context, index) {
+                            final show = recentShows[index];
+                            return SizedBox(
+                              width: 170,
+                              child: CinemaPosterCard(
+                                title: show.displayTitle,
+                                year: show.displayYear,
+                                posterPath: show.posterPath,
+                                availabilityStatus: show.availability,
+                                isFavorite: show.isFavorite,
+                                watchState: show.derivedWatchState.toDbString(),
+                                fallbackIcon: Icons.tv,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => TvShowDetailScreen(
+                                        showId: show.id,
+                                        repository: widget.repository,
+                                        database: widget.database,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 38),
+                    ],
+                  );
+                },
+              ),
+
+              // 5. FAVORITES (Movies)
+              StreamBuilder<LibraryResult<MovieLibraryItem>>(
+                stream: widget.repository.watchMovies(MovieQuery.favorites()),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return CinemaErrorSection(
+                      title: 'FAVORITES',
+                      message: snapshot.error.toString(),
+                      onRetry: () => setState(() {}),
+                    );
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return const CinemaCarouselSkeleton(
+                      title: 'FAVORITES',
+                      subtitle: 'Your personal cinema highlights',
+                    );
+                  }
+
                   final favorites = snapshot.data?.items ?? [];
                   if (favorites.isEmpty) return const SizedBox.shrink();
 
@@ -334,8 +546,8 @@ class HomeScreen extends StatelessWidget {
                                     MaterialPageRoute(
                                       builder: (_) => MovieDetailScreen(
                                         movieId: movie.id,
-                                        repository: repository,
-                                        database: database,
+                                        repository: widget.repository,
+                                        database: widget.database,
                                       ),
                                     ),
                                   );
@@ -351,10 +563,25 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
 
-              // 4. WATCHLIST (Smart View Query)
+              // 6. WATCHLIST (Movies)
               StreamBuilder<LibraryResult<MovieLibraryItem>>(
-                stream: repository.watchMovies(MovieQuery.watchlist()),
+                stream: widget.repository.watchMovies(MovieQuery.watchlist()),
                 builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return CinemaErrorSection(
+                      title: 'WATCHLIST',
+                      message: snapshot.error.toString(),
+                      onRetry: () => setState(() {}),
+                    );
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return const CinemaCarouselSkeleton(
+                      title: 'WATCHLIST',
+                      subtitle: 'Titles saved for your next screening',
+                    );
+                  }
+
                   final watchlist = snapshot.data?.items ?? [];
                   if (watchlist.isEmpty) return const SizedBox.shrink();
 
@@ -388,8 +615,8 @@ class HomeScreen extends StatelessWidget {
                                     MaterialPageRoute(
                                       builder: (_) => MovieDetailScreen(
                                         movieId: movie.id,
-                                        repository: repository,
-                                        database: database,
+                                        repository: widget.repository,
+                                        database: widget.database,
                                       ),
                                     ),
                                   );
@@ -405,7 +632,7 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
 
-              // 5. EXPLORE CATALOGUE (Repository Stream Counts)
+              // 7. EXPLORE CINEMA (Repository Stream Counts)
               const _SectionHeader(
                 title: 'EXPLORE CINEMA',
                 subtitle: 'Browse your personal cinema by category',
@@ -424,8 +651,8 @@ class HomeScreen extends StatelessWidget {
                               subtitle:
                                   'Feature films across all storage disks',
                               icon: Icons.movie_outlined,
-                              streamCount: repository.watchMovieCount(),
-                              onTap: onNavigateToMovies,
+                              streamCount: widget.repository.watchMovieCount(),
+                              onTap: widget.onNavigateToMovies,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -434,11 +661,11 @@ class HomeScreen extends StatelessWidget {
                               title: 'TV Shows',
                               subtitle: 'Series, seasons, and episode archives',
                               icon: Icons.tv_outlined,
-                              streamCount: repository.watchTvShowCount(),
-                              onTap: onNavigateToTv,
+                              streamCount: widget.repository.watchTvShowCount(),
+                              onTap: widget.onNavigateToTv,
                             ),
                           ),
-                          if (isWide && onNavigateToOffline != null) ...[
+                          if (isWide && widget.onNavigateToOffline != null) ...[
                             const SizedBox(width: 16),
                             Expanded(
                               child: _CatalogueEntryCard(
@@ -446,25 +673,25 @@ class HomeScreen extends StatelessWidget {
                                 subtitle:
                                     'Media downloaded directly to this device',
                                 icon: Icons.offline_pin_outlined,
-                                streamCount: repository
+                                streamCount: widget.repository
                                     .watchMovies(MovieQuery.offline())
                                     .map((r) => r.totalCount),
-                                onTap: onNavigateToOffline!,
+                                onTap: widget.onNavigateToOffline!,
                               ),
                             ),
                           ],
                         ],
                       ),
-                      if (!isWide && onNavigateToOffline != null) ...[
+                      if (!isWide && widget.onNavigateToOffline != null) ...[
                         const SizedBox(height: 16),
                         _CatalogueEntryCard(
                           title: 'Offline Library',
                           subtitle: 'Media downloaded directly to this device',
                           icon: Icons.offline_pin_outlined,
-                          streamCount: repository
+                          streamCount: widget.repository
                               .watchMovies(MovieQuery.offline())
                               .map((r) => r.totalCount),
-                          onTap: onNavigateToOffline!,
+                          onTap: widget.onNavigateToOffline!,
                         ),
                       ],
                     ],

@@ -4,6 +4,8 @@ import '../../core/theme/cinema_colors.dart';
 import '../../data/database/database.dart';
 import '../../domain/query/query.dart';
 import '../../domain/repository/library_repository.dart';
+import '../widgets/cinema_error_state.dart';
+import '../widgets/cinema_loading_skeleton.dart';
 import '../widgets/cinema_poster_card.dart';
 import 'movie_detail_screen.dart';
 
@@ -102,6 +104,24 @@ class _MoviesScreenState extends State<MoviesScreen> {
       body: StreamBuilder<LibraryResult<MovieLibraryItem>>(
         stream: widget.repository.watchMovies(query),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return CinemaErrorState(
+              title: 'Unable to Load Movies',
+              message: snapshot.error.toString(),
+              onRetry: () => setState(() {}),
+            );
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
+            return Column(
+              children: [
+                _buildFilterBar(),
+                const Expanded(child: CinemaGridSkeleton()),
+              ],
+            );
+          }
+
           final movies = snapshot.data?.items ?? [];
 
           if (movies.isEmpty) {

@@ -11,6 +11,8 @@ import '../../domain/query/tv_show_query.dart';
 import '../../domain/repository/library_repository.dart';
 import '../movies/movie_detail_screen.dart';
 import '../tv_shows/tv_show_detail_screen.dart';
+import '../widgets/cinema_error_state.dart';
+import '../widgets/cinema_loading_skeleton.dart';
 import '../widgets/cinema_poster_card.dart';
 
 /// Dedicated Offline Library destination showing media items with local device copies.
@@ -46,11 +48,38 @@ class _OfflineScreenState extends State<OfflineScreen> {
       body: StreamBuilder<LibraryResult<MovieLibraryItem>>(
         stream: widget.repository.watchMovies(MovieQuery.offline()),
         builder: (context, moviesSnapshot) {
-          final offlineMovies = moviesSnapshot.data?.items ?? [];
+          if (moviesSnapshot.hasError) {
+            return CinemaErrorState(
+              title: 'Unable to Load Offline Media',
+              message: moviesSnapshot.error.toString(),
+              onRetry: () => setState(() {}),
+            );
+          }
 
           return StreamBuilder<LibraryResult<TvShowLibraryItem>>(
             stream: widget.repository.watchTvShows(TvShowQuery.offline()),
             builder: (context, showsSnapshot) {
+              if (showsSnapshot.hasError) {
+                return CinemaErrorState(
+                  title: 'Unable to Load Offline Media',
+                  message: showsSnapshot.error.toString(),
+                  onRetry: () => setState(() {}),
+                );
+              }
+
+              final isWaiting =
+                  (moviesSnapshot.connectionState == ConnectionState.waiting &&
+                      !moviesSnapshot.hasData) ||
+                  (showsSnapshot.connectionState == ConnectionState.waiting &&
+                      !showsSnapshot.hasData);
+
+              if (isWaiting) {
+                return const Scaffold(
+                  body: SafeArea(child: CinemaGridSkeleton()),
+                );
+              }
+
+              final offlineMovies = moviesSnapshot.data?.items ?? [];
               final offlineShows = showsSnapshot.data?.items ?? [];
               final totalCount = offlineMovies.length + offlineShows.length;
 

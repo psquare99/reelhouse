@@ -11,6 +11,7 @@ import 'cinema_poster_image.dart';
 class CinemaPosterCard extends StatelessWidget {
   final String title;
   final int? year;
+  final String? subtitle;
   final String? posterPath;
   final AvailabilityStatus? availabilityStatus;
   final bool isFavorite;
@@ -23,6 +24,7 @@ class CinemaPosterCard extends StatelessWidget {
     super.key,
     required this.title,
     this.year,
+    this.subtitle,
     this.posterPath,
     this.availabilityStatus,
     this.isFavorite = false,
@@ -146,7 +148,9 @@ class CinemaPosterCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    year != null ? '$year' : '—',
+                    subtitle ?? (year != null ? '$year' : '—'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: CinemaColors.ofTextSecondary(context),
                       fontSize: 12,
