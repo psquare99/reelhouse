@@ -751,7 +751,7 @@ class _GenreDiscoveryRow extends StatelessWidget {
   }
 }
 
-/// A horizontal text-first genre chip strip with edge fade and scroll affordance.
+/// A horizontal text-first genre chip strip with explicit left/right navigation controls.
 class _GenreChipStrip extends StatefulWidget {
   final List<String> genres;
   final String? selectedGenre;
@@ -769,6 +769,7 @@ class _GenreChipStrip extends StatefulWidget {
 
 class _GenreChipStripState extends State<_GenreChipStrip> {
   final ScrollController _scrollController = ScrollController();
+  bool _canScrollLeft = false;
   bool _canScrollRight = false;
 
   @override
@@ -802,13 +803,74 @@ class _GenreChipStripState extends State<_GenreChipStrip> {
     final pos = _scrollController.position;
     final maxScroll = pos.maxScrollExtent;
     final currentScroll = pos.pixels;
-    final canScroll = maxScroll > 0 && currentScroll < (maxScroll - 4.0);
+    final canLeft = maxScroll > 0 && currentScroll > 4.0;
+    final canRight = maxScroll > 0 && currentScroll < (maxScroll - 4.0);
 
-    if (canScroll != _canScrollRight) {
+    if (canLeft != _canScrollLeft || canRight != _canScrollRight) {
       setState(() {
-        _canScrollRight = canScroll;
+        _canScrollLeft = canLeft;
+        _canScrollRight = canRight;
       });
     }
+  }
+
+  void _scrollLeft() {
+    if (!_scrollController.hasClients) return;
+    final viewport = _scrollController.position.viewportDimension;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    var target = _scrollController.offset - (viewport * 0.75);
+    if (target < 48.0) {
+      target = 0.0;
+    }
+    target = target.clamp(0.0, maxScroll);
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _scrollRight() {
+    if (!_scrollController.hasClients) return;
+    final viewport = _scrollController.position.viewportDimension;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    var target = _scrollController.offset + (viewport * 0.75);
+    if (target > maxScroll - 48.0) {
+      target = maxScroll;
+    }
+    target = target.clamp(0.0, maxScroll);
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  Widget _buildNavButton(
+    BuildContext context,
+    CinemaThemeData tokens, {
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: tokens.surface1,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: tokens.border, width: 1),
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, size: 20, color: tokens.accent),
+        ),
+      ),
+    );
   }
 
   @override
@@ -817,111 +879,106 @@ class _GenreChipStripState extends State<_GenreChipStrip> {
 
     return SizedBox(
       height: 38,
-      child: Stack(
-        alignment: Alignment.centerRight,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification.metrics.axis == Axis.horizontal) {
-                final maxScroll = notification.metrics.maxScrollExtent;
-                final currentScroll = notification.metrics.pixels;
-                final canScroll =
-                    maxScroll > 0 && currentScroll < (maxScroll - 4.0);
-                if (canScroll != _canScrollRight) {
-                  setState(() {
-                    _canScrollRight = canScroll;
-                  });
-                }
-              }
-              return false;
-            },
-            child: ScrollConfiguration(
-              behavior: const MaterialScrollBehavior().copyWith(
-                dragDevices: {
-                  PointerDeviceKind.touch,
-                  PointerDeviceKind.mouse,
-                  PointerDeviceKind.trackpad,
-                  PointerDeviceKind.stylus,
-                },
-                scrollbars: false,
-              ),
-              child: ListView.separated(
-                controller: _scrollController,
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(right: 48),
-                itemCount: widget.genres.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final genre = widget.genres[index];
-                  final isSelected = widget.selectedGenre == genre;
-
-                  return InkWell(
-                    onTap: () => widget.onGenreSelected(genre),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? tokens.accent.withValues(alpha: 0.14)
-                            : tokens.surface1,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSelected ? tokens.accent : tokens.border,
-                          width: 1,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        genre,
-                        style: TextStyle(
-                          color: isSelected
-                              ? tokens.accent
-                              : tokens.textPrimary,
-                          fontSize: 13,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+          if (_canScrollLeft) ...[
+            _buildNavButton(
+              context,
+              tokens,
+              icon: Icons.chevron_left_rounded,
+              tooltip: 'Previous genres',
+              onTap: _scrollLeft,
             ),
-          ),
-          if (_canScrollRight)
-            IgnorePointer(
-              child: AnimatedOpacity(
-                opacity: _canScrollRight ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: Container(
-                  width: 44,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [
-                        tokens.background.withValues(alpha: 0.0),
-                        tokens.background.withValues(alpha: 0.8),
-                        tokens.background,
-                      ],
-                      stops: const [0.0, 0.5, 1.0],
-                    ),
-                  ),
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 2),
-                  child: Icon(
-                    Icons.chevron_right_rounded,
-                    size: 16,
-                    color: tokens.textMuted.withValues(alpha: 0.7),
-                  ),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification.metrics.axis == Axis.horizontal) {
+                  final maxScroll = notification.metrics.maxScrollExtent;
+                  final currentScroll = notification.metrics.pixels;
+                  final canLeft = maxScroll > 0 && currentScroll > 4.0;
+                  final canRight =
+                      maxScroll > 0 && currentScroll < (maxScroll - 4.0);
+                  if (canLeft != _canScrollLeft ||
+                      canRight != _canScrollRight) {
+                    setState(() {
+                      _canScrollLeft = canLeft;
+                      _canScrollRight = canRight;
+                    });
+                  }
+                }
+                return false;
+              },
+              child: ScrollConfiguration(
+                behavior: const MaterialScrollBehavior().copyWith(
+                  dragDevices: {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.trackpad,
+                    PointerDeviceKind.stylus,
+                  },
+                  scrollbars: false,
+                ),
+                child: ListView.separated(
+                  key: const ValueKey('genre_chip_list'),
+                  controller: _scrollController,
+                  scrollDirection: Axis.horizontal,
+                  itemCount: widget.genres.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final genre = widget.genres[index];
+                    final isSelected = widget.selectedGenre == genre;
+
+                    return InkWell(
+                      onTap: () => widget.onGenreSelected(genre),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? tokens.accent.withValues(alpha: 0.14)
+                              : tokens.surface1,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected ? tokens.accent : tokens.border,
+                            width: 1,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          genre,
+                          style: TextStyle(
+                            color: isSelected
+                                ? tokens.accent
+                                : tokens.textPrimary,
+                            fontSize: 13,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
+          ),
+          if (_canScrollRight) ...[
+            const SizedBox(width: 8),
+            _buildNavButton(
+              context,
+              tokens,
+              icon: Icons.chevron_right_rounded,
+              tooltip: 'Next genres',
+              onTap: _scrollRight,
+            ),
+          ],
         ],
       ),
     );

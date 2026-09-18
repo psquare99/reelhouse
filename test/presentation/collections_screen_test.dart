@@ -417,20 +417,56 @@ void main() {
   );
 
   testWidgets(
-    'Genre chip strip displays right edge fade when scrollable and updates on scroll',
+    'Genre chip strip navigation buttons: absent when all fit, interactive when overflowing, supports tapping and manual scroll in dark & light themes',
     (tester) async {
-      // Set narrow width to ensure genres overflow horizontally
-      tester.view.physicalSize = const Size(360, 800);
+      final now = DateTime.now();
+
+      // Seed 2 genres that easily fit on a wide desktop screen
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-act',
+              detectedTitle: 'Action Movie',
+              title: const drift.Value('Action Movie'),
+              genres: const drift.Value('Action'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-com',
+              detectedTitle: 'Comedy Movie',
+              title: const drift.Value('Comedy Movie'),
+              genres: const drift.Value('Comedy'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Wide desktop: both genres fit without scrolling
+      tester.view.physicalSize = const Size(1280, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final now = DateTime.now();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: CollectionsScreen(database: db),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-      // Seed multiple movies across many distinct genres
-      final genres = [
-        'Action',
+      // When all genres fit, left and right nav buttons are absent
+      expect(find.byIcon(Icons.chevron_left_rounded), findsNothing);
+      expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+
+      // Now seed additional distinct genres so the strip overflows
+      final additionalGenres = [
         'Adventure',
-        'Comedy',
         'Crime',
         'Documentary',
         'Drama',
@@ -443,21 +479,23 @@ void main() {
         'Western',
       ];
 
-      for (var i = 0; i < genres.length; i++) {
+      for (var i = 0; i < additionalGenres.length; i++) {
         await db
             .into(db.movies)
             .insert(
               MoviesCompanion.insert(
-                id: 'm-$i',
+                id: 'm-extra-$i',
                 detectedTitle: 'Film $i',
                 title: drift.Value('Film $i'),
-                genres: drift.Value(genres[i]),
+                genres: drift.Value(additionalGenres[i]),
                 createdAt: now,
                 updatedAt: now,
               ),
             );
       }
 
+      // Re-render in mobile viewport to guarantee overflow
+      tester.view.physicalSize = const Size(360, 800);
       await tester.pumpWidget(
         MaterialApp(
           theme: CinemaTheme.darkTheme,
@@ -466,38 +504,70 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Right edge chevron hint should be visible because genres overflow
-      expect(find.byIcon(Icons.chevron_right_rounded), findsWidgets);
+      // Right button is present, Left button is absent initially
+      expect(find.byIcon(Icons.chevron_left_rounded), findsNothing);
+      expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
 
-      // Find the horizontal genre list scrollable
-      final genreListView = find.byWidgetPredicate(
-        (widget) =>
-            widget is ListView && widget.scrollDirection == Axis.horizontal,
-      );
-      expect(genreListView, findsOneWidget);
+      final genreListFinder = find.byKey(const ValueKey('genre_chip_list'));
+      expect(genreListFinder, findsOneWidget);
 
       final genreScrollable = find.descendant(
-        of: genreListView,
+        of: genreListFinder,
         matching: find.byType(Scrollable),
       );
       expect(genreScrollable, findsOneWidget);
 
-      // Scroll to the far right end of the chip strip using the Scrollable's position
-      final scrollableState = tester.state<ScrollableState>(genreScrollable);
-      scrollableState.position.jumpTo(scrollableState.position.maxScrollExtent);
+      // Verify initial position
+      final initialScrollable = tester.state<ScrollableState>(genreScrollable);
+      expect(initialScrollable.position.pixels, 0.0);
+
+      // Tap the right navigation button
+      await tester.tap(find.byIcon(Icons.chevron_right_rounded));
       await tester.pumpAndSettle();
 
+      // Scroll position moved to the right and left button is now visible
+      final movedScrollable = tester.state<ScrollableState>(genreScrollable);
+      expect(movedScrollable.position.pixels, greaterThan(0.0));
+      expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
+
+      // Tap the left navigation button to return to the start
+      await tester.tap(find.byIcon(Icons.chevron_left_rounded));
+      await tester.pumpAndSettle();
+
+      // Scroll position returns to start; left button disappears
+      final returnedScrollable = tester.state<ScrollableState>(genreScrollable);
+      expect(returnedScrollable.position.pixels, 0.0);
+      expect(find.byIcon(Icons.chevron_left_rounded), findsNothing);
+      expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+
+      // Drag to the absolute end of the strip
+      await tester.drag(genreListFinder, const Offset(-1000, 0));
+      await tester.pumpAndSettle();
+      await tester.drag(genreListFinder, const Offset(-1000, 0));
+      await tester.pumpAndSettle();
+
+      // Right button disappears at max extent, left button remains, Western is visible
+      expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+      expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
       expect(find.text('Western'), findsOneWidget);
 
-      // Edge fade icon should be gone when scrolled all the way to the right
-      expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
-
-      // Scroll back to the start
-      scrollableState.position.jumpTo(0.0);
+      // Scroll back via left button tap
+      await tester.tap(find.byIcon(Icons.chevron_left_rounded));
       await tester.pumpAndSettle();
 
-      // Fade chevron icon reappears
-      expect(find.byIcon(Icons.chevron_right_rounded), findsWidgets);
+      // Both buttons visible mid-scroll
+      expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+
+      // Test Gallery Linen (light theme)
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.lightTheme,
+          home: CollectionsScreen(database: db),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
