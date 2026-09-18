@@ -67,7 +67,7 @@ class CinemaPosterCardSkeleton extends StatelessWidget {
   }
 }
 
-/// Horizontal carousel skeleton for HomeScreen discovery rows.
+/// Discovery row loading skeleton for HomeScreen.
 class CinemaCarouselSkeleton extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -94,18 +94,33 @@ class CinemaCarouselSkeleton extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 16),
-        SizedBox(
-          height: 275,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 4,
-            separatorBuilder: (_, _) => const SizedBox(width: 20),
-            itemBuilder: (_, _) =>
-                const SizedBox(width: 170, child: CinemaPosterCardSkeleton()),
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const spacing = 16.0;
+            const targetWidth = 160.0;
+            const aspectRatio = 0.58;
+            final availableWidth = constraints.maxWidth;
+            final count = ((availableWidth + spacing) / (targetWidth + spacing))
+                .floor()
+                .clamp(1, 20);
+            final cardWidth = (availableWidth - (count - 1) * spacing) / count;
+            final cardHeight = cardWidth / aspectRatio;
+
+            return SizedBox(
+              height: cardHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < count; i++) ...[
+                    if (i > 0) const SizedBox(width: spacing),
+                    const Expanded(child: CinemaPosterCardSkeleton()),
+                  ],
+                ],
+              ),
+            );
+          },
         ),
-        const SizedBox(height: 38),
+        const SizedBox(height: 36),
       ],
     );
   }

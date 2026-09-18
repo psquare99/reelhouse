@@ -494,38 +494,30 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _SectionHeader(title: title, subtitle: subtitle),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 275,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 20),
-                itemBuilder: (context, index) {
-                  final movie = items[index];
-                  return SizedBox(
-                    width: 170,
-                    child: CinemaPosterCard(
-                      title: movie.displayTitle,
-                      year: movie.displayYear,
-                      posterPath: movie.posterPath,
-                      availabilityStatus: movie.availability,
-                      isFavorite: movie.isFavorite,
-                      watchState: movie.watchState.toDbString(),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => MovieDetailScreen(
-                              movieId: movie.id,
-                              repository: widget.repository,
-                              database: widget.database,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
+            _ResponsiveCardRow(
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final movie = items[index];
+                return CinemaPosterCard(
+                  title: movie.displayTitle,
+                  year: movie.displayYear,
+                  posterPath: movie.posterPath,
+                  availabilityStatus: movie.availability,
+                  isFavorite: movie.isFavorite,
+                  watchState: movie.watchState.toDbString(),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MovieDetailScreen(
+                          movieId: movie.id,
+                          repository: widget.repository,
+                          database: widget.database,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
             const SizedBox(height: 36),
           ],
@@ -568,51 +560,43 @@ class _HomeScreenState extends State<HomeScreen> {
               subtitle: 'Resume episodes where you left off',
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 275,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: inProgressEpisodes.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 20),
-                itemBuilder: (context, index) {
-                  final ep = inProgressEpisodes[index];
-                  final progress =
-                      (ep.runtime != null &&
-                          ep.runtime! > 0 &&
-                          ep.playbackPositionSeconds > 0)
-                      ? (ep.playbackPositionSeconds / (ep.runtime! * 60)).clamp(
-                          0.0,
-                          1.0,
-                        )
-                      : 0.4;
+            _ResponsiveCardRow(
+              itemCount: inProgressEpisodes.length,
+              itemBuilder: (context, index) {
+                final ep = inProgressEpisodes[index];
+                final progress =
+                    (ep.runtime != null &&
+                        ep.runtime! > 0 &&
+                        ep.playbackPositionSeconds > 0)
+                    ? (ep.playbackPositionSeconds / (ep.runtime! * 60)).clamp(
+                        0.0,
+                        1.0,
+                      )
+                    : 0.4;
 
-                  return SizedBox(
-                    width: 170,
-                    child: CinemaPosterCard(
-                      title: ep.displayName,
-                      subtitle: ep.episodeCode,
-                      posterPath: ep.stillPath,
-                      availabilityStatus: ep.availability,
-                      watchState: ep.watchState.toDbString(),
-                      watchProgress: progress,
-                      fallbackIcon: Icons.tv,
-                      onTap: () {
-                        if (ep.showId != null) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => TvShowDetailScreen(
-                                showId: ep.showId!,
-                                repository: widget.repository,
-                                database: widget.database,
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  );
-                },
-              ),
+                return CinemaPosterCard(
+                  title: ep.displayName,
+                  subtitle: ep.episodeCode,
+                  posterPath: ep.stillPath,
+                  availabilityStatus: ep.availability,
+                  watchState: ep.watchState.toDbString(),
+                  watchProgress: progress,
+                  fallbackIcon: Icons.tv,
+                  onTap: () {
+                    if (ep.showId != null) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TvShowDetailScreen(
+                            showId: ep.showId!,
+                            repository: widget.repository,
+                            database: widget.database,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
             ),
             const SizedBox(height: 36),
           ],
@@ -654,39 +638,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Latest series and seasons discovered across your disks',
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 275,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: recentShows.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 20),
-                itemBuilder: (context, index) {
-                  final show = recentShows[index];
-                  return SizedBox(
-                    width: 170,
-                    child: CinemaPosterCard(
-                      title: show.displayTitle,
-                      year: show.displayYear,
-                      posterPath: show.posterPath,
-                      availabilityStatus: show.availability,
-                      isFavorite: show.isFavorite,
-                      watchState: show.derivedWatchState.toDbString(),
-                      fallbackIcon: Icons.tv,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => TvShowDetailScreen(
-                              showId: show.id,
-                              repository: widget.repository,
-                              database: widget.database,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
+            _ResponsiveCardRow(
+              itemCount: recentShows.length,
+              itemBuilder: (context, index) {
+                final show = recentShows[index];
+                return CinemaPosterCard(
+                  title: show.displayTitle,
+                  year: show.displayYear,
+                  posterPath: show.posterPath,
+                  availabilityStatus: show.availability,
+                  isFavorite: show.isFavorite,
+                  watchState: show.derivedWatchState.toDbString(),
+                  fallbackIcon: Icons.tv,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => TvShowDetailScreen(
+                          showId: show.id,
+                          repository: widget.repository,
+                          database: widget.database,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
             const SizedBox(height: 36),
           ],
@@ -786,38 +762,84 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCinemaFooter(CinemaThemeData tokens) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      decoration: BoxDecoration(
-        color: tokens.surface1,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: tokens.border, width: 1),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.theaters_outlined, size: 32, color: tokens.accent),
-          const SizedBox(height: 10),
-          Text(
-            'Your personal cinema is permanent.',
-            style: TextStyle(
-              color: tokens.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.theaters_outlined,
+              size: 16,
+              color: tokens.accent.withValues(alpha: 0.6),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Disks are sources. Disconnecting a drive never erases your library.\nCopies on this device remain ready to watch offline.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: tokens.textSecondary,
-              fontSize: 12,
-              height: 1.5,
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Your cinema. Your collection. Your stories.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: tokens.textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0.6,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _ResponsiveCardRow extends StatelessWidget {
+  final int itemCount;
+  final Widget Function(BuildContext context, int index) itemBuilder;
+
+  static const double _targetCardWidth = 160.0;
+  static const double _spacing = 16.0;
+  static const double _cardAspectRatio = 0.58;
+
+  const _ResponsiveCardRow({
+    required this.itemCount,
+    required this.itemBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (itemCount == 0) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final maxCapacity =
+            ((availableWidth + _spacing) / (_targetCardWidth + _spacing))
+                .floor()
+                .clamp(1, 20);
+        final visibleCount = maxCapacity.clamp(1, itemCount);
+        final cardWidth =
+            (availableWidth - (maxCapacity - 1) * _spacing) / maxCapacity;
+        final cardHeight = cardWidth / _cardAspectRatio;
+        final isFull = visibleCount == maxCapacity;
+
+        return SizedBox(
+          height: cardHeight,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < visibleCount; i++) ...[
+                if (i > 0) const SizedBox(width: _spacing),
+                if (isFull)
+                  Expanded(child: itemBuilder(context, i))
+                else
+                  SizedBox(width: cardWidth, child: itemBuilder(context, i)),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

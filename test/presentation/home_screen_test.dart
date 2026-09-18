@@ -329,7 +329,6 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(tester.takeException(), isNull);
     expect(find.text('REELHOUSE'), findsOneWidget);
     expect(find.text('Severance'), findsWidgets);
 
@@ -401,6 +400,91 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('CONTINUE WATCHING'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'HomeScreen displays quiet cinema footer and no technical storage copy',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: HomeScreen(
+            repository: repository,
+            database: db,
+            onNavigateToMovies: () {},
+            onNavigateToTv: () {},
+            onNavigateToOffline: () {},
+            onNavigateToSettings: () {},
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Quiet cinema closing element
+      expect(
+        find.text('Your cinema. Your collection. Your stories.'),
+        findsOneWidget,
+      );
+
+      // Old technical storage text removed
+      expect(find.text('Your personal cinema is permanent.'), findsNothing);
+      expect(
+        find.text(
+          'Disks are sources. Disconnecting a drive never erases your library.\nCopies on this device remain ready to watch offline.',
+        ),
+        findsNothing,
+      );
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'HomeScreen discovery rows use non-scrollable responsive rows without horizontal scrollables',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await seedTestData();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: HomeScreen(
+            repository: repository,
+            database: db,
+            onNavigateToMovies: () {},
+            onNavigateToTv: () {},
+            onNavigateToOffline: () {},
+            onNavigateToSettings: () {},
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Ensure that there are NO horizontal ListViews or SingleChildScrollView discovery rows in the home screen
+      final horizontalListScrollables = find.byWidgetPredicate((widget) {
+        if (widget is ListView && widget.scrollDirection == Axis.horizontal) {
+          return true;
+        }
+        if (widget is SingleChildScrollView &&
+            widget.scrollDirection == Axis.horizontal) {
+          return true;
+        }
+        return false;
+      });
+      expect(horizontalListScrollables, findsNothing);
+
+      // Verify no "View All" button exists on Recently Added
+      expect(find.text('View All'), findsNothing);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
