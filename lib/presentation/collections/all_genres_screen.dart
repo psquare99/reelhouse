@@ -4,10 +4,11 @@ import '../../core/theme/cinema_theme.dart';
 import '../../data/database/database.dart';
 import '../../domain/repository/library_repository.dart';
 import '../widgets/cinema_error_state.dart';
+import '../widgets/cinema_genre_tile.dart';
 import '../widgets/cinema_loading_skeleton.dart';
-import 'system_curation_grid_screen.dart';
 
-/// Screen presenting the complete catalogue of all genres discovered in the library.
+/// Screen presenting the complete catalogue of all genres discovered in the library
+/// using the shared cinematic artwork-backed genre tiles.
 class AllGenresScreen extends StatelessWidget {
   final LibraryRepository repository;
   final AppDatabase? database;
@@ -53,12 +54,21 @@ class AllGenresScreen extends StatelessWidget {
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final crossAxisCount = width > 1200
+                  ? 5
+                  : width > 900
                   ? 4
-                  : width > 800
+                  : width > 600
                   ? 3
-                  : width > 500
+                  : width > 360
                   ? 2
                   : 1;
+              const spacing = 12.0;
+              final contentWidth = (width - 48).clamp(0.0, double.infinity);
+              final tileWidth =
+                  (contentWidth - (crossAxisCount - 1) * spacing) /
+                  crossAxisCount;
+              const tileHeight = 52.0;
+              final childAspectRatio = tileWidth / tileHeight;
 
               return GridView.builder(
                 padding: const EdgeInsets.symmetric(
@@ -67,71 +77,17 @@ class AllGenresScreen extends StatelessWidget {
                 ),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 14,
-                  childAspectRatio: crossAxisCount == 1 ? 4.5 : 2.8,
+                  crossAxisSpacing: spacing,
+                  mainAxisSpacing: spacing,
+                  childAspectRatio: childAspectRatio,
                 ),
                 itemCount: genres.length,
                 itemBuilder: (context, index) {
                   final genre = genres[index];
-                  return InkWell(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => SystemCurationGridScreen(
-                            title: genre,
-                            genre: genre,
-                            repository: repository,
-                            database: database,
-                          ),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: tokens.surface1,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: tokens.border, width: 1),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: tokens.accent.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.movie_filter_outlined,
-                              color: tokens.accent,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              genre,
-                              style: TextStyle(
-                                color: tokens.textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            color: tokens.textSecondary,
-                            size: 14,
-                          ),
-                        ],
-                      ),
-                    ),
+                  return CinemaGenreTile(
+                    genre: genre,
+                    repository: repository,
+                    database: database,
                   );
                 },
               );
