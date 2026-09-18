@@ -8,6 +8,8 @@ import 'package:reelhouse/presentation/collections/all_franchises_screen.dart';
 import 'package:reelhouse/presentation/collections/all_genres_screen.dart';
 import 'package:reelhouse/presentation/collections/collection_detail_screen.dart';
 import 'package:reelhouse/presentation/collections/collections_screen.dart';
+import 'package:reelhouse/presentation/collections/system_curation_grid_screen.dart';
+import 'package:reelhouse/presentation/widgets/responsive_card_row.dart';
 
 void main() {
   late AppDatabase db;
@@ -21,7 +23,7 @@ void main() {
   });
 
   testWidgets(
-    'CollectionsScreen displays prominent genre rows, franchises, View All links, and personal collections',
+    'CollectionsScreen displays genre hierarchy, prominent genre discovery tiles with chevrons, and responsive shelves',
     (tester) async {
       tester.view.physicalSize = const Size(1280, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -70,12 +72,12 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Verify clean section headers without implementation terminology
+      // Verify clean section headers
       expect(find.text('GENRES'), findsOneWidget);
       expect(find.text('FRANCHISES'), findsOneWidget);
       expect(find.text('YOUR COLLECTIONS'), findsOneWidget);
 
-      // Verify NO architectural/internal language exists
+      // Verify NO internal/architectural terminology exists
       expect(find.text('SYSTEM CURATION — GENRES'), findsNothing);
       expect(
         find.text('Dynamic metadata-derived catalogue views'),
@@ -84,7 +86,17 @@ void main() {
       expect(find.text('Custom lists curated by you'), findsNothing);
       expect(find.text('FRANCHISES & SAGAS'), findsNothing);
 
-      // Verify prominent genre row headers
+      // Verify prominent genre discovery tiles render with genre name & chevron icon
+      expect(find.text('Action'), findsWidgets);
+      expect(find.text('Science Fiction'), findsWidgets);
+      expect(find.byIcon(Icons.chevron_right_rounded), findsWidgets);
+
+      // Non-represented genres are NOT shown
+      expect(find.text('Documentary'), findsNothing);
+      expect(find.text('Western'), findsNothing);
+      expect(find.text('Romance'), findsNothing);
+
+      // Verify individual genre shelf headers
       expect(find.text('ACTION'), findsOneWidget);
       expect(find.text('SCIENCE FICTION'), findsOneWidget);
 
@@ -92,13 +104,12 @@ void main() {
       expect(find.text('Star Wars: A New Hope'), findsWidgets);
       expect(find.text('The Matrix'), findsWidgets);
 
-      // Non-represented genres are NOT shown
-      expect(find.text('DOCUMENTARY'), findsNothing);
-      expect(find.text('WESTERN'), findsNothing);
-
       // Verify franchise card
       expect(find.text('Star Wars Collection'), findsOneWidget);
       expect(find.text('1 Film'), findsOneWidget);
+
+      // Verify shelf rows use ResponsiveCardRow (no horizontal scrolling ListViews)
+      expect(find.byType(ResponsiveCardRow), findsWidgets);
 
       // Verify personal collections empty state
       expect(find.text('No personal collections yet.'), findsOneWidget);
@@ -124,6 +135,20 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
+      // Tap genre discovery tile opens SystemCurationGridScreen
+      final actionTile = find.text('Action').first;
+      await tester.ensureVisible(actionTile);
+      await tester.pumpAndSettle();
+      await tester.tap(actionTile);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SystemCurationGridScreen), findsOneWidget);
+      expect(find.text('Action'), findsWidgets);
+
+      // Pop SystemCurationGridScreen
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
       // Tap main 'GENRES' View All opens AllGenresScreen
       final viewAllGenresButton = find
           .widgetWithText(TextButton, 'View All')
@@ -134,8 +159,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(AllGenresScreen), findsOneWidget);
-      expect(find.text('Action'), findsOneWidget);
-      expect(find.text('Science Fiction'), findsOneWidget);
+      expect(find.text('Action'), findsWidgets);
+      expect(find.text('Science Fiction'), findsWidgets);
 
       // Pop AllGenresScreen
       await tester.pageBack();
@@ -144,7 +169,7 @@ void main() {
       // Tap main 'FRANCHISES' View All opens AllFranchisesScreen
       final viewAllFranchisesButton = find
           .widgetWithText(TextButton, 'View All')
-          .last;
+          .at(3); // after GENRES, ACTION, SCIENCE FICTION View Alls
       await tester.ensureVisible(viewAllFranchisesButton);
       await tester.pumpAndSettle();
       await tester.tap(viewAllFranchisesButton);
@@ -156,6 +181,51 @@ void main() {
       // Pop AllFranchisesScreen
       await tester.pageBack();
       await tester.pumpAndSettle();
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'CollectionsScreen adapts to narrow mobile viewport without layout overflow',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final now = DateTime.now();
+
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-sw',
+              detectedTitle: 'Star Wars: A New Hope',
+              title: const drift.Value('Star Wars: A New Hope'),
+              year: const drift.Value(1977),
+              genres: const drift.Value('Action, Science Fiction'),
+              tmdbCollectionId: const drift.Value(10),
+              tmdbCollectionName: const drift.Value('Star Wars Collection'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: CollectionsScreen(database: db),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Check no flutter exceptions/overflow occurred
+      expect(tester.takeException(), isNull);
+      expect(find.text('GENRES'), findsOneWidget);
+      expect(find.text('Action'), findsWidgets);
+      expect(find.text('ACTION'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();

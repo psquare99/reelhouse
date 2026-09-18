@@ -17,6 +17,7 @@ import '../widgets/cinema_error_state.dart';
 import '../widgets/cinema_loading_skeleton.dart';
 import '../widgets/cinema_poster_card.dart';
 import '../widgets/cinema_search_bar.dart';
+import '../widgets/responsive_card_row.dart';
 
 /// Cinematic Home screen displaying:
 /// 1. Top bar with quiet disk indicator and settings trigger.
@@ -581,7 +582,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _SectionHeader(title: title, subtitle: subtitle),
             const SizedBox(height: 16),
-            _ResponsiveCardRow(
+            ResponsiveCardRow(
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final movie = items[index];
@@ -662,7 +663,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   subtitle: 'Your latest screenings',
                 ),
                 const SizedBox(height: 16),
-                _ResponsiveCardRow(
+                ResponsiveCardRow(
                   itemCount: topItems.length,
                   itemBuilder: (context, index) {
                     final item = topItems[index];
@@ -769,7 +770,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Latest series and seasons discovered across your disks',
             ),
             const SizedBox(height: 16),
-            _ResponsiveCardRow(
+            ResponsiveCardRow(
               itemCount: recentShows.length,
               itemBuilder: (context, index) {
                 final show = recentShows[index];
@@ -921,56 +922,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _ResponsiveCardRow extends StatelessWidget {
-  final int itemCount;
-  final Widget Function(BuildContext context, int index) itemBuilder;
-
-  static const double _targetCardWidth = 160.0;
-  static const double _spacing = 16.0;
-  static const double _cardAspectRatio = 0.58;
-
-  const _ResponsiveCardRow({
-    required this.itemCount,
-    required this.itemBuilder,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (itemCount == 0) return const SizedBox.shrink();
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth;
-        final maxCapacity =
-            ((availableWidth + _spacing) / (_targetCardWidth + _spacing))
-                .floor()
-                .clamp(1, 20);
-        final visibleCount = maxCapacity.clamp(1, itemCount);
-        final cardWidth =
-            (availableWidth - (maxCapacity - 1) * _spacing) / maxCapacity;
-        final cardHeight = cardWidth / _cardAspectRatio;
-        final isFull = visibleCount == maxCapacity;
-
-        return SizedBox(
-          height: cardHeight,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < visibleCount; i++) ...[
-                if (i > 0) const SizedBox(width: _spacing),
-                if (isFull)
-                  Expanded(child: itemBuilder(context, i))
-                else
-                  SizedBox(width: cardWidth, child: itemBuilder(context, i)),
-              ],
-            ],
-          ),
-        );
-      },
     );
   }
 }
