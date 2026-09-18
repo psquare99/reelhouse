@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide NullsOrder;
 
 import '../../../domain/models/availability_status.dart';
+import '../../../domain/models/genre_definition.dart';
 import '../../../domain/models/identification_status.dart';
 import '../../../domain/models/watch_state.dart';
 import '../../../domain/query/filter_spec.dart';
@@ -254,11 +255,18 @@ class TvShowQueryEngine {
 
     // 11. Genre filter
     if (filter.genre != null && filter.genre!.trim().isNotEmpty) {
-      final normalizedGenre = filter.genre!.trim().toLowerCase();
-      whereClauses.add(
-        '''(',' || REPLACE(REPLACE(LOWER(COALESCE(t.genres, '')), ', ', ','), ' ,', ',') || ',') LIKE ?''',
-      );
-      whereVariables.add(Variable<String>('%,$normalizedGenre,%'));
+      final matchingValues = GenreResolver.resolveMatchingValues(filter.genre!);
+      if (matchingValues.isNotEmpty) {
+        final genreBranches = <String>[];
+        for (final val in matchingValues) {
+          final normalized = val.trim().toLowerCase();
+          genreBranches.add(
+            '''(',' || REPLACE(REPLACE(LOWER(COALESCE(t.genres, '')), ', ', ','), ' ,', ',') || ',') LIKE ?''',
+          );
+          whereVariables.add(Variable<String>('%,$normalized,%'));
+        }
+        whereClauses.add('(${genreBranches.join(' OR ')})');
+      }
     }
 
     final whereSql = whereClauses.isNotEmpty

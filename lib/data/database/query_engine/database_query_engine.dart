@@ -1,3 +1,4 @@
+import '../../../domain/models/genre_definition.dart';
 import '../../../domain/query/collection_query.dart';
 import '../../../domain/query/episode_query.dart';
 import '../../../domain/query/library_result.dart';
@@ -89,7 +90,12 @@ SELECT DISTINCT genres FROM tv_shows WHERE genres IS NOT NULL AND genres != ''
                 .split(',')
                 .map((s) => s.trim())
                 .where((s) => s.isNotEmpty);
-            genreSet.addAll(parts);
+            for (final part in parts) {
+              final canonical = GenreResolver.canonicalize(part);
+              if (canonical.isNotEmpty) {
+                genreSet.add(canonical);
+              }
+            }
           }
           final sorted = genreSet.toList()..sort();
           return sorted;
@@ -116,7 +122,12 @@ SELECT DISTINCT genres FROM tv_shows WHERE genres IS NOT NULL AND genres != ''
           .split(',')
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty);
-      genreSet.addAll(parts);
+      for (final part in parts) {
+        final canonical = GenreResolver.canonicalize(part);
+        if (canonical.isNotEmpty) {
+          genreSet.add(canonical);
+        }
+      }
     }
     final sorted = genreSet.toList()..sort();
     return sorted;
