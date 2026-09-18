@@ -22,6 +22,7 @@ class MovieLibraryItem {
   final bool isWatchlist;
   final WatchState watchState;
   final int playbackPositionSeconds;
+  final DateTime? lastPlayedAt;
   final IdentificationStatus identificationStatus;
   final AvailabilityStatus availability;
   final int availableSourceCount;
@@ -47,6 +48,7 @@ class MovieLibraryItem {
     this.isWatchlist = false,
     this.watchState = WatchState.unwatched,
     this.playbackPositionSeconds = 0,
+    this.lastPlayedAt,
     this.identificationStatus = IdentificationStatus.pending,
     this.availability = AvailabilityStatus.unavailable,
     this.availableSourceCount = 0,
@@ -86,6 +88,7 @@ class MovieLibraryItem {
           isWatchlist == other.isWatchlist &&
           watchState == other.watchState &&
           playbackPositionSeconds == other.playbackPositionSeconds &&
+          lastPlayedAt == other.lastPlayedAt &&
           identificationStatus == other.identificationStatus &&
           availability == other.availability &&
           availableSourceCount == other.availableSourceCount &&
@@ -111,9 +114,11 @@ class MovieLibraryItem {
     isWatchlist,
     watchState,
     playbackPositionSeconds,
+    lastPlayedAt,
     identificationStatus,
     availability,
     availableSourceCount,
+    Object.hashAll(genres),
     tmdbCollectionId,
     tmdbCollectionName,
     createdAt,
@@ -289,6 +294,8 @@ class EpisodeLibraryItem {
   final String id;
   final String seasonId;
   final String? showId;
+  final String? showTitle;
+  final String? showPosterPath;
   final int seasonNumber;
   final int episodeNumber;
   final String? name;
@@ -299,12 +306,15 @@ class EpisodeLibraryItem {
   final double? rating;
   final WatchState watchState;
   final int playbackPositionSeconds;
+  final DateTime? lastPlayedAt;
   final AvailabilityStatus availability;
 
   const EpisodeLibraryItem({
     required this.id,
     required this.seasonId,
     this.showId,
+    this.showTitle,
+    this.showPosterPath,
     required this.seasonNumber,
     required this.episodeNumber,
     this.name,
@@ -315,6 +325,7 @@ class EpisodeLibraryItem {
     this.rating,
     this.watchState = WatchState.unwatched,
     this.playbackPositionSeconds = 0,
+    this.lastPlayedAt,
     this.availability = AvailabilityStatus.unavailable,
   });
 
@@ -339,6 +350,8 @@ class EpisodeLibraryItem {
           id == other.id &&
           seasonId == other.seasonId &&
           showId == other.showId &&
+          showTitle == other.showTitle &&
+          showPosterPath == other.showPosterPath &&
           seasonNumber == other.seasonNumber &&
           episodeNumber == other.episodeNumber &&
           name == other.name &&
@@ -349,13 +362,16 @@ class EpisodeLibraryItem {
           rating == other.rating &&
           watchState == other.watchState &&
           playbackPositionSeconds == other.playbackPositionSeconds &&
+          lastPlayedAt == other.lastPlayedAt &&
           availability == other.availability;
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     seasonId,
     showId,
+    showTitle,
+    showPosterPath,
     seasonNumber,
     episodeNumber,
     name,
@@ -366,8 +382,9 @@ class EpisodeLibraryItem {
     rating,
     watchState,
     playbackPositionSeconds,
+    lastPlayedAt,
     availability,
-  );
+  ]);
 
   @override
   String toString() =>

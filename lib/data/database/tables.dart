@@ -59,6 +59,7 @@ class Movies extends Table {
   )(); // UNWATCHED, IN_PROGRESS, WATCHED
   IntColumn get playbackPositionSeconds =>
       integer().withDefault(const Constant(0))();
+  DateTimeColumn get lastPlayedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -127,6 +128,7 @@ class Episodes extends Table {
   )(); // UNWATCHED, IN_PROGRESS, WATCHED
   IntColumn get playbackPositionSeconds =>
       integer().withDefault(const Constant(0))();
+  DateTimeColumn get lastPlayedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

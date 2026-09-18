@@ -17,6 +17,7 @@ enum MovieSortField {
   runtime,
   createdAt,
   updatedAt,
+  lastPlayedAt,
   watchState;
 
   String get displayName {
@@ -35,6 +36,8 @@ enum MovieSortField {
         return 'Recently Added';
       case MovieSortField.updatedAt:
         return 'Recently Updated';
+      case MovieSortField.lastPlayedAt:
+        return 'Recently Played';
       case MovieSortField.watchState:
         return 'Watch State';
     }
@@ -105,6 +108,7 @@ enum EpisodeSortField {
   airDate,
   title,
   createdAt,
+  lastPlayedAt,
   watchState;
 
   String get displayName {
@@ -119,6 +123,8 @@ enum EpisodeSortField {
         return 'Title';
       case EpisodeSortField.createdAt:
         return 'Recently Added';
+      case EpisodeSortField.lastPlayedAt:
+        return 'Recently Played';
       case EpisodeSortField.watchState:
         return 'Watch State';
     }

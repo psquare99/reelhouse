@@ -1,9 +1,11 @@
+import 'dart:io';
+
+import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelhouse/data/database/database.dart';
 import 'package:reelhouse/data/platform/platform_storage_adapter.dart';
 import 'package:reelhouse/domain/services/playback_launcher_service.dart';
-import 'package:drift/drift.dart' as drift;
 
 /// Minimal in-memory [PlatformStorageAdapter] for test control.
 /// Implements only the two methods used by [PlaybackLauncherService].
@@ -197,5 +199,73 @@ void main() {
         expect(result.isSuccess, false);
       },
     );
+
+    test('passes --start-time to VLC and updates watch lifecycle on launch success', () async {
+      await seedData();
+
+      String? launchedExec;
+      List<String>? launchedArgs;
+
+      final svc = PlaybackLauncherService(
+        database: db,
+        storageAdapter: const _FakeStorageAdapter(connected: true, filePresent: true),
+        processStarter: (exec, args, {mode = ProcessStartMode.normal}) async {
+          launchedExec = exec;
+          launchedArgs = args;
+          return _FakeProcess();
+        },
+      );
+
+      final result = await svc.launchPlayback(
+        mediaSourceId: 'source-1',
+        startPositionSeconds: 125,
+      );
+
+      expect(result.isSuccess, true);
+      expect(result.status, PlaybackStatus.success);
+      expect(launchedArgs, contains('--start-time=125'));
+
+      // Check database state: movie should be IN_PROGRESS and lastPlayedAt set
+      final movie = await db.findMovieById('movie-1');
+      expect(movie, isNotNull);
+      expect(movie!.watchState, 'IN_PROGRESS');
+      expect(movie.lastPlayedAt, isNotNull);
+    });
+
+    test('does not update watchState or lastPlayedAt when launch fails', () async {
+      await seedData();
+
+      final svc = PlaybackLauncherService(
+        database: db,
+        storageAdapter: const _FakeStorageAdapter(connected: false),
+      );
+
+      final result = await svc.launchPlayback(mediaSourceId: 'source-1');
+      expect(result.isSuccess, false);
+
+      final movie = await db.findMovieById('movie-1');
+      expect(movie!.watchState, 'UNWATCHED');
+      expect(movie.lastPlayedAt, isNull);
+    });
   });
+}
+
+class _FakeProcess implements Process {
+  @override
+  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) => true;
+
+  @override
+  int get pid => 12345;
+
+  @override
+  Future<int> get exitCode => Future.value(0);
+
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
+
+  @override
+  Stream<List<int>> get stdout => const Stream.empty();
+
+  @override
+  IOSink get stdin => throw UnimplementedError();
 }

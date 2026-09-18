@@ -245,6 +245,11 @@ class MovieQueryEngine {
       whereVariables.add(Variable<String>(filter.tmdbCollectionName!));
     }
 
+    // 14. Has Been Played filter
+    if (filter.hasBeenPlayed == true) {
+      whereClauses.add('m.last_played_at IS NOT NULL');
+    }
+
     final whereSql = whereClauses.isNotEmpty
         ? 'WHERE ${whereClauses.join(' AND ')}'
         : '';
@@ -297,6 +302,7 @@ SELECT
   m.is_watchlist,
   m.watch_state,
   m.playback_position_seconds,
+  m.last_played_at,
   m.identification_status,
   m.created_at,
   m.updated_at,
@@ -336,6 +342,8 @@ $paginationSql
         return 'm.created_at';
       case MovieSortField.updatedAt:
         return 'm.updated_at';
+      case MovieSortField.lastPlayedAt:
+        return 'm.last_played_at';
       case MovieSortField.watchState:
         return 'm.watch_state';
     }
@@ -384,6 +392,7 @@ $paginationSql
       isWatchlist: row.read<bool>('is_watchlist'),
       watchState: WatchState.fromString(row.read<String>('watch_state')),
       playbackPositionSeconds: row.read<int>('playback_position_seconds'),
+      lastPlayedAt: row.readNullable<DateTime>('last_played_at'),
       identificationStatus: IdentificationStatus.fromString(
         row.read<String>('identification_status'),
       ),

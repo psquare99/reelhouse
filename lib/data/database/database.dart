@@ -24,7 +24,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? connect());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -86,6 +86,7 @@ class AppDatabase extends _$AppDatabase {
               movies.tmdbCollectionName,
               movies.tmdbCollectionPosterPath,
               movies.tmdbCollectionBackdropPath,
+              movies.lastPlayedAt,
             ],
           ),
         );
@@ -109,6 +110,12 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(movies, movies.tmdbCollectionPosterPath);
         await m.addColumn(movies, movies.tmdbCollectionBackdropPath);
         await m.addColumn(tvShows, tvShows.genres);
+      }
+      if (from < 6) {
+        if (from >= 4) {
+          await m.addColumn(movies, movies.lastPlayedAt);
+        }
+        await m.addColumn(episodes, episodes.lastPlayedAt);
       }
     },
   );
@@ -361,6 +368,51 @@ class AppDatabase extends _$AppDatabase {
       StoragesCompanion(
         available: Value(available),
         lastSeenAt: Value(lastSeenAt),
+      ),
+    );
+  }
+
+  /// Records a successful playback launch for a Movie.
+  /// If the movie is currently unwatched, transitions it to IN_PROGRESS.
+  /// Always updates [lastPlayedAt] to [playedAt] (defaulting to DateTime.now()) and [updatedAt].
+  Future<void> recordMoviePlaybackLaunch(
+    String movieId, {
+    DateTime? playedAt,
+  }) async {
+    final timestamp = playedAt ?? DateTime.now();
+    final movie = await findMovieById(movieId);
+    if (movie == null) return;
+
+    final shouldTransition = movie.watchState == 'UNWATCHED';
+    await (update(movies)..where((m) => m.id.equals(movieId))).write(
+      MoviesCompanion(
+        lastPlayedAt: Value(timestamp),
+        updatedAt: Value(timestamp),
+        watchState: shouldTransition
+            ? const Value('IN_PROGRESS')
+            : const Value.absent(),
+      ),
+    );
+  }
+
+  /// Records a successful playback launch for an Episode.
+  /// If the episode is currently unwatched, transitions it to IN_PROGRESS.
+  /// Always updates [lastPlayedAt] to [playedAt] (defaulting to DateTime.now()).
+  Future<void> recordEpisodePlaybackLaunch(
+    String episodeId, {
+    DateTime? playedAt,
+  }) async {
+    final timestamp = playedAt ?? DateTime.now();
+    final episode = await findEpisodeById(episodeId);
+    if (episode == null) return;
+
+    final shouldTransition = episode.watchState == 'UNWATCHED';
+    await (update(episodes)..where((e) => e.id.equals(episodeId))).write(
+      EpisodesCompanion(
+        lastPlayedAt: Value(timestamp),
+        watchState: shouldTransition
+            ? const Value('IN_PROGRESS')
+            : const Value.absent(),
       ),
     );
   }

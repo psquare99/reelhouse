@@ -60,6 +60,16 @@ class EpisodeQuery {
     pagination: limit != null ? PaginationSpec(limit: limit) : null,
   );
 
+  /// Factory for Recently Played episode queue.
+  factory EpisodeQuery.recentlyPlayed({int? limit}) => EpisodeQuery(
+    scope: QueryScope.recentlyPlayed,
+    filter: const EpisodeFilter(hasBeenPlayed: true),
+    sort: const [
+      SortClause(EpisodeSortField.lastPlayedAt, direction: SortDirection.desc),
+    ],
+    pagination: limit != null ? PaginationSpec(limit: limit) : null,
+  );
+
   /// Factory for Episode Search Query.
   factory EpisodeQuery.search(
     String query, {

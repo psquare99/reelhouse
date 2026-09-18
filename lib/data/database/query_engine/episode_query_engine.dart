@@ -25,7 +25,13 @@ class EpisodeQueryEngine {
         .customSelect(
           queryPlan.dataSql,
           variables: queryPlan.dataVariables,
-          readsFrom: {db.episodes, db.seasons, db.mediaSources, db.storages},
+          readsFrom: {
+            db.episodes,
+            db.seasons,
+            db.tvShows,
+            db.mediaSources,
+            db.storages,
+          },
         )
         .get();
 
@@ -33,7 +39,13 @@ class EpisodeQueryEngine {
         .customSelect(
           queryPlan.countSql,
           variables: queryPlan.countVariables,
-          readsFrom: {db.episodes, db.seasons, db.mediaSources, db.storages},
+          readsFrom: {
+            db.episodes,
+            db.seasons,
+            db.tvShows,
+            db.mediaSources,
+            db.storages,
+          },
         )
         .getSingle();
 
@@ -58,7 +70,13 @@ class EpisodeQueryEngine {
         .customSelect(
           queryPlan.dataSql,
           variables: queryPlan.dataVariables,
-          readsFrom: {db.episodes, db.seasons, db.mediaSources, db.storages},
+          readsFrom: {
+            db.episodes,
+            db.seasons,
+            db.tvShows,
+            db.mediaSources,
+            db.storages,
+          },
         )
         .watch()
         .asyncMap((dataRows) async {
@@ -69,6 +87,7 @@ class EpisodeQueryEngine {
                 readsFrom: {
                   db.episodes,
                   db.seasons,
+                  db.tvShows,
                   db.mediaSources,
                   db.storages,
                 },
@@ -161,6 +180,10 @@ class EpisodeQueryEngine {
       }
     }
 
+    if (query.filter.hasBeenPlayed == true) {
+      whereClauses.add('e.last_played_at IS NOT NULL');
+    }
+
     final whereSql = whereClauses.isNotEmpty
         ? 'WHERE ${whereClauses.join(' AND ')}'
         : '';
@@ -200,6 +223,8 @@ SELECT
   e.id,
   e.season_id,
   s.show_id,
+  COALESCE(t.title, t.detected_title) AS show_title,
+  t.poster_path AS show_poster_path,
   s.season_number,
   e.episode_number,
   e.name,
@@ -210,11 +235,13 @@ SELECT
   e.rating,
   e.watch_state,
   e.playback_position_seconds,
+  e.last_played_at,
   COUNT(CASE WHEN ms.available = 1 AND (ms.source_type = 'localDevice' OR st.available = 1) THEN 1 ELSE NULL END) AS available_source_count,
   MAX(CASE WHEN ms.source_type = 'localDevice' AND ms.available = 1 THEN 1 ELSE 0 END) AS has_local,
   MAX(CASE WHEN ms.source_type = 'removableStorage' AND ms.available = 1 AND st.available = 1 THEN 1 ELSE 0 END) AS has_removable
 FROM episodes e
 INNER JOIN seasons s ON s.id = e.season_id
+LEFT JOIN tv_shows t ON t.id = s.show_id
 LEFT JOIN media_sources ms ON ms.episode_id = e.id
 LEFT JOIN storages st ON st.id = ms.storage_id
 $whereSql
@@ -243,6 +270,8 @@ $paginationSql
         return 'COALESCE(e.name, \'\') COLLATE NOCASE';
       case EpisodeSortField.createdAt:
         return 'e.air_date';
+      case EpisodeSortField.lastPlayedAt:
+        return 'e.last_played_at';
       case EpisodeSortField.watchState:
         return 'e.watch_state';
     }
@@ -267,6 +296,8 @@ $paginationSql
       id: row.read<String>('id'),
       seasonId: row.read<String>('season_id'),
       showId: row.readNullable<String>('show_id'),
+      showTitle: row.readNullable<String>('show_title'),
+      showPosterPath: row.readNullable<String>('show_poster_path'),
       seasonNumber: row.read<int>('season_number'),
       episodeNumber: row.read<int>('episode_number'),
       name: row.readNullable<String>('name'),
@@ -277,6 +308,7 @@ $paginationSql
       rating: row.readNullable<double>('rating'),
       watchState: WatchState.fromString(row.read<String>('watch_state')),
       playbackPositionSeconds: row.read<int>('playback_position_seconds'),
+      lastPlayedAt: row.readNullable<DateTime>('last_played_at'),
       availability: availability,
     );
   }

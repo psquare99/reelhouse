@@ -21,6 +21,9 @@ enum QueryScopeType {
   /// Recently added / discovered media.
   recentlyAdded,
 
+  /// Recently played media.
+  recentlyPlayed,
+
   /// Active playback in-progress queue.
   continueWatching,
 
@@ -41,6 +44,7 @@ enum QueryScopeType {
   bool get isSmartView =>
       this == QueryScopeType.continueWatching ||
       this == QueryScopeType.recentlyAdded ||
+      this == QueryScopeType.recentlyPlayed ||
       this == QueryScopeType.favorites ||
       this == QueryScopeType.watchlist ||
       this == QueryScopeType.unwatched ||
@@ -71,6 +75,10 @@ class QueryScope {
   static const QueryScope recentlyAdded = QueryScope(
     QueryScopeType.recentlyAdded,
     label: 'Recently Added',
+  );
+  static const QueryScope recentlyPlayed = QueryScope(
+    QueryScopeType.recentlyPlayed,
+    label: 'Recently Played',
   );
   static const QueryScope continueWatching = QueryScope(
     QueryScopeType.continueWatching,

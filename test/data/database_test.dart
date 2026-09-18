@@ -473,9 +473,9 @@ void main() {
     });
   });
 
-  group('Schema Version 5 & Canonical Media Identity & Curation', () {
-    test('current schema version is 5', () {
-      expect(db.schemaVersion, 5);
+  group('Schema Version 6 & Canonical Media Identity & Curation', () {
+    test('current schema version is 6', () {
+      expect(db.schemaVersion, 6);
     });
 
     test('supports movie and TV show with NULL canonical title (unidentified item)', () async {
@@ -827,6 +827,81 @@ void main() {
       expect(franchises.first.id, 10);
       expect(franchises.first.name, 'Star Wars Collection');
       expect(franchises.first.movieCount, 2);
+    });
+
+    test('recordMoviePlaybackLaunch updates lastPlayedAt and transitions unwatched to inProgress', () async {
+      final now = DateTime(2026, 1, 1);
+      final playedAt = DateTime(2026, 1, 2, 15, 30);
+
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-launch-test',
+              detectedTitle: 'Launch Test',
+              watchState: const drift.Value('UNWATCHED'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await db.recordMoviePlaybackLaunch('m-launch-test', playedAt: playedAt);
+
+      final updated = await db.findMovieById('m-launch-test');
+      expect(updated, isNotNull);
+      expect(updated!.watchState, 'IN_PROGRESS');
+      expect(updated.lastPlayedAt, playedAt);
+      expect(updated.updatedAt, playedAt);
+
+      // Now launch again on already in-progress movie — watchState should stay inProgress, lastPlayedAt should update
+      final playedAt2 = DateTime(2026, 1, 3, 20, 0);
+      await db.recordMoviePlaybackLaunch('m-launch-test', playedAt: playedAt2);
+
+      final updated2 = await db.findMovieById('m-launch-test');
+      expect(updated2!.watchState, 'IN_PROGRESS');
+      expect(updated2.lastPlayedAt, playedAt2);
+    });
+
+    test('recordEpisodePlaybackLaunch updates lastPlayedAt and transitions unwatched to inProgress', () async {
+      final now = DateTime(2026, 1, 1);
+      final playedAt = DateTime(2026, 1, 2, 16, 45);
+
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-launch-show',
+              detectedTitle: 'Launch Show',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.seasons)
+          .insert(
+            SeasonsCompanion.insert(
+              id: 's-launch-1',
+              showId: 'tv-launch-show',
+              seasonNumber: 1,
+            ),
+          );
+      await db
+          .into(db.episodes)
+          .insert(
+            EpisodesCompanion.insert(
+              id: 'ep-launch-test',
+              seasonId: 's-launch-1',
+              episodeNumber: 1,
+              watchState: const drift.Value('UNWATCHED'),
+            ),
+          );
+
+      await db.recordEpisodePlaybackLaunch('ep-launch-test', playedAt: playedAt);
+
+      final updated = await db.findEpisodeById('ep-launch-test');
+      expect(updated, isNotNull);
+      expect(updated!.watchState, 'IN_PROGRESS');
+      expect(updated.lastPlayedAt, playedAt);
     });
   });
 }

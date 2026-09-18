@@ -92,8 +92,10 @@ class PlaybackLauncherService {
   }
 
   /// Initiates external player playback for a given [mediaSourceId].
+  /// Optionally resumes from [startPositionSeconds] when supported (e.g. VLC).
   Future<PlaybackLaunchResult> launchPlayback({
     required String mediaSourceId,
+    int? startPositionSeconds,
   }) async {
     // 1. Fetch MediaSource from database
     final source = await database.getMediaSourceById(mediaSourceId);
@@ -152,12 +154,17 @@ class PlaybackLauncherService {
     // 6. Platform external player handoff
     final playerPref = settingsService?.preferredPlayer ?? 'vlc';
 
+    final PlaybackLaunchResult launchResult;
     if (Platform.isWindows) {
-      return _launchWindows(resolvedPath, playerPref);
+      launchResult = await _launchWindows(
+        resolvedPath,
+        playerPref,
+        startPositionSeconds: startPositionSeconds,
+      );
     } else if (Platform.isAndroid) {
-      return _diagnoseAndroid(resolvedPath, playerPref);
+      launchResult = _diagnoseAndroid(resolvedPath, playerPref);
     } else {
-      return PlaybackLaunchResult(
+      launchResult = PlaybackLaunchResult(
         status: PlaybackStatus.unsupportedPlatform,
         isSuccess: false,
         resolvedPath: resolvedPath,
@@ -165,12 +172,24 @@ class PlaybackLauncherService {
             'External player launching is not supported on this platform.',
       );
     }
+
+    // 7. Watch Lifecycle: If launch succeeded, record playback launch in database
+    if (launchResult.isSuccess) {
+      if (source.movieId != null) {
+        await database.recordMoviePlaybackLaunch(source.movieId!);
+      } else if (source.episodeId != null) {
+        await database.recordEpisodePlaybackLaunch(source.episodeId!);
+      }
+    }
+
+    return launchResult;
   }
 
   Future<PlaybackLaunchResult> _launchWindows(
     String filePath,
-    String playerPref,
-  ) async {
+    String playerPref, {
+    int? startPositionSeconds,
+  }) async {
     try {
       final starter = processStarter ?? Process.start;
 
@@ -188,27 +207,31 @@ class PlaybackLauncherService {
           }
         }
 
+        final args = <String>[];
+        if (startPositionSeconds != null && startPositionSeconds > 0) {
+          args.add('--start-time=$startPositionSeconds');
+        }
+        args.add(filePath);
+
         if (vlcExecutable != null) {
-          await starter(vlcExecutable, [
-            filePath,
-          ], mode: ProcessStartMode.detached);
+          await starter(vlcExecutable, args, mode: ProcessStartMode.detached);
           return PlaybackLaunchResult(
             status: PlaybackStatus.success,
             isSuccess: true,
             resolvedPath: filePath,
             playerUsed: 'VLC Media Player',
-            commandOrIntent: '$vlcExecutable "$filePath"',
+            commandOrIntent: '$vlcExecutable ${args.map((a) => '"$a"').join(' ')}',
           );
         } else {
           // VLC not in standard directory, attempt launch by system PATH
           try {
-            await starter('vlc', [filePath], mode: ProcessStartMode.detached);
+            await starter('vlc', args, mode: ProcessStartMode.detached);
             return PlaybackLaunchResult(
               status: PlaybackStatus.success,
               isSuccess: true,
               resolvedPath: filePath,
               playerUsed: 'VLC Media Player (PATH)',
-              commandOrIntent: 'vlc "$filePath"',
+              commandOrIntent: 'vlc ${args.map((a) => '"$a"').join(' ')}',
             );
           } catch (_) {
             return PlaybackLaunchResult(

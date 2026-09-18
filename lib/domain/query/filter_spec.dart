@@ -110,6 +110,7 @@ class MovieFilter {
   final String? genre;
   final int? tmdbCollectionId;
   final String? tmdbCollectionName;
+  final bool? hasBeenPlayed;
 
   const MovieFilter({
     this.id,
@@ -125,6 +126,7 @@ class MovieFilter {
     this.genre,
     this.tmdbCollectionId,
     this.tmdbCollectionName,
+    this.hasBeenPlayed,
   });
 
   static const MovieFilter empty = MovieFilter();
@@ -142,7 +144,8 @@ class MovieFilter {
       sourceId == null &&
       genre == null &&
       tmdbCollectionId == null &&
-      tmdbCollectionName == null;
+      tmdbCollectionName == null &&
+      hasBeenPlayed == null;
 
   bool get isNotEmpty => !isEmpty;
 
@@ -160,6 +163,7 @@ class MovieFilter {
     String? genre,
     int? tmdbCollectionId,
     String? tmdbCollectionName,
+    bool? hasBeenPlayed,
   }) {
     return MovieFilter(
       id: id ?? this.id,
@@ -175,6 +179,7 @@ class MovieFilter {
       genre: genre ?? this.genre,
       tmdbCollectionId: tmdbCollectionId ?? this.tmdbCollectionId,
       tmdbCollectionName: tmdbCollectionName ?? this.tmdbCollectionName,
+      hasBeenPlayed: hasBeenPlayed ?? this.hasBeenPlayed,
     );
   }
 
@@ -194,6 +199,7 @@ class MovieFilter {
           genre == other.genre &&
           tmdbCollectionId == other.tmdbCollectionId &&
           tmdbCollectionName == other.tmdbCollectionName &&
+          hasBeenPlayed == other.hasBeenPlayed &&
           _setEquals(watchStates, other.watchStates) &&
           _setEquals(metadataStatuses, other.metadataStatuses);
 
@@ -212,11 +218,12 @@ class MovieFilter {
     genre,
     tmdbCollectionId,
     tmdbCollectionName,
+    hasBeenPlayed,
   );
 
   @override
   String toString() =>
-      'MovieFilter(id: $id, watch: $watchStates, fav: $isFavorite, watchl: $isWatchlist, avail: $availability, meta: $metadataStatuses, year: $yearRange, col: $collectionId, storage: $storageId, src: $sourceId, genre: $genre, tmdbCol: $tmdbCollectionId/$tmdbCollectionName)';
+      'MovieFilter(id: $id, watch: $watchStates, fav: $isFavorite, watchl: $isWatchlist, avail: $availability, meta: $metadataStatuses, year: $yearRange, col: $collectionId, storage: $storageId, src: $sourceId, genre: $genre, tmdbCol: $tmdbCollectionId/$tmdbCollectionName, hasPlayed: $hasBeenPlayed)';
 
   static bool _setEquals<E>(Set<E>? a, Set<E>? b) {
     if (a == null && b == null) return true;
@@ -390,6 +397,7 @@ class EpisodeFilter {
   final Set<WatchState>? watchStates;
   final AvailabilityFilter? availability;
   final String? storageId;
+  final bool? hasBeenPlayed;
 
   const EpisodeFilter({
     this.id,
@@ -399,6 +407,7 @@ class EpisodeFilter {
     this.watchStates,
     this.availability,
     this.storageId,
+    this.hasBeenPlayed,
   });
 
   static const EpisodeFilter empty = EpisodeFilter();
@@ -410,7 +419,8 @@ class EpisodeFilter {
       seasonNumber == null &&
       watchStates == null &&
       availability == null &&
-      storageId == null;
+      storageId == null &&
+      hasBeenPlayed == null;
 
   bool get isNotEmpty => !isEmpty;
 
@@ -422,6 +432,7 @@ class EpisodeFilter {
     Set<WatchState>? watchStates,
     AvailabilityFilter? availability,
     String? storageId,
+    bool? hasBeenPlayed,
   }) {
     return EpisodeFilter(
       id: id ?? this.id,
@@ -431,6 +442,7 @@ class EpisodeFilter {
       watchStates: watchStates ?? this.watchStates,
       availability: availability ?? this.availability,
       storageId: storageId ?? this.storageId,
+      hasBeenPlayed: hasBeenPlayed ?? this.hasBeenPlayed,
     );
   }
 
@@ -445,6 +457,7 @@ class EpisodeFilter {
           seasonNumber == other.seasonNumber &&
           availability == other.availability &&
           storageId == other.storageId &&
+          hasBeenPlayed == other.hasBeenPlayed &&
           MovieFilter._setEquals(watchStates, other.watchStates);
 
   @override
@@ -456,11 +469,12 @@ class EpisodeFilter {
     watchStates == null ? null : Object.hashAll(watchStates!),
     availability,
     storageId,
+    hasBeenPlayed,
   );
 
   @override
   String toString() =>
-      'EpisodeFilter(id: $id, seasonId: $seasonId, showId: $showId, sNum: $seasonNumber, watch: $watchStates, avail: $availability, storage: $storageId)';
+      'EpisodeFilter(id: $id, seasonId: $seasonId, showId: $showId, season: $seasonNumber, watch: $watchStates, avail: $availability, storage: $storageId, hasPlayed: $hasBeenPlayed)';
 }
 
 /// Filter criteria for Collection queries.

@@ -49,6 +49,16 @@ class MovieQuery {
     pagination: limit != null ? PaginationSpec(limit: limit) : null,
   );
 
+  /// Factory for Recently Played Smart View.
+  factory MovieQuery.recentlyPlayed({int? limit}) => MovieQuery(
+    scope: QueryScope.recentlyPlayed,
+    filter: const MovieFilter(hasBeenPlayed: true),
+    sort: const [
+      SortClause(MovieSortField.lastPlayedAt, direction: SortDirection.desc),
+    ],
+    pagination: limit != null ? PaginationSpec(limit: limit) : null,
+  );
+
   /// Factory for Continue Watching Smart View.
   factory MovieQuery.continueWatching({int? limit}) => MovieQuery(
     scope: QueryScope.continueWatching,
