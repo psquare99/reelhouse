@@ -75,6 +75,12 @@ abstract interface class LibraryRepository {
   /// Streams a single episode reactively by its unique [id].
   Stream<EpisodeLibraryItem?> watchEpisodeById(String id);
 
+  /// Resolves the next episode to watch for a TV show.
+  Future<EpisodeLibraryItem?> getNextEpisodeForShow(String showId);
+
+  /// Streams the next episode to watch for a TV show reactively.
+  Stream<EpisodeLibraryItem?> watchNextEpisodeForShow(String showId);
+
   // --- Collections ---
 
   /// Executes a [CollectionQuery] returning curated collections with item counts.

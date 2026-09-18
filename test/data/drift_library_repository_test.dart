@@ -298,6 +298,128 @@ void main() {
         expect(ep!.watchState, equals(WatchState.watched));
       },
     );
+
+    test('getNextEpisodeForShow and watchNextEpisodeForShow resolve next episode ignoring extras', () async {
+      final now = DateTime(2026, 1, 1);
+
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-next-test',
+              detectedTitle: 'Next Test Show',
+              title: const drift.Value('Next Test Show'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.seasons)
+          .insert(
+            SeasonsCompanion.insert(
+              id: 's-next-1',
+              showId: 'tv-next-test',
+              seasonNumber: 1,
+            ),
+          );
+      await db
+          .into(db.episodes)
+          .insert(
+            EpisodesCompanion.insert(
+              id: 'ep-next-1',
+              seasonId: 's-next-1',
+              episodeNumber: 1,
+              watchState: const drift.Value('WATCHED'),
+            ),
+          );
+      await db
+          .into(db.episodes)
+          .insert(
+            EpisodesCompanion.insert(
+              id: 'ep-next-2',
+              seasonId: 's-next-1',
+              episodeNumber: 2,
+              watchState: const drift.Value('UNWATCHED'),
+            ),
+          );
+      // Extras season (-1)
+      await db
+          .into(db.seasons)
+          .insert(
+            SeasonsCompanion.insert(
+              id: 's-next-extras',
+              showId: 'tv-next-test',
+              seasonNumber: -1,
+            ),
+          );
+      await db
+          .into(db.episodes)
+          .insert(
+            EpisodesCompanion.insert(
+              id: 'ep-next-extra',
+              seasonId: 's-next-extras',
+              episodeNumber: 1,
+              watchState: const drift.Value('UNWATCHED'),
+            ),
+          );
+
+      final nextEp = await repository.getNextEpisodeForShow('tv-next-test');
+      expect(nextEp, isNotNull);
+      expect(nextEp!.id, 'ep-next-2');
+      expect(nextEp.seasonNumber, 1);
+      expect(nextEp.episodeNumber, 2);
+
+      // Verify stream
+      expect(
+        repository.watchNextEpisodeForShow('tv-next-test'),
+        emits(predicate<EpisodeLibraryItem?>((e) => e?.id == 'ep-next-2')),
+      );
+    });
+
+    test('recentlyPlayed queries for movies and episodes order by lastPlayedAt DESC', () async {
+      final now = DateTime(2026, 1, 1);
+
+      // Movie 1 played earlier
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-rp-1',
+              detectedTitle: 'Movie 1',
+              lastPlayedAt: drift.Value(now.subtract(const Duration(hours: 2))),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      // Movie 2 played later
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-rp-2',
+              detectedTitle: 'Movie 2',
+              lastPlayedAt: drift.Value(now),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      // Movie 3 unplayed
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-rp-3',
+              detectedTitle: 'Movie 3',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      final rpMovies = await repository.getMovies(MovieQuery.recentlyPlayed());
+      expect(rpMovies.length, 2);
+      expect(rpMovies.first.id, 'm-rp-2');
+      expect(rpMovies.last.id, 'm-rp-1');
+    });
   });
 
   group('DriftLibraryRepository — Collection Operations', () {

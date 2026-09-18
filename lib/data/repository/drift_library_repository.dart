@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' as drift;
 
 import '../../domain/query/query.dart';
 import '../../domain/repository/library_repository.dart';
+import '../../domain/services/next_episode_resolver.dart';
 import '../database/database.dart';
 
 /// Drift / SQLite implementation of [LibraryRepository].
@@ -152,6 +153,31 @@ class DriftLibraryRepository implements LibraryRepository {
           ),
         )
         .map((res) => res.items.firstOrNull);
+  }
+
+  @override
+  Future<EpisodeLibraryItem?> getNextEpisodeForShow(String showId) async {
+    final result = await db.queryEpisodes(
+      EpisodeQuery(
+        showId: showId,
+        filter: EpisodeFilter(showId: showId),
+      ),
+    );
+    return const NextEpisodeResolver().resolveNextEpisode(result.items);
+  }
+
+  @override
+  Stream<EpisodeLibraryItem?> watchNextEpisodeForShow(String showId) {
+    return db
+        .watchEpisodes(
+          EpisodeQuery(
+            showId: showId,
+            filter: EpisodeFilter(showId: showId),
+          ),
+        )
+        .map(
+          (res) => const NextEpisodeResolver().resolveNextEpisode(res.items),
+        );
   }
 
   // --- Collections ---
