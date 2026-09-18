@@ -54,143 +54,246 @@ class CollectionDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) {
-            return Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        String searchQuery = '';
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final query = searchQuery.trim().toLowerCase();
+            final filteredMovies = query.isEmpty
+                ? allMovies
+                : allMovies.where((m) {
+                    final title = (m.title ?? m.detectedTitle).toLowerCase();
+                    return title.contains(query);
+                  }).toList();
+            final filteredShows = query.isEmpty
+                ? allShows
+                : allShows.where((s) {
+                    final title = (s.title ?? s.detectedTitle).toLowerCase();
+                    return title.contains(query);
+                  }).toList();
+
+            return DraggableScrollableSheet(
+              initialChildSize: 0.75,
+              minChildSize: 0.4,
+              maxChildSize: 0.9,
+              expand: false,
+              builder: (context, scrollController) {
+                return Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Add Media to Collection',
-                        style: TextStyle(
-                          color: CinemaColors.textPrimary,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Add Media to Collection',
+                            style: TextStyle(
+                              color: CinemaColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close,
+                              color: CinemaColors.textSecondary,
+                            ),
+                            onPressed: () => Navigator.of(ctx).pop(),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.close,
-                          color: CinemaColors.textSecondary,
+                      const SizedBox(height: 12),
+                      TextField(
+                        style: const TextStyle(
+                          color: CinemaColors.textPrimary,
+                          fontSize: 14,
                         ),
-                        onPressed: () => Navigator.of(ctx).pop(),
+                        cursorColor: CinemaColors.amber,
+                        decoration: InputDecoration(
+                          hintText: 'Search library to add...',
+                          hintStyle: const TextStyle(
+                            color: CinemaColors.textMuted,
+                            fontSize: 14,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: CinemaColors.textSecondary,
+                            size: 20,
+                          ),
+                          filled: true,
+                          fillColor: CinemaColors.surfaceElevated,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: CinemaColors.borderSubtle,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: CinemaColors.borderSubtle,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: CinemaColors.amber,
+                            ),
+                          ),
+                        ),
+                        onChanged: (val) {
+                          setModalState(() {
+                            searchQuery = val;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(color: CinemaColors.borderSubtle),
+                      Expanded(
+                        child: (filteredMovies.isEmpty && filteredShows.isEmpty)
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.search_off,
+                                        size: 40,
+                                        color: CinemaColors.textMuted,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        searchQuery.isNotEmpty
+                                            ? 'No items matching "$searchQuery"'
+                                            : 'No media available to add',
+                                        style: const TextStyle(
+                                          color: CinemaColors.textSecondary,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : ListView(
+                                controller: scrollController,
+                                children: [
+                                  if (filteredMovies.isNotEmpty) ...[
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 8,
+                                      ),
+                                      child: Text(
+                                        'MOVIES',
+                                        style: TextStyle(
+                                          color: CinemaColors.amber,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                    ...filteredMovies.map((m) {
+                                      final alreadyAdded = existingMovieIds
+                                          .contains(m.id);
+                                      return ListTile(
+                                        title: Text(
+                                          m.title ?? m.detectedTitle,
+                                          style: const TextStyle(
+                                            color: CinemaColors.textPrimary,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          (m.year ?? m.detectedYear) != null
+                                              ? '${m.year ?? m.detectedYear}'
+                                              : '',
+                                          style: const TextStyle(
+                                            color: CinemaColors.textSecondary,
+                                          ),
+                                        ),
+                                        trailing: alreadyAdded
+                                            ? const Icon(
+                                                Icons.check,
+                                                color: CinemaColors.amber,
+                                              )
+                                            : const Icon(
+                                                Icons.add,
+                                                color:
+                                                    CinemaColors.textSecondary,
+                                              ),
+                                        onTap: alreadyAdded
+                                            ? null
+                                            : () async {
+                                                Navigator.of(ctx).pop();
+                                                await repository
+                                                    .addMovieToCollection(
+                                                      collectionId,
+                                                      m.id,
+                                                    );
+                                              },
+                                      );
+                                    }),
+                                  ],
+                                  if (filteredShows.isNotEmpty) ...[
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 8,
+                                      ),
+                                      child: Text(
+                                        'TV SHOWS',
+                                        style: TextStyle(
+                                          color: CinemaColors.amber,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                    ...filteredShows.map((s) {
+                                      final alreadyAdded = existingShowIds
+                                          .contains(s.id);
+                                      return ListTile(
+                                        title: Text(
+                                          s.title ?? s.detectedTitle,
+                                          style: const TextStyle(
+                                            color: CinemaColors.textPrimary,
+                                          ),
+                                        ),
+                                        trailing: alreadyAdded
+                                            ? const Icon(
+                                                Icons.check,
+                                                color: CinemaColors.amber,
+                                              )
+                                            : const Icon(
+                                                Icons.add,
+                                                color:
+                                                    CinemaColors.textSecondary,
+                                              ),
+                                        onTap: alreadyAdded
+                                            ? null
+                                            : () async {
+                                                Navigator.of(ctx).pop();
+                                                await repository
+                                                    .addTvShowToCollection(
+                                                      collectionId,
+                                                      s.id,
+                                                    );
+                                              },
+                                      );
+                                    }),
+                                  ],
+                                ],
+                              ),
                       ),
                     ],
                   ),
-                  const Divider(color: CinemaColors.borderSubtle),
-                  Expanded(
-                    child: ListView(
-                      controller: scrollController,
-                      children: [
-                        if (allMovies.isNotEmpty) ...[
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Text(
-                              'MOVIES',
-                              style: TextStyle(
-                                color: CinemaColors.amber,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ),
-                          ...allMovies.map((m) {
-                            final alreadyAdded = existingMovieIds.contains(
-                              m.id,
-                            );
-                            return ListTile(
-                              title: Text(
-                                m.title ?? m.detectedTitle,
-                                style: const TextStyle(
-                                  color: CinemaColors.textPrimary,
-                                ),
-                              ),
-                              subtitle: Text(
-                                (m.year ?? m.detectedYear) != null
-                                    ? '${m.year ?? m.detectedYear}'
-                                    : '',
-                                style: const TextStyle(
-                                  color: CinemaColors.textSecondary,
-                                ),
-                              ),
-                              trailing: alreadyAdded
-                                  ? const Icon(
-                                      Icons.check,
-                                      color: CinemaColors.amber,
-                                    )
-                                  : const Icon(
-                                      Icons.add,
-                                      color: CinemaColors.textSecondary,
-                                    ),
-                              onTap: alreadyAdded
-                                  ? null
-                                  : () async {
-                                      Navigator.of(ctx).pop();
-                                      await repository.addMovieToCollection(
-                                        collectionId,
-                                        m.id,
-                                      );
-                                    },
-                            );
-                          }),
-                        ],
-                        if (allShows.isNotEmpty) ...[
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Text(
-                              'TV SHOWS',
-                              style: TextStyle(
-                                color: CinemaColors.amber,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ),
-                          ...allShows.map((s) {
-                            final alreadyAdded = existingShowIds.contains(s.id);
-                            return ListTile(
-                              title: Text(
-                                s.title ?? s.detectedTitle,
-                                style: const TextStyle(
-                                  color: CinemaColors.textPrimary,
-                                ),
-                              ),
-                              trailing: alreadyAdded
-                                  ? const Icon(
-                                      Icons.check,
-                                      color: CinemaColors.amber,
-                                    )
-                                  : const Icon(
-                                      Icons.add,
-                                      color: CinemaColors.textSecondary,
-                                    ),
-                              onTap: alreadyAdded
-                                  ? null
-                                  : () async {
-                                      Navigator.of(ctx).pop();
-                                      await repository.addTvShowToCollection(
-                                        collectionId,
-                                        s.id,
-                                      );
-                                    },
-                            );
-                          }),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             );
           },
         );

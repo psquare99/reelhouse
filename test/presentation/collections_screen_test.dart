@@ -102,4 +102,114 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+
+  testWidgets(
+    'CollectionDetailScreen Add Media dialog provides real-time search filtering',
+    (tester) async {
+      final now = DateTime.now();
+
+      // Seed movies
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-oppenheimer',
+              detectedTitle: 'Oppenheimer',
+              title: const drift.Value('Oppenheimer'),
+              year: const drift.Value(2023),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await db
+          .into(db.movies)
+          .insert(
+            MoviesCompanion.insert(
+              id: 'm-dunkirk',
+              detectedTitle: 'Dunkirk',
+              title: const drift.Value('Dunkirk'),
+              year: const drift.Value(2017),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Seed TV Show
+      await db
+          .into(db.tvShows)
+          .insert(
+            TvShowsCompanion.insert(
+              id: 'tv-chernobyl',
+              detectedTitle: 'Chernobyl',
+              title: const drift.Value('Chernobyl'),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      // Create collection
+      await db.createCollection(
+        CollectionsCompanion.insert(
+          id: 'col-history',
+          name: 'Historical Drama',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CinemaTheme.darkTheme,
+          home: CollectionDetailScreen(
+            collectionId: 'col-history',
+            database: db,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Open Add Media sheet
+      final addMediaButton = find.widgetWithText(ElevatedButton, 'Add Media');
+      expect(addMediaButton, findsOneWidget);
+      await tester.tap(addMediaButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add Media to Collection'), findsOneWidget);
+      expect(find.text('Oppenheimer'), findsOneWidget);
+      expect(find.text('Dunkirk'), findsOneWidget);
+      expect(find.text('Chernobyl'), findsOneWidget);
+
+      // Search 'oppen' (case-insensitive)
+      final searchInput = find.widgetWithText(
+        TextField,
+        'Search library to add...',
+      );
+      expect(searchInput, findsOneWidget);
+      await tester.enterText(searchInput, 'oppen');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Oppenheimer'), findsOneWidget);
+      expect(find.text('Dunkirk'), findsNothing);
+      expect(find.text('Chernobyl'), findsNothing);
+
+      // Search 'chernobyl'
+      await tester.enterText(searchInput, 'chernobyl');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Oppenheimer'), findsNothing);
+      expect(find.text('Dunkirk'), findsNothing);
+      expect(find.text('Chernobyl'), findsOneWidget);
+
+      // Add Chernobyl to collection
+      await tester.tap(find.text('Chernobyl'));
+      await tester.pumpAndSettle();
+
+      // Verify Chernobyl is now in the collection screen
+      expect(find.text('Chernobyl'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
 }
