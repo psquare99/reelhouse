@@ -14,7 +14,7 @@ REELHOUSE Developer Feedback Inbox
 
 - **Stateless**: The worker does not store feedback messages, user data, or identifiers.
 - **Privacy-Guaranteed**: Only allowlisted feedback payloads (`category`, `subject`, `message`, non-sensitive `diagnostics`) are accepted. No library data, media files, TMDB credentials, or profile photos can be forwarded.
-- **Abuse Protected**: Cloudflare Workers Rate Limiting binding (5 submissions / min / IP).
+- **Abuse Protected**: Cloudflare Workers Rate Limiting binding (10 submissions / 10 min / IP coarse abuse limiter).
 
 ---
 
