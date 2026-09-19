@@ -28,8 +28,8 @@ class SettingsService extends ChangeNotifier {
 
     try {
       final file = File(settingsFilePath);
-      if (await file.exists()) {
-        final content = await file.readAsString();
+      if (file.existsSync()) {
+        final content = file.readAsStringSync();
         final data = jsonDecode(content) as Map<String, dynamic>;
         _settings.addAll(data);
       }
@@ -43,10 +43,10 @@ class SettingsService extends ChangeNotifier {
 
     try {
       final file = File(settingsFilePath);
-      if (!await file.parent.exists()) {
-        await file.parent.create(recursive: true);
+      if (!file.parent.existsSync()) {
+        file.parent.createSync(recursive: true);
       }
-      await file.writeAsString(jsonEncode(_settings));
+      file.writeAsStringSync(jsonEncode(_settings));
     } catch (_) {
       // Log or ignore disk write failure
     }

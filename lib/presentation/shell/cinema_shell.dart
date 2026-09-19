@@ -19,8 +19,10 @@ import '../collections/collections_screen.dart';
 import '../home/home_screen.dart';
 import '../movies/movies_screen.dart';
 import '../offline/offline_screen.dart';
+import '../profile/profile_screen.dart';
 import '../settings/settings_screen.dart';
 import '../tv_shows/tv_shows_screen.dart';
+import '../widgets/cinema_profile_avatar.dart';
 
 /// App shell container providing navigation and hosting screens.
 ///
@@ -119,102 +121,127 @@ class _CinemaShellState extends State<CinemaShell> {
   @override
   Widget build(BuildContext context) {
     final tokens = CinemaTheme.of(context);
+    final notifier = widget.settingsService ?? ChangeNotifier();
 
-    final screens = [
-      HomeScreen(
-        repository: widget.repository,
-        database: widget.database,
-        onNavigateToMovies: () => _onDestinationSelected(1),
-        onNavigateToTv: () => _onDestinationSelected(2),
-        onNavigateToOffline: () => _onDestinationSelected(4),
-        onNavigateToSettings: () => _onDestinationSelected(5),
-      ),
-      MoviesScreen(repository: widget.repository, database: widget.database),
-      TvShowsScreen(repository: widget.repository, database: widget.database),
-      CollectionsScreen(
-        repository: widget.repository,
-        database: widget.database,
-      ),
-      OfflineScreen(repository: widget.repository, database: widget.database),
-      SettingsScreen(
-        database: widget.database,
-        repository: widget.repository,
-        storageIdentityService: widget.storageIdentityService,
-        localStorageManager: widget.localStorageManager,
-        libraryScannerService: widget.libraryScannerService,
-        metadataService: widget.metadataService,
-        settingsService: widget.settingsService,
-        deviceStorageService: widget.deviceStorageService,
-        transferCoordinator: _transferCoordinator,
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 720;
-
-        if (isWide) {
-          return Scaffold(
-            backgroundColor: tokens.background,
-            body: Row(
-              children: [
-                _CollapsibleCinemaRail(
-                  isCollapsed: _isCollapsed,
-                  selectedIndex: _selectedIndex,
-                  onDestinationSelected: _onDestinationSelected,
-                  onToggleCollapse: _toggleCollapse,
-                ),
-                VerticalDivider(thickness: 1, width: 1, color: tokens.border),
-                Expanded(
-                  child: IndexedStack(index: _selectedIndex, children: screens),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Mobile Bottom Navigation Bar
-        return Scaffold(
-          backgroundColor: tokens.background,
-          body: IndexedStack(index: _selectedIndex, children: screens),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: _onDestinationSelected,
-            backgroundColor: tokens.background,
-            indicatorColor: tokens.accent.withValues(alpha: 0.14),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.movie_outlined),
-                selectedIcon: Icon(Icons.movie),
-                label: 'Movies',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.tv_outlined),
-                selectedIcon: Icon(Icons.tv),
-                label: 'TV',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.collections_bookmark_outlined),
-                selectedIcon: Icon(Icons.collections_bookmark),
-                label: 'Collections',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.offline_pin_outlined),
-                selectedIcon: Icon(Icons.offline_pin),
-                label: 'Offline',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings),
-                label: 'Settings',
-              ),
-            ],
+    return ListenableBuilder(
+      listenable: notifier,
+      builder: (context, _) {
+        final screens = [
+          HomeScreen(
+            repository: widget.repository,
+            database: widget.database,
+            onNavigateToMovies: () => _onDestinationSelected(1),
+            onNavigateToTv: () => _onDestinationSelected(2),
+            onNavigateToOffline: () => _onDestinationSelected(4),
+            onNavigateToSettings: () => _onDestinationSelected(5),
           ),
+          MoviesScreen(
+            repository: widget.repository,
+            database: widget.database,
+          ),
+          TvShowsScreen(
+            repository: widget.repository,
+            database: widget.database,
+          ),
+          CollectionsScreen(
+            repository: widget.repository,
+            database: widget.database,
+          ),
+          OfflineScreen(
+            repository: widget.repository,
+            database: widget.database,
+          ),
+          SettingsScreen(
+            database: widget.database,
+            repository: widget.repository,
+            storageIdentityService: widget.storageIdentityService,
+            localStorageManager: widget.localStorageManager,
+            libraryScannerService: widget.libraryScannerService,
+            metadataService: widget.metadataService,
+            settingsService: widget.settingsService,
+            deviceStorageService: widget.deviceStorageService,
+            transferCoordinator: _transferCoordinator,
+            onNavigateToProfile: () => _onDestinationSelected(6),
+          ),
+          ProfileScreen(settingsService: widget.settingsService),
+        ];
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 720;
+
+            if (isWide) {
+              return Scaffold(
+                backgroundColor: tokens.background,
+                body: Row(
+                  children: [
+                    _CollapsibleCinemaRail(
+                      isCollapsed: _isCollapsed,
+                      selectedIndex: _selectedIndex,
+                      onDestinationSelected: _onDestinationSelected,
+                      onToggleCollapse: _toggleCollapse,
+                      settingsService: widget.settingsService,
+                    ),
+                    VerticalDivider(
+                      thickness: 1,
+                      width: 1,
+                      color: tokens.border,
+                    ),
+                    Expanded(
+                      child: IndexedStack(
+                        index: _selectedIndex,
+                        children: screens,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // Mobile Bottom Navigation Bar
+            return Scaffold(
+              backgroundColor: tokens.background,
+              body: IndexedStack(index: _selectedIndex, children: screens),
+              bottomNavigationBar: NavigationBar(
+                selectedIndex: _selectedIndex > 5 ? 5 : _selectedIndex,
+                onDestinationSelected: _onDestinationSelected,
+                backgroundColor: tokens.background,
+                indicatorColor: tokens.accent.withValues(alpha: 0.14),
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home),
+                    label: 'Home',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.movie_outlined),
+                    selectedIcon: Icon(Icons.movie),
+                    label: 'Movies',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.tv_outlined),
+                    selectedIcon: Icon(Icons.tv),
+                    label: 'TV',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.collections_bookmark_outlined),
+                    selectedIcon: Icon(Icons.collections_bookmark),
+                    label: 'Collections',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.offline_pin_outlined),
+                    selectedIcon: Icon(Icons.offline_pin),
+                    label: 'Offline',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.settings_outlined),
+                    selectedIcon: Icon(Icons.settings),
+                    label: 'Settings',
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -240,12 +267,14 @@ class _CollapsibleCinemaRail extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final VoidCallback onToggleCollapse;
+  final SettingsService? settingsService;
 
   const _CollapsibleCinemaRail({
     required this.isCollapsed,
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.onToggleCollapse,
+    this.settingsService,
   });
 
   static const _browseGroup = [
@@ -431,7 +460,8 @@ class _CollapsibleCinemaRail extends StatelessWidget {
           // Divider 2
           _buildGroupDivider(tokens),
 
-          // Group 3: Utility
+          // Identity & Utility (Profile & Settings)
+          _buildProfileItem(context, tokens),
           ..._buildGroup(context, _utilityGroup),
         ],
       ),
@@ -445,6 +475,124 @@ class _CollapsibleCinemaRail extends StatelessWidget {
         vertical: 12,
       ),
       child: Divider(color: tokens.border, height: 1, thickness: 1),
+    );
+  }
+
+  Widget _buildProfileItem(BuildContext context, CinemaThemeData tokens) {
+    final displayName = settingsService?.userDisplayName ?? 'Viewer';
+    final profilePicturePath = settingsService?.userProfilePicturePath;
+    final isSelected = selectedIndex == 6;
+
+    if (isCollapsed) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (isSelected)
+              Positioned(
+                left: 0,
+                top: 4,
+                bottom: 4,
+                width: 3,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: tokens.accent,
+                    borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(2),
+                    ),
+                  ),
+                ),
+              ),
+            Tooltip(
+              message: displayName.isNotEmpty
+                  ? displayName
+                  : 'Personal Profile',
+              preferBelow: false,
+              verticalOffset: 0,
+              margin: const EdgeInsets.only(left: 20),
+              decoration: BoxDecoration(
+                color: tokens.surface2,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: tokens.border, width: 1),
+              ),
+              textStyle: TextStyle(
+                color: tokens.textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+              child: SizedBox(
+                width: 72,
+                height: 44,
+                child: InkWell(
+                  onTap: () => onDestinationSelected(6),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Center(
+                    child: CinemaProfileAvatar(
+                      size: 28,
+                      displayName: displayName,
+                      profilePicturePath: profilePicturePath,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: InkWell(
+        onTap: () => onDestinationSelected(6),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? tokens.accent.withValues(alpha: 0.14)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              CinemaProfileAvatar(
+                size: 28,
+                displayName: displayName,
+                profilePicturePath: profilePicturePath,
+                fontSize: 11,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      displayName.isNotEmpty ? displayName : 'Viewer',
+                      style: TextStyle(
+                        color: isSelected ? tokens.accent : tokens.textPrimary,
+                        fontSize: 13,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Personal Profile',
+                      style: TextStyle(color: tokens.textMuted, fontSize: 10),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

@@ -23,6 +23,8 @@ import '../../domain/services/file_picker_service.dart';
 import '../../domain/services/library_backup_service.dart';
 import '../../domain/services/transfer_coordinator.dart';
 import '../../domain/services/transfer_service.dart';
+import '../profile/profile_screen.dart';
+import '../widgets/cinema_profile_avatar.dart';
 import '../widgets/library_backup_dialogs.dart';
 import 'needs_verification_screen.dart';
 
@@ -39,6 +41,7 @@ class SettingsScreen extends StatefulWidget {
   final TransferService? transferService;
   final LibraryBackupService? libraryBackupService;
   final FilePickerService? filePickerService;
+  final VoidCallback? onNavigateToProfile;
 
   SettingsScreen({
     super.key,
@@ -54,6 +57,7 @@ class SettingsScreen extends StatefulWidget {
     this.transferService,
     this.libraryBackupService,
     this.filePickerService,
+    this.onNavigateToProfile,
   }) : repository = repository ?? DriftLibraryRepository(database),
        libraryScannerService =
            libraryScannerService ??
@@ -498,6 +502,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Widget _buildProfileSummaryCard(CinemaThemeData theme) {
+    final displayName =
+        widget.settingsService?.userDisplayName.isNotEmpty == true
+        ? widget.settingsService!.userDisplayName
+        : 'Viewer';
+    final picturePath = widget.settingsService?.userProfilePicturePath;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: theme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.border),
+      ),
+      child: Row(
+        children: [
+          CinemaProfileAvatar(
+            size: 44,
+            displayName: displayName,
+            profilePicturePath: picturePath,
+            fontSize: 16,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: TextStyle(
+                    color: theme.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Local Cinema Profile',
+                  style: TextStyle(color: theme.textMuted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton(
+            onPressed: () {
+              if (widget.onNavigateToProfile != null) {
+                widget.onNavigateToProfile!();
+              } else {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ProfileScreen(
+                      settingsService: widget.settingsService,
+                      filePickerService: widget.filePickerService,
+                    ),
+                  ),
+                );
+              }
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: theme.accent,
+              side: BorderSide(color: theme.border),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            child: const Text('Edit Profile'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = CinemaTheme.of(context);
@@ -507,6 +581,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
         children: [
+          // Section: Personal Profile Summary
+          if (widget.settingsService != null) ...[
+            _buildProfileSummaryCard(theme),
+            const SizedBox(height: 20),
+          ],
+
           // Section: Needs Verification Alert (Sections 14 & 44)
           StreamBuilder<int>(
             stream: widget.repository.watchUnmatchedTotalCount(),
