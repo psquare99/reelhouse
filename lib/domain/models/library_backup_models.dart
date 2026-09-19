@@ -689,17 +689,24 @@ class BackupSettings {
   final String preferredPlayer;
   final String themeMode;
   final bool isNavRailCollapsed;
+  final String? userDisplayName;
+  final String? userProfilePicturePath;
 
   const BackupSettings({
     this.preferredPlayer = 'vlc',
     this.themeMode = 'dark',
     this.isNavRailCollapsed = false,
+    this.userDisplayName,
+    this.userProfilePicturePath,
   });
 
   Map<String, dynamic> toJson() => {
     'preferredPlayer': preferredPlayer,
     'themeMode': themeMode,
     'isNavRailCollapsed': isNavRailCollapsed,
+    if (userDisplayName != null) 'userDisplayName': userDisplayName,
+    if (userProfilePicturePath != null)
+      'userProfilePicturePath': userProfilePicturePath,
   };
 
   factory BackupSettings.fromJson(Map<String, dynamic> json) {
@@ -707,6 +714,8 @@ class BackupSettings {
       preferredPlayer: json['preferredPlayer'] as String? ?? 'vlc',
       themeMode: json['themeMode'] as String? ?? 'dark',
       isNavRailCollapsed: json['isNavRailCollapsed'] as bool? ?? false,
+      userDisplayName: json['userDisplayName'] as String?,
+      userProfilePicturePath: json['userProfilePicturePath'] as String?,
     );
   }
 }

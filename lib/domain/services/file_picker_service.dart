@@ -19,4 +19,8 @@ abstract class FilePickerService {
     String? dialogTitle,
     String? suggestedFileName,
   });
+
+  /// Prompts the user to select an image file (e.g. for profile photo).
+  /// Returns the selected file path, or `null` if cancelled by the user.
+  Future<String?> pickImageFile({String? dialogTitle});
 }

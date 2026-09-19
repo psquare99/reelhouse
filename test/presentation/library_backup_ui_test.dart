@@ -16,6 +16,7 @@ import 'package:reelhouse/domain/services/local_storage_manager.dart';
 import 'package:reelhouse/domain/services/settings_service.dart';
 import 'package:reelhouse/domain/services/storage_identity_service.dart';
 import 'package:reelhouse/presentation/settings/settings_screen.dart';
+import 'package:reelhouse/presentation/widgets/library_backup_dialogs.dart';
 
 class MockStorageIdentityService implements StorageIdentityService {
   bool isConnectedResult = true;
@@ -104,6 +105,9 @@ class FakeFilePickerService implements FilePickerService {
     saveBackupFileCalled = true;
     return saveFileToReturn;
   }
+
+  @override
+  Future<String?> pickImageFile({String? dialogTitle}) async => null;
 }
 
 class FakeLibraryBackupService implements LibraryBackupService {

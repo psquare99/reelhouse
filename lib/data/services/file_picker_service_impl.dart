@@ -54,4 +54,17 @@ class FilePickerServiceImpl implements FilePickerService {
       return null;
     }
   }
+
+  @override
+  Future<String?> pickImageFile({String? dialogTitle}) async {
+    try {
+      final result = await FilePicker.pickFile(
+        dialogTitle: dialogTitle ?? 'Select Profile Picture',
+        type: FileType.image,
+      );
+      return result?.path;
+    } catch (_) {
+      return null;
+    }
+  }
 }

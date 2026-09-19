@@ -1,0 +1,678 @@
+# REELHOUSE — V1.0 Release Completeness & Release Preparation Specification
+
+**Document Version:** 1.0  
+**Status:** Final — V1.0 Scope Lock  
+**Product:** REELHOUSE — Personal Digital Cinema  
+**Phase:** Release Completeness  
+**Scope:** RC.1–RC.7
+
+---
+
+## 1. Purpose
+
+This document defines the **final set of work required to make REELHOUSE complete and ready for its V1.0 release**.
+
+The core REELHOUSE cinema experience, library architecture, metadata system, collections, playback workflow, and offline-media system are considered feature-complete.
+
+The work defined here is therefore **not a reopening of feature development**.
+
+It exists to provide the final application-level capabilities required for a real user-facing release:
+
+- first-run onboarding
+- library portability
+- TMDB configuration
+- feedback and suggestions
+- application information and attribution
+- polished application launch
+- update discovery and release communication
+
+Once RC.1–RC.7 are completed and accepted, **feature development for V1.0 is permanently frozen**.
+
+The project then moves into:
+
+```text
+Release Completeness
+        ↓
+Final Feature Freeze
+        ↓
+Production Readiness
+        ↓
+Release Candidate
+        ↓
+REELHOUSE v1.0
+2. Product Principle
+REELHOUSE V1.0 must feel like a finished personal application, not merely a technically complete media-management tool.
+The final release must support the complete user lifecycle:
+Install
+  ↓
+Welcome
+  ↓
+Create local profile
+  ↓
+Configure TMDB
+  ↓
+Create or restore library
+  ↓
+Use REELHOUSE
+  ↓
+Report problems / suggest improvements
+  ↓
+Receive future updates
+  ↓
+Continue using REELHOUSE
+REELHOUSE remains:
+- local-first
+- privacy-conscious
+- account-free
+- standalone
+- user-controlled
+- offline-capable where designed
+- free from unnecessary cloud dependencies
+3. Scope Boundary
+3.1 In Scope
+The following seven release-completeness milestones are locked:
+ID	Milestone	Purpose
+RC.1	Library Export / Import	Data portability and restoration
+RC.2	First-Run Onboarding	Proper first-launch experience
+RC.3	TMDB Setup Experience	Make metadata configuration accessible
+RC.4	Feedback & Suggestions	Give users a way to report problems and ideas
+RC.5	About & Credits	Identity, attribution, version and licensing
+RC.6	Launch Experience	Premium application opening experience
+RC.7	Update Checking & Release Notes	Close the support → fix → update loop
+
+
+3.2 Explicitly Out of Scope
+These milestones must not become an excuse to introduce additional V1.0 product features.
+Do not add:
+- social accounts
+- cloud accounts
+- cloud library synchronization
+- streaming
+- recommendation engines
+- additional media-management functionality
+- built-in media playback
+- unnecessary analytics
+- subscription systems
+- social profiles
+- messaging systems
+- feature-request voting systems
+- elaborate customer-support infrastructure
+If a new idea appears during implementation, it belongs in the post-V1.0 backlog, unless it is strictly necessary to satisfy an explicit requirement in this document.
+4. RC.1 — Library Export & Import
+4.1 Objective
+Allow a REELHOUSE user to create a portable backup of their library data and restore that data on another REELHOUSE installation.
+This is a data-portability feature, not a media-copying feature.
+4.2 Export
+The user must be able to initiate:
+Settings → Library → Export Library
+The export should contain the logical REELHOUSE library and relevant user state.
+Exportable Information
+At minimum:
+- canonical movie identities
+- canonical TV-show identities
+- seasons
+- episodes
+- detected/discovery identity where required
+- TMDB/provider associations
+- metadata required by the application
+- collections
+- collection membership
+- watch state
+- playback history
+- relevant user preferences/settings
+- profile information
+- profile picture where practical
+- export format version
+- application version
+- schema/data version
+Media Files
+Media files are NOT exported.
+The export must not become a ZIP containing the user's movies and TV shows.
+The distinction is:
+Library Export
+    = catalogue + metadata + user state
+
+Offline Media
+    = physical media files
+4.3 Secrets
+Sensitive credentials must not be blindly included in an export.
+In particular:
+- TMDB API credentials must not be exported as ordinary library data.
+- Authentication secrets must not be exposed through the export.
+The import process may therefore require the user to configure TMDB again on the new installation.
+4.4 Import
+The user must be able to access:
+Settings → Library → Import Library
+and also:
+First-run onboarding → Import Existing Library
+The import process must:
+1. Select an export file.
+2. Validate the file.
+3. Validate the export version.
+4. Inspect its contents.
+5. Show the user what will be imported.
+6. Perform the import.
+7. Reconcile the imported data with the local installation.
+8. Report completion or errors clearly.
+Example:
+Import Library
+
+Movies              184
+TV Shows             37
+Collections           12
+Watch History         96
+
+[ Import Library ]
+[ Cancel ]
+4.5 Physical Media Reconciliation
+An imported library does not guarantee that the corresponding physical media exists on the new device.
+Therefore:
+- logical catalogue records remain valid
+- unavailable media remain unavailable
+- existing local media sources may be reconciled where appropriate
+- absolute paths must not be blindly trusted as portable paths
+- device-local offline copies must not be assumed to exist merely because they existed on another installation
+4.6 Acceptance Criteria
+RC.1 is complete when:
+- a library can be exported
+- exported data can be validated
+- a clean installation can import it
+- logical identities are preserved
+- collections are preserved
+- watch state is preserved
+- playback history is preserved where supported
+- profile information is preserved where supported
+- physical media is never falsely represented as available
+- secrets are not exposed
+- incompatible or corrupt exports fail safely
+- import does not create duplicate logical media
+5. RC.2 — First-Run Onboarding
+5.1 Objective
+Provide a polished onboarding experience the first time REELHOUSE is opened after installation.
+The onboarding should introduce the application without turning setup into a complicated wizard.
+5.2 First Launch Flow
+The initial flow is:
+REELHOUSE Launch
+       ↓
+Welcome
+       ↓
+Profile
+       ↓
+TMDB Setup
+       ↓
+Library Setup
+       ↓
+REELHOUSE Home
+5.3 Welcome Screen
+The first screen should establish the identity of the product.
+Example:
+Welcome to REELHOUSE
+Your personal digital cinema.
+
+The screen should feel cinematic and premium rather than like a generic software setup wizard.
+Primary action:
+Continue
+5.4 Local Profile
+The user creates a simple local profile.
+Required
+- Display name
+Optional
+- Profile picture
+No account creation is required.
+No email address is required.
+No password is required.
+No cloud profile is created.
+The profile represents the local identity of the REELHOUSE installation.
+5.5 TMDB Setup
+The next onboarding stage explains the role of TMDB.
+Example:
+Connect REELHOUSE to TMDB
+REELHOUSE uses TMDB to identify your movies and TV shows and retrieve their metadata and artwork.
+Add your TMDB API key to get the full library experience.
+
+Actions:
+- Get a TMDB API Key
+- I Have an API Key
+- Skip for Now
+The user must be allowed to skip this step.
+5.6 Skipping TMDB
+Skipping TMDB must not prevent entering REELHOUSE.
+Instead, the application clearly communicates that metadata functionality is incomplete until TMDB is configured.
+Example:
+TMDB isn't configured yet
+You can continue using REELHOUSE, but identifying your library and loading metadata will require a TMDB API key.
+You can add it anytime from Settings → TMDB.
+
+The application must not pretend that the library is fully configured.
+5.7 Existing User / Library Import
+The onboarding must support two paths:
+                    Library Setup
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+         New Library          Existing Library
+              │                     │
+        Configure storage      Import Library
+              │                     │
+              └──────────┬──────────┘
+                         ↓
+                       Home
+A returning user can therefore restore an existing REELHOUSE library rather than starting from zero.
+5.8 Onboarding Completion
+After onboarding:
+Onboarding
+     ↓
+Complete
+     ↓
+Never show again automatically
+Subsequent launches go directly to the normal launch experience and Home.
+There must be no repeated onboarding annoyance.
+6. RC.3 — TMDB Setup Experience
+6.1 Objective
+Make TMDB API configuration understandable and significantly easier for a normal user.
+The application depends on TMDB for proper metadata identification, so configuration must be treated as an important setup task rather than an obscure technical setting.
+6.2 Settings Location
+Provide a dedicated:
+Settings → TMDB
+screen.
+It should display either a configured or unconfigured state.
+Configured
+TMDB
+
+Status
+● Connected
+
+API Key
+••••••••••••••••
+
+[ Test Connection ]
+[ Change API Key ]
+Not Configured
+TMDB
+
+Status
+○ Not Configured
+
+REELHOUSE uses TMDB to identify
+your movies and TV shows and load
+metadata and artwork.
+
+[ Get a TMDB API Key ]
+[ Enter API Key ]
+6.3 Get API Key
+The onboarding/settings flow should provide a clear action that opens the appropriate official TMDB account/developer page.
+The user should not have to independently search the internet to discover how to obtain the key.
+The application should explain the basic steps without attempting to reproduce TMDB's own registration system.
+6.4 Test Connection
+After entering the key:
+Test Connection
+must provide an explicit result.
+Success:
+TMDB connection successful.
+
+Failure:
+TMDB connection could not be verified. Check your API key and try again.
+
+The application should distinguish configuration errors from temporary network failures where practical.
+6.5 Security
+The API key:
+- is stored locally according to the application's credential-storage approach
+- must not appear in library exports
+- must not appear in logs
+- must not be displayed unnecessarily
+- must not be included in feedback submissions automatically
+7. RC.4 — Feedback & Suggestions
+7.1 Objective
+Give users a simple way to communicate with the REELHOUSE project.
+Settings should contain:
+Feedback & Suggestions
+7.2 Feedback Categories
+Keep the system lightweight.
+Suggested options:
+What would you like to send?
+
+○ Report a Bug
+○ Suggest an Improvement
+○ General Feedback
+7.3 Bug Reporting
+A bug report should encourage useful information such as:
+- description
+- what the user expected
+- what happened
+- optional reproduction steps
+Where appropriate, the application can provide non-sensitive diagnostic information such as:
+- REELHOUSE version
+- platform
+- build number
+The user should remain in control of what is submitted.
+7.4 Support Loop
+The feedback system is explicitly connected to the update system:
+User
+ ↓
+Reports Bug
+ ↓
+Developer Investigates
+ ↓
+Bug Fixed
+ ↓
+New REELHOUSE Version
+ ↓
+Release Notes
+ ↓
+Update Available
+ ↓
+User Updates
+This is one of the reasons RC.7 is part of V1.0 completeness.
+8. RC.5 — About & Credits
+8.1 Objective
+Provide a proper application identity and attribution area.
+Settings should contain:
+About REELHOUSE
+8.2 Information
+At minimum:
+- REELHOUSE name
+- application version
+- build number
+- project identity
+- credits
+- relevant project links
+- open-source licenses/acknowledgements
+- TMDB attribution
+The About section must provide the appropriate TMDB attribution required by the service's terms.
+8.3 Design
+The About screen should feel like part of the REELHOUSE product rather than a generic settings page.
+It can retain the application's cinematic/editorial visual language while remaining simple and information-focused.
+9. RC.6 — Launch Experience
+9.1 Objective
+Give REELHOUSE a distinctive application-opening experience.
+9.2 Splash
+On application launch:
+Dark cinematic environment
+        ↓
+REELHOUSE identity
+        ↓
+Subtle animation
+        ↓
+Home
+Target duration:
+approximately 1–2 seconds
+The splash should be:
+- short
+- polished
+- cinematic
+- consistent with the application's visual identity
+- responsive
+- theme-aware where appropriate
+9.3 Important Boundary
+The animation must not become a fake loading screen.
+Do not artificially delay startup merely to make the animation longer.
+The application should proceed as soon as startup is ready.
+No sound is required.
+The experience should establish REELHOUSE's identity without attempting to imitate Netflix, JioHotstar, or another existing service.
+10. RC.7 — Update Checking & Release Notes
+10.1 Objective
+Allow REELHOUSE to tell users when a newer version is available.
+This closes the support lifecycle created by RC.4.
+10.2 Settings
+The About/Settings area should expose:
+Check for Updates
+Example:
+Updates
+
+Current Version
+1.0.0
+
+Status
+✓ You're up to date
+
+Last checked
+Today
+
+[ Check for Updates ]
+10.3 Update Available
+When a new release exists:
+Update Available
+
+REELHOUSE 1.0.1
+
+Bug fixes & improvements
+
+• Fixed library import issue
+• Fixed TV metadata matching
+• Improved offline playback reliability
+
+[ Update Now ]
+[ Later ]
+The exact installation mechanism can remain platform-specific.
+The important V1.0 requirement is that REELHOUSE can:
+1. determine whether a newer release exists
+2. inform the user
+3. identify the version
+4. communicate what changed
+5. provide the appropriate update action
+10.4 Release Notes
+Every release should have release notes.
+This is especially important for bug fixes.
+Example:
+REELHOUSE 1.0.1
+Bug Fixes
+- Fixed an issue where some imported TV episodes were not displayed.
+- Fixed an offline playback availability issue.
+Improvements
+- Improved startup reliability.
+- Improved library reconciliation.
+This allows the feedback loop to become visible to the user.
+10.5 Update Architecture
+The application should use a small, reliable release-information mechanism rather than downloading application packages merely to determine whether an update exists.
+Conceptually:
+REELHOUSE
+    │
+    │ Check
+    ▼
+Release Information
+    │
+    ├── Current version
+    ├── Latest version
+    ├── Release notes
+    └── Platform update information
+The actual update/install mechanism can differ between Windows, Android and future platforms.
+11. Settings Information Architecture
+The final Settings structure should provide a coherent home for all V1.0 release-completeness capabilities.
+Suggested structure:
+SETTINGS
+
+Profile
+    Profile
+    Display Name
+    Profile Picture
+
+Library
+    Storage
+    Import Library
+    Export Library
+
+Metadata
+    TMDB
+    Metadata Settings
+
+Offline Storage
+    Device Storage
+    Transfers
+    Offline Media
+
+Support
+    Feedback & Suggestions
+    Check for Updates
+
+About
+    About REELHOUSE
+    Credits
+    Licenses
+The exact navigation grouping may be adjusted to match the existing Settings implementation, but the capabilities must remain discoverable.
+12. First-Run Experience — Final Definition
+The complete new-user experience is:
+                    INSTALL
+                       │
+                       ▼
+                 LAUNCH SPLASH
+                       │
+                       ▼
+                  WELCOME
+                       │
+                       ▼
+               CREATE PROFILE
+              Name + Photo(optional)
+                       │
+                       ▼
+                 TMDB SETUP
+                       │
+             ┌─────────┴─────────┐
+             │                   │
+          Configure            Skip
+             │                   │
+             └─────────┬─────────┘
+                       ▼
+                LIBRARY SETUP
+                       │
+              ┌────────┴────────┐
+              │                 │
+          New Library       Import Library
+              │                 │
+              └────────┬────────┘
+                       ▼
+                     HOME
+Every future launch:
+Launch
+  ↓
+Short REELHOUSE animation
+  ↓
+Home
+13. Data & Privacy Principles
+The V1.0 release-completeness work must preserve REELHOUSE's local-first philosophy.
+The application must not require:
+- user accounts
+- cloud library accounts
+- online authentication for basic application use
+- cloud storage for the library
+- social profiles
+Export must not silently expose:
+- TMDB credentials
+- private credentials
+- unrelated device information
+Feedback must not automatically expose:
+- media files
+- personal files
+- private library contents
+- API credentials
+14. Implementation Strategy
+Each milestone should be implemented as a bounded engineering task.
+Recommended sequence:
+RC.1
+Library Export / Import
+        ↓
+RC.2
+First-Run Onboarding
+        ↓
+RC.3
+TMDB Setup Experience
+        ↓
+RC.4
+Feedback & Suggestions
+        ↓
+RC.5
+About & Credits
+        ↓
+RC.6
+Launch Experience
+        ↓
+RC.7
+Update Checking
+        ↓
+FINAL FEATURE FREEZE
+This sequence intentionally handles the architecturally significant pieces first.
+Each milestone should be implemented and verified independently before moving to the next.
+15. Acceptance Standard
+A milestone is not considered complete merely because the UI exists.
+Each RC milestone requires:
+Functional Correctness
+The feature works through its complete user flow.
+Persistence
+Relevant state survives application restart.
+Error Handling
+Expected failure conditions have understandable UI responses.
+Offline / Local Behavior
+The feature does not accidentally violate REELHOUSE's local-first architecture.
+Regression Safety
+Existing library, playback, collection and offline-media behavior remains intact.
+Automated Verification
+Appropriate tests are added for new logic and important edge cases.
+Manual Verification
+The actual user flow is tested in the target application.
+16. Final Feature Freeze
+After RC.1–RC.7 are accepted:
+REELHOUSE V1.0 enters FINAL FEATURE FREEZE.
+
+No additional user-facing functionality should be added to V1.0.
+At that point, the project moves exclusively into:
+Production Readiness
+- fresh-install testing
+- migration testing
+- real-library testing
+- performance testing
+- reliability testing
+- packaging
+- signing
+- release configuration
+- update mechanism verification
+- backup/restore verification
+- platform-specific testing
+- security/privacy review
+- final regression testing
+Then:
+Production Readiness
+        ↓
+Release Candidate
+        ↓
+Final Regression
+        ↓
+REELHOUSE v1.0
+17. V1.0 Completion Definition
+REELHOUSE V1.0 is considered release-complete when a new user can:
+Install REELHOUSE → experience the launch → create their local profile → configure TMDB or skip it knowingly → create/import their library → use their cinema → report a problem → receive a future release notification → understand what was fixed → update the application.
+
+And an existing user can:
+Export their library → install REELHOUSE elsewhere → import it → reconnect their physical media → continue using their collection.
+
+That is the complete V1.0 lifecycle.
+18. Final Locked Scope
+╔══════════════════════════════════════════════╗
+║          REELHOUSE V1.0 FINAL SCOPE          ║
+╠══════════════════════════════════════════════╣
+║ RC.1  Library Export / Import               ║
+║ RC.2  First-Run Onboarding                  ║
+║ RC.3  TMDB Setup Experience                 ║
+║ RC.4  Feedback & Suggestions                ║
+║ RC.5  About & Credits                       ║
+║ RC.6  Launch / Opening Experience            ║
+║ RC.7  Update Checking & Release Notes       ║
+╠══════════════════════════════════════════════╣
+║              FINAL FEATURE FREEZE            ║
+╠══════════════════════════════════════════════╣
+║ Production Readiness                         ║
+║ Release Candidate                            ║
+║ Final Regression                             ║
+║ REELHOUSE 1.0                                ║
+╚══════════════════════════════════════════════╝
+19. Final Engineering Directive
+This document is the V1.0 release-completeness scope lock.
+Implementation work under RC.1–RC.7 must remain bounded by the requirements defined here.
+The purpose of this phase is to finish the product around the existing cinema experience — not to expand the product's feature surface.
+Once RC.7 is accepted:
+STOP ADDING FEATURES.
+
+The next engineering objective is production readiness and release.
+The target is not an endlessly expanding REELHOUSE.
+The target is:
+A polished, reliable, personal digital cinema that is ready to ship.
+
+End of Specification

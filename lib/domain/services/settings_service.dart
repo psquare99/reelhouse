@@ -141,4 +141,49 @@ class SettingsService extends ChangeNotifier {
     await _save();
     notifyListeners();
   }
+
+  /// Whether the user has completed initial first-run onboarding.
+  bool get isOnboardingCompleted {
+    return _settings['onboardingCompleted'] as bool? ?? false;
+  }
+
+  /// Updates and persists the onboarding completed state.
+  Future<void> setOnboardingCompleted(bool completed) async {
+    _settings['onboardingCompleted'] = completed;
+    await _save();
+    notifyListeners();
+  }
+
+  /// Local user profile display name (e.g. 'Alex' or 'Cinema Room').
+  String get userDisplayName {
+    return _settings['userDisplayName'] as String? ?? '';
+  }
+
+  /// Updates and persists the local user profile display name.
+  Future<void> setUserDisplayName(String name) async {
+    _settings['userDisplayName'] = name.trim();
+    await _save();
+    notifyListeners();
+  }
+
+  /// Local filesystem path to optional profile picture.
+  String? get userProfilePicturePath {
+    final path = _settings['userProfilePicturePath'] as String?;
+    if (path != null && path.trim().isNotEmpty) {
+      return path.trim();
+    }
+    return null;
+  }
+
+  /// Updates and persists the local profile picture path.
+  Future<void> setUserProfilePicturePath(String? path) async {
+    final trimmed = path?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      _settings.remove('userProfilePicturePath');
+    } else {
+      _settings['userProfilePicturePath'] = trimmed;
+    }
+    await _save();
+    notifyListeners();
+  }
 }

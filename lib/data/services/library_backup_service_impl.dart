@@ -197,6 +197,10 @@ class LibraryBackupServiceImpl implements LibraryBackupService {
         preferredPlayer: settingsService!.preferredPlayer,
         themeMode: settingsService!.themeMode.name,
         isNavRailCollapsed: settingsService!.isNavRailCollapsed,
+        userDisplayName: settingsService!.userDisplayName.isNotEmpty
+            ? settingsService!.userDisplayName
+            : null,
+        userProfilePicturePath: settingsService!.userProfilePicturePath,
       );
     }
 
@@ -767,6 +771,17 @@ class LibraryBackupServiceImpl implements LibraryBackupService {
         await settingsService!.setNavRailCollapsed(
           payload.settings!.isNavRailCollapsed,
         );
+        if (payload.settings!.userDisplayName != null &&
+            payload.settings!.userDisplayName!.isNotEmpty) {
+          await settingsService!.setUserDisplayName(
+            payload.settings!.userDisplayName!,
+          );
+        }
+        if (payload.settings!.userProfilePicturePath != null) {
+          await settingsService!.setUserProfilePicturePath(
+            payload.settings!.userProfilePicturePath,
+          );
+        }
         settingsImported = true;
       }
 

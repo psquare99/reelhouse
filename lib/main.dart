@@ -20,6 +20,7 @@ import 'domain/services/storage_identity_service.dart';
 import 'domain/services/storage_monitor_service.dart';
 import 'domain/services/transfer_coordinator.dart';
 import 'domain/services/transfer_service.dart';
+import 'presentation/onboarding/onboarding_screen.dart';
 import 'presentation/shell/cinema_shell.dart';
 
 void main() async {
@@ -138,19 +139,35 @@ class ReelhouseApp extends StatelessWidget {
           theme: CinemaTheme.lightTheme,
           darkTheme: CinemaTheme.darkTheme,
           themeMode: currentMode,
-          home: CinemaShell(
-            database: database,
-            repository: libraryRepository,
-            storageIdentityService: storageIdentityService,
-            localStorageManager: localStorageManager,
-            libraryScannerService: libraryScannerService,
-            storageMonitorService: storageMonitorService,
-            metadataService: metadataService,
-            settingsService: settingsService,
-            deviceStorageService: deviceStorageService,
-            transferService: transferService,
-            transferCoordinator: transferCoordinator,
-          ),
+          home:
+              (settingsService != null &&
+                  !settingsService!.isOnboardingCompleted)
+              ? OnboardingScreen(
+                  database: database,
+                  repository: libraryRepository,
+                  storageIdentityService: storageIdentityService,
+                  localStorageManager: localStorageManager,
+                  libraryScannerService: libraryScannerService,
+                  storageMonitorService: storageMonitorService,
+                  metadataService: metadataService,
+                  settingsService: settingsService!,
+                  deviceStorageService: deviceStorageService,
+                  transferService: transferService,
+                  transferCoordinator: transferCoordinator,
+                )
+              : CinemaShell(
+                  database: database,
+                  repository: libraryRepository,
+                  storageIdentityService: storageIdentityService,
+                  localStorageManager: localStorageManager,
+                  libraryScannerService: libraryScannerService,
+                  storageMonitorService: storageMonitorService,
+                  metadataService: metadataService,
+                  settingsService: settingsService,
+                  deviceStorageService: deviceStorageService,
+                  transferService: transferService,
+                  transferCoordinator: transferCoordinator,
+                ),
         );
       },
     );
