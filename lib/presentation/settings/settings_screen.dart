@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
@@ -89,6 +91,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isApiKeyObscured = true;
   bool _isTestingConnection = false;
   String? _testStatusMessage;
+  TmdbAuthStatus? _lastAuthStatus;
+  bool _isChangingApiKey = false;
+  bool _isValidatingCandidateKey = false;
+  String? _candidateValidationMessage;
+  bool _candidateValidationSuccess = false;
   bool _isIdentifyingLibrary = false;
   double _identifyProgress = 0.0;
   String? _identifyStatus;
@@ -142,24 +149,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool get _hasApiKey =>
       _settingsService?.hasTmdbApiKey ?? _metadataService.tmdbClient.hasApiKey;
 
-  Future<void> _saveApiKey() async {
-    final key = _apiKeyController.text.trim();
-    if (_settingsService != null) {
-      await _settingsService!.setTmdbApiKey(key);
+  Future<void> _testAndSaveCandidateKey() async {
+    final candidateKey = _apiKeyController.text.trim();
+    if (candidateKey.isEmpty) {
+      setState(() {
+        _candidateValidationMessage =
+            'Please enter an API key or access token.';
+        _candidateValidationSuccess = false;
+      });
+      return;
     }
-    _metadataService.tmdbClient.updateApiKey(key.isNotEmpty ? key : null);
-    if (mounted) {
+
+    setState(() {
+      _isValidatingCandidateKey = true;
+      _candidateValidationMessage = null;
+    });
+
+    final result = await _metadataService.tmdbClient.validateAuthentication(
+      candidateKey,
+    );
+    if (!mounted) return;
+
+    if (result.isSuccess) {
+      if (_settingsService != null) {
+        await _settingsService!.setTmdbApiKey(candidateKey);
+      }
+      _metadataService.tmdbClient.updateApiKey(candidateKey);
+      if (!mounted) return;
+      setState(() {
+        _isValidatingCandidateKey = false;
+        _candidateValidationSuccess = true;
+        _candidateValidationMessage = 'Connected to TMDB successfully.';
+        _lastAuthStatus = TmdbAuthStatus.connected;
+        _isChangingApiKey = false;
+      });
+
       final theme = CinemaTheme.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'TMDB API configuration saved.',
+            'TMDB API key verified and saved.',
             style: TextStyle(color: theme.textPrimary),
           ),
           backgroundColor: theme.surface2,
         ),
       );
-      setState(() {});
+    } else {
+      setState(() {
+        _isValidatingCandidateKey = false;
+        _candidateValidationSuccess = false;
+        _candidateValidationMessage = result.status == TmdbAuthStatus.invalidKey
+            ? 'Invalid TMDB API key. Please check your key at themoviedb.org and try again.'
+            : 'Unable to connect to TMDB. Please check your internet connection.';
+        _lastAuthStatus = result.status;
+      });
     }
   }
 
@@ -169,27 +212,489 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _testStatusMessage = null;
     });
 
-    try {
-      final results = await _metadataService.tmdbClient.searchMovies(
-        'Inception',
-        year: 2010,
-      );
-      if (mounted) {
-        setState(() {
-          _isTestingConnection = false;
-          _testStatusMessage = results.isNotEmpty
-              ? 'Success: Connected to TMDB API.'
-              : 'Connected, but no results returned.';
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isTestingConnection = false;
-          _testStatusMessage = 'Error: $e';
-        });
-      }
+    final result = await _metadataService.tmdbClient.validateAuthentication();
+    if (mounted) {
+      setState(() {
+        _isTestingConnection = false;
+        _lastAuthStatus = result.status;
+        _testStatusMessage = result.message;
+      });
     }
+  }
+
+  Future<void> _disconnectTmdb() async {
+    if (_settingsService != null) {
+      await _settingsService!.setTmdbApiKey('');
+    }
+    _metadataService.tmdbClient.updateApiKey(null);
+    _apiKeyController.clear();
+    setState(() {
+      _lastAuthStatus = TmdbAuthStatus.notConfigured;
+      _isChangingApiKey = false;
+      _testStatusMessage = null;
+      _candidateValidationMessage = null;
+    });
+    if (mounted) {
+      final theme = CinemaTheme.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'TMDB disconnected.',
+            style: TextStyle(color: theme.textPrimary),
+          ),
+          backgroundColor: theme.surface2,
+        ),
+      );
+    }
+  }
+
+  void _openTmdbWebsite() {
+    const url = 'https://www.themoviedb.org/settings/api';
+    try {
+      if (Platform.isWindows) {
+        Process.run('cmd', ['/c', 'start', '', url]);
+      } else if (Platform.isMacOS) {
+        Process.run('open', [url]);
+      } else if (Platform.isLinux) {
+        Process.run('xdg-open', [url]);
+      }
+    } catch (_) {}
+
+    _showTmdbSetupGuideDialog();
+  }
+
+  void _showTmdbSetupGuideDialog() {
+    final theme = CinemaTheme.of(context);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: theme.surface,
+        title: Row(
+          children: [
+            Icon(Icons.vpn_key_outlined, color: theme.accent, size: 22),
+            const SizedBox(width: 10),
+            Text(
+              'How to Get a TMDB API Key',
+              style: TextStyle(
+                color: theme.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Follow these steps on themoviedb.org to create your free API key:',
+              style: TextStyle(color: theme.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            _buildGuideStep(
+              '1',
+              'Sign in or create a free TMDB account.',
+              theme,
+            ),
+            const SizedBox(height: 10),
+            _buildGuideStep(
+              '2',
+              'Open Settings > API in your profile menu.',
+              theme,
+            ),
+            const SizedBox(height: 10),
+            _buildGuideStep(
+              '3',
+              'Select "Create" and choose the "Developer" option.',
+              theme,
+            ),
+            const SizedBox(height: 10),
+            _buildGuideStep(
+              '4',
+              'Copy your API Key (v3 auth) or API Read Access Token and paste it into REELHOUSE.',
+              theme,
+            ),
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.accent,
+              foregroundColor: theme.onAccent,
+            ),
+            child: const Text('Got It'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideStep(String number, String text, CinemaThemeData theme) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: theme.surface2,
+            shape: BoxShape.circle,
+            border: Border.all(color: theme.border),
+          ),
+          child: Text(
+            number,
+            style: TextStyle(
+              color: theme.accent,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: theme.textPrimary,
+              fontSize: 13,
+              height: 1.3,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAuthBadge(CinemaThemeData theme) {
+    String label;
+    Color color;
+
+    if (_lastAuthStatus == TmdbAuthStatus.invalidKey) {
+      label = 'INVALID KEY';
+      color = theme.statusMissing;
+    } else if (_lastAuthStatus == TmdbAuthStatus.networkFailure) {
+      label = 'NETWORK ERROR';
+      color = theme.warning;
+    } else if (_hasApiKey) {
+      label = 'CONNECTED';
+      color = theme.statusAvailable;
+    } else {
+      label = 'NOT CONFIGURED';
+      color = theme.statusMissing;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTmdbCard(CinemaThemeData theme) {
+    final isConfiguredAndNotEditing = _hasApiKey && !_isChangingApiKey;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.public, color: theme.accent, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'The Movie Database (TMDB) API',
+                      style: TextStyle(
+                        color: theme.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                _buildAuthBadge(theme),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'REELHOUSE uses The Movie Database (TMDB) to identify your movies and TV shows and load official posters, backdrops, and details.',
+              style: TextStyle(color: theme.textMuted, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            if (isConfiguredAndNotEditing) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.surface2,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: theme.border),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.vpn_key_outlined, color: theme.accent, size: 18),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        '••••••••••••••••••••••••••••••••',
+                        style: TextStyle(
+                          color: theme.textSecondary,
+                          letterSpacing: 2,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    OutlinedButton(
+                      onPressed: () {
+                        setState(() {
+                          _isChangingApiKey = true;
+                          _apiKeyController.clear();
+                          _candidateValidationMessage = null;
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: const Text('Change API Key'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _isTestingConnection
+                        ? null
+                        : _testTmdbConnection,
+                    icon: _isTestingConnection
+                        ? SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: theme.accent,
+                            ),
+                          )
+                        : const Icon(Icons.network_check, size: 16),
+                    label: const Text('Test Connection'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: !_isIdentifyingLibrary
+                        ? _runBatchIdentification
+                        : null,
+                    icon: _isIdentifyingLibrary
+                        ? SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: theme.accent,
+                            ),
+                          )
+                        : const Icon(Icons.auto_fix_high, size: 16),
+                    label: const Text('Identify Unmatched Media'),
+                  ),
+                  TextButton(
+                    onPressed: _disconnectTmdb,
+                    child: Text(
+                      'Disconnect',
+                      style: TextStyle(color: theme.textMuted, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+              if (_testStatusMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _testStatusMessage!,
+                  style: TextStyle(
+                    color:
+                        _testStatusMessage!.toLowerCase().contains('invalid') ||
+                            _testStatusMessage!.toLowerCase().contains(
+                              'error',
+                            ) ||
+                            _testStatusMessage!.toLowerCase().contains('unable')
+                        ? theme.statusMissing
+                        : theme.statusAvailable,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ] else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _apiKeyController,
+                      obscureText: _isApiKeyObscured,
+                      decoration: InputDecoration(
+                        labelText: 'API Key or Access Token',
+                        hintText: 'Enter TMDB API Key / Token',
+                        labelStyle: TextStyle(color: theme.textSecondary),
+                        hintStyle: TextStyle(color: theme.textMuted),
+                        filled: true,
+                        fillColor: theme.surface2,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: theme.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: theme.accent, width: 2),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isApiKeyObscured
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                            color: theme.textMuted,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isApiKeyObscured = !_isApiKeyObscured;
+                            });
+                          },
+                        ),
+                      ),
+                      style: TextStyle(color: theme.textPrimary),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _isValidatingCandidateKey
+                        ? null
+                        : _testAndSaveCandidateKey,
+                    icon: _isValidatingCandidateKey
+                        ? SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: theme.onAccent,
+                            ),
+                          )
+                        : const Icon(Icons.check, size: 16),
+                    label: Text(
+                      _isValidatingCandidateKey ? 'Testing...' : 'Test & Save',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      backgroundColor: theme.accent,
+                      foregroundColor: theme.onAccent,
+                    ),
+                  ),
+                ],
+              ),
+              if (_candidateValidationMessage != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _candidateValidationMessage!,
+                  style: TextStyle(
+                    color: _candidateValidationSuccess
+                        ? theme.statusAvailable
+                        : theme.statusMissing,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _openTmdbWebsite,
+                    icon: const Icon(Icons.open_in_new, size: 14),
+                    label: const Text('Get a TMDB API Key'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.accent,
+                      side: BorderSide(color: theme.border),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
+                  if (_isChangingApiKey) ...[
+                    const SizedBox(width: 10),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _isChangingApiKey = false;
+                          _candidateValidationMessage = null;
+                          _apiKeyController.text =
+                              _settingsService?.tmdbApiKey ?? '';
+                        });
+                      },
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(color: theme.textSecondary),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+            if (_isIdentifyingLibrary) ...[
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                value: _identifyProgress > 0 ? _identifyProgress : null,
+                color: theme.accent,
+                backgroundColor: theme.surface2,
+              ),
+              if (_identifyStatus != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  _identifyStatus!,
+                  style: TextStyle(color: theme.textMuted, fontSize: 11),
+                ),
+              ],
+            ],
+            const SizedBox(height: 16),
+            Divider(color: theme.border, height: 1),
+            const SizedBox(height: 12),
+            Text(
+              'This product uses the TMDB API but is not endorsed or certified by TMDB.',
+              style: TextStyle(
+                color: theme.textMuted,
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _runBatchIdentification() async {
@@ -1163,192 +1668,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: CinemaTheme.eyebrow(context),
           ),
           const SizedBox(height: 14),
-
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.public, color: theme.accent, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'The Movie Database (TMDB) API',
-                            style: TextStyle(
-                              color: theme.textPrimary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _hasApiKey ? theme.surface2 : theme.surface,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: _hasApiKey
-                                ? theme.statusAvailable
-                                : theme.statusMissing,
-                          ),
-                        ),
-                        child: Text(
-                          _hasApiKey ? 'CONFIGURED' : 'KEY MISSING',
-                          style: TextStyle(
-                            color: _hasApiKey
-                                ? theme.statusAvailable
-                                : theme.statusMissing,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'A TMDB API Key or Read Access Token is required to fetch official cinema artwork, synopses, runtimes, and season/episode metadata.',
-                    style: TextStyle(color: theme.textMuted, fontSize: 12),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _apiKeyController,
-                          obscureText: _isApiKeyObscured,
-                          decoration: InputDecoration(
-                            labelText: 'API Key or Access Token',
-                            hintText: 'Enter TMDB API Key / Token or set TMDB_API_KEY',
-                            labelStyle: TextStyle(color: theme.textSecondary),
-                            hintStyle: TextStyle(color: theme.textMuted),
-                            filled: true,
-                            fillColor: theme.surface2,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: theme.border),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: theme.accent,
-                                width: 2,
-                              ),
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isApiKeyObscured
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                color: theme.textMuted,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isApiKeyObscured = !_isApiKeyObscured;
-                                });
-                              },
-                            ),
-                          ),
-                          style: TextStyle(color: theme.textPrimary),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
-                        onPressed: _saveApiKey,
-                        child: const Text('Save'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 10,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _hasApiKey && !_isTestingConnection
-                            ? _testTmdbConnection
-                            : null,
-                        icon: _isTestingConnection
-                            ? SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: theme.accent,
-                                ),
-                              )
-                            : const Icon(Icons.network_check, size: 16),
-                        label: const Text('Test Connection'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _hasApiKey && !_isIdentifyingLibrary
-                            ? _runBatchIdentification
-                            : null,
-                        icon: _isIdentifyingLibrary
-                            ? SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: theme.accent,
-                                ),
-                              )
-                            : const Icon(Icons.auto_fix_high, size: 16),
-                        label: const Text('Identify Unmatched Media'),
-                      ),
-                    ],
-                  ),
-                  if (_testStatusMessage != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      _testStatusMessage!,
-                      style: TextStyle(
-                        color: _testStatusMessage!.contains('Error')
-                            ? theme.statusMissing
-                            : theme.statusAvailable,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                  if (_isIdentifyingLibrary) ...[
-                    const SizedBox(height: 12),
-                    LinearProgressIndicator(
-                      value: _identifyProgress > 0 ? _identifyProgress : null,
-                      color: theme.accent,
-                      backgroundColor: theme.surface2,
-                    ),
-                    if (_identifyStatus != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        _identifyStatus!,
-                        style: TextStyle(color: theme.textMuted, fontSize: 11),
-                      ),
-                    ],
-                  ],
-                  const SizedBox(height: 16),
-                  Divider(color: theme.border, height: 1),
-                  const SizedBox(height: 12),
-                  Text(
-                    'This product uses the TMDB API but is not endorsed or certified by TMDB.',
-                    style: TextStyle(
-                      color: theme.textMuted,
-                      fontSize: 11,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          _buildTmdbCard(theme),
           const SizedBox(height: 32),
 
           // Section: Library Backup & Restore (RC.1)

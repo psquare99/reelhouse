@@ -124,5 +124,135 @@ void main() {
         throwsA(isA<TmdbApiException>()),
       );
     });
+
+    group('validateAuthentication', () {
+      test('returns notConfigured when key is null or empty', () async {
+        final client = TmdbApiClient(
+          apiKey: null,
+          minRequestInterval: Duration.zero,
+        );
+
+        final result = await client.validateAuthentication();
+        expect(result.status, TmdbAuthStatus.notConfigured);
+        expect(result.isSuccess, isFalse);
+
+        final resultEmpty = await client.validateAuthentication('   ');
+        expect(resultEmpty.status, TmdbAuthStatus.notConfigured);
+      });
+
+      test(
+        'returns connected when TMDB returns 200 for /authentication',
+        () async {
+          final mockClient = MockClient((request) async {
+            expect(request.url.path, '/3/authentication');
+            expect(request.url.queryParameters['api_key'], 'valid-key');
+            return http.Response(
+              jsonEncode({'success': true, 'status_code': 1}),
+              200,
+            );
+          });
+
+          final client = TmdbApiClient(
+            apiKey: 'valid-key',
+            httpClient: mockClient,
+            minRequestInterval: Duration.zero,
+          );
+
+          final result = await client.validateAuthentication();
+          expect(result.status, TmdbAuthStatus.connected);
+          expect(result.isSuccess, isTrue);
+          expect(result.statusCode, 200);
+        },
+      );
+
+      test('returns invalidKey when TMDB returns 401/403', () async {
+        final mockClient = MockClient((request) async {
+          expect(request.url.path, '/3/authentication');
+          return http.Response(
+            jsonEncode({'status_code': 7, 'status_message': 'Invalid API key'}),
+            401,
+          );
+        });
+
+        final client = TmdbApiClient(
+          apiKey: 'bad-key',
+          httpClient: mockClient,
+          minRequestInterval: Duration.zero,
+        );
+
+        final result = await client.validateAuthentication();
+        expect(result.status, TmdbAuthStatus.invalidKey);
+        expect(result.isSuccess, isFalse);
+        expect(result.statusCode, 401);
+      });
+
+      test(
+        'returns networkFailure on 500 server error or connection error',
+        () async {
+          final mockClient = MockClient((request) async {
+            return http.Response('Server error', 500);
+          });
+
+          final client = TmdbApiClient(
+            apiKey: 'test-key',
+            httpClient: mockClient,
+            minRequestInterval: Duration.zero,
+          );
+
+          final result = await client.validateAuthentication();
+          expect(result.status, TmdbAuthStatus.networkFailure);
+          expect(result.statusCode, 500);
+        },
+      );
+
+      test(
+        'validates candidate key without mutating active client key',
+        () async {
+          final testedKeys = <String?>[];
+          final mockClient = MockClient((request) async {
+            testedKeys.add(request.url.queryParameters['api_key']);
+            return http.Response(
+              jsonEncode({'success': true, 'status_code': 1}),
+              200,
+            );
+          });
+
+          final client = TmdbApiClient(
+            apiKey: 'primary-key',
+            httpClient: mockClient,
+            minRequestInterval: Duration.zero,
+          );
+
+          final result = await client.validateAuthentication('candidate-key');
+          expect(result.status, TmdbAuthStatus.connected);
+          expect(testedKeys, contains('candidate-key'));
+          // Ensure primary key is preserved
+          expect(client.hasApiKey, isTrue);
+        },
+      );
+
+      test('supports Bearer token authorization header when key length > 40', () async {
+        const longBearer =
+            'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJleGFtcGxlIiwic3ViIjoiMTIzNCJ9.signature12345678901234567890';
+        final mockClient = MockClient((request) async {
+          expect(request.url.path, '/3/authentication');
+          expect(request.headers['Authorization'], 'Bearer $longBearer');
+          expect(request.url.queryParameters.containsKey('api_key'), isFalse);
+          return http.Response(
+            jsonEncode({'success': true, 'status_code': 1}),
+            200,
+          );
+        });
+
+        final client = TmdbApiClient(
+          apiKey: longBearer,
+          httpClient: mockClient,
+          minRequestInterval: Duration.zero,
+        );
+
+        final result = await client.validateAuthentication();
+        expect(result.status, TmdbAuthStatus.connected);
+      });
+    });
   });
 }

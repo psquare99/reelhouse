@@ -7,6 +7,41 @@ import 'package:http/http.dart' as http;
 
 import 'tmdb_models.dart';
 
+/// Authentication and connectivity status for TMDB.
+enum TmdbAuthStatus {
+  /// TMDB API key is not configured.
+  notConfigured,
+
+  /// TMDB API key is configured and verified successfully.
+  connected,
+
+  /// TMDB rejected the API key as invalid or unauthorized (HTTP 401/403).
+  invalidKey,
+
+  /// Network/internet unreachable or server error preventing connection.
+  networkFailure,
+}
+
+/// Result of a TMDB authentication validation test.
+class TmdbAuthValidationResult {
+  final TmdbAuthStatus status;
+  final String message;
+  final int? statusCode;
+
+  const TmdbAuthValidationResult({
+    required this.status,
+    required this.message,
+    this.statusCode,
+  });
+
+  /// Whether the validation was completely successful.
+  bool get isSuccess => status == TmdbAuthStatus.connected;
+
+  @override
+  String toString() =>
+      'TmdbAuthValidationResult(status: $status, message: $message, statusCode: $statusCode)';
+}
+
 /// Exception thrown when TMDB requests fail.
 class TmdbApiException implements Exception {
   final String message;
@@ -22,7 +57,7 @@ class TmdbApiException implements Exception {
 /// HTTP client for The Movie Database (TMDB) API v3.
 ///
 /// Implements throttling, rate-limit retry with exponential backoff,
-/// and secure API key management.
+/// and secure API key management with dedicated authentication validation.
 class TmdbApiClient {
   static const String defaultBaseUrl = 'https://api.themoviedb.org/3';
   static const String defaultImageBaseUrl = 'https://image.tmdb.org/t/p';
@@ -64,6 +99,67 @@ class TmdbApiClient {
 
   /// Alias for setApiKey.
   void updateApiKey(String? key) => setApiKey(key);
+
+  /// Validates TMDB API connectivity and key validity using the official
+  /// dedicated authentication endpoint (`GET /authentication`).
+  ///
+  /// If [candidateKey] is provided, validates that key without altering the
+  /// client's active API key. Otherwise, tests the currently active key.
+  Future<TmdbAuthValidationResult> validateAuthentication([
+    String? candidateKey,
+  ]) async {
+    final keyToTest = (candidateKey ?? _apiKey)?.trim();
+    if (keyToTest == null || keyToTest.isEmpty) {
+      return const TmdbAuthValidationResult(
+        status: TmdbAuthStatus.notConfigured,
+        message: 'TMDB API key is not configured.',
+      );
+    }
+
+    await _throttle();
+
+    final isBearer = keyToTest.length > 40;
+    final queryParams = <String, String>{};
+    if (!isBearer) {
+      queryParams['api_key'] = keyToTest;
+    }
+
+    final uri = Uri.parse('$baseUrl/authentication')
+        .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+    final headers = <String, String>{'Accept': 'application/json'};
+    if (isBearer) {
+      headers['Authorization'] = 'Bearer $keyToTest';
+    }
+
+    try {
+      final response = await _httpClient.get(uri, headers: headers);
+      if (response.statusCode == 200) {
+        return const TmdbAuthValidationResult(
+          status: TmdbAuthStatus.connected,
+          message: 'Connected to TMDB successfully.',
+          statusCode: 200,
+        );
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        return TmdbAuthValidationResult(
+          status: TmdbAuthStatus.invalidKey,
+          message: 'Invalid or unauthorized TMDB API key.',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return TmdbAuthValidationResult(
+          status: TmdbAuthStatus.networkFailure,
+          message:
+              'TMDB service returned an error (${response.statusCode}). Please try again.',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return TmdbAuthValidationResult(
+        status: TmdbAuthStatus.networkFailure,
+        message: 'Unable to connect to TMDB: $e',
+      );
+    }
+  }
 
   /// Constructs a full poster image URL.
   String? getPosterUrl(String? path, {String size = 'w500'}) {

@@ -67,8 +67,10 @@ void main() {
   late MetadataService metadataService;
   late SettingsService settingsService;
 
-  setUp(() {
+  setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
+    settingsService = SettingsService(settingsFilePath: '/fake/settings.json');
+    await settingsService.setTmdbApiKey('test_key');
     metadataService = MetadataService(
       database: db,
       tmdbClient: TmdbApiClient(apiKey: 'test_key'),
@@ -77,7 +79,6 @@ void main() {
         localStorageManager: FakeLocalStorageManager(),
       ),
     );
-    settingsService = SettingsService(settingsFilePath: '/fake/settings.json');
   });
 
   tearDown(() async {
@@ -204,6 +205,72 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(settingsService.themeMode, equals(ThemeMode.light));
+
+      // Unmount and flush
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
+    },
+  );
+
+  testWidgets(
+    'SettingsScreen TMDB interaction: masked key, change key, cancel, and guide dialog',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await settingsService.setTmdbApiKey('active-verified-key');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsScreen(
+            database: db,
+            storageIdentityService: FakeStorageIdentityService(),
+            localStorageManager: FakeLocalStorageManager(),
+            metadataService: metadataService,
+            settingsService: settingsService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Scroll to TMDB card
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+
+      expect(find.text('TMDB METADATA CONFIGURATION'), findsOneWidget);
+      expect(find.text('The Movie Database (TMDB) API'), findsOneWidget);
+      expect(find.text('CONNECTED'), findsOneWidget);
+      expect(find.text('Change API Key'), findsOneWidget);
+      expect(find.text('Test Connection'), findsOneWidget);
+      expect(find.text('Disconnect'), findsOneWidget);
+
+      // Tap Change API Key
+      await tester.tap(find.text('Change API Key'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Test & Save'), findsOneWidget);
+      expect(find.text('Get a TMDB API Key'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+
+      // Open Guide Dialog
+      await tester.tap(find.text('Get a TMDB API Key'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('How to Get a TMDB API Key'), findsOneWidget);
+      expect(find.text('Got It'), findsOneWidget);
+
+      // Dismiss dialog
+      await tester.tap(find.text('Got It'));
+      await tester.pumpAndSettle();
+
+      // Tap Cancel -> reverts to masked view without modifying existing key
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Change API Key'), findsOneWidget);
+      expect(settingsService.tmdbApiKey, equals('active-verified-key'));
 
       // Unmount and flush
       await tester.pumpWidget(const SizedBox());

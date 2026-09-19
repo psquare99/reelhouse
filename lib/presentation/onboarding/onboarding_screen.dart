@@ -158,55 +158,148 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _tmdbTestMessage = null;
     });
 
-    try {
+    final result = await _metadataService.tmdbClient.validateAuthentication(
+      key,
+    );
+    if (!mounted) return;
+
+    if (result.isSuccess) {
       await widget.settingsService.setTmdbApiKey(key);
       _metadataService.tmdbClient.updateApiKey(key);
-
-      final results = await _metadataService.tmdbClient.searchMovies(
-        'Inception',
-        year: 2010,
-      );
-      if (mounted) {
-        setState(() {
-          _isTestingTmdb = false;
-          _tmdbTestSuccess = results.isNotEmpty;
-          _tmdbTestMessage = results.isNotEmpty
-              ? 'TMDB connection successful.'
-              : 'Connected, but no results returned. Key may have limited permissions.';
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isTestingTmdb = false;
-          _tmdbTestSuccess = false;
-          _tmdbTestMessage = 'TMDB connection could not be verified. Check your API key and try again.';
-        });
-      }
+      setState(() {
+        _isTestingTmdb = false;
+        _tmdbTestSuccess = true;
+        _tmdbTestMessage = 'TMDB connection successful.';
+      });
+    } else {
+      setState(() {
+        _isTestingTmdb = false;
+        _tmdbTestSuccess = false;
+        _tmdbTestMessage = result.status == TmdbAuthStatus.invalidKey
+            ? 'Invalid TMDB API Key. Please verify your key at themoviedb.org'
+            : 'Unable to connect to TMDB. Check your internet connection.';
+      });
     }
   }
 
-  Future<void> _openTmdbWebsite() async {
+  void _openTmdbWebsite() {
     const url = 'https://www.themoviedb.org/settings/api';
     try {
       if (Platform.isWindows) {
-        await Process.run('cmd', ['/c', 'start', '', url]);
+        Process.run('cmd', ['/c', 'start', '', url]);
       } else if (Platform.isMacOS) {
-        await Process.run('open', [url]);
+        Process.run('open', [url]);
       } else if (Platform.isLinux) {
-        await Process.run('xdg-open', [url]);
+        Process.run('xdg-open', [url]);
       }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Visit https://www.themoviedb.org/settings/api to get your API key.',
+    } catch (_) {}
+
+    _showTmdbSetupGuideDialog();
+  }
+
+  void _showTmdbSetupGuideDialog() {
+    final theme = CinemaTheme.of(context);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: theme.surface,
+        title: Row(
+          children: [
+            Icon(Icons.vpn_key_outlined, color: theme.accent, size: 22),
+            const SizedBox(width: 10),
+            Text(
+              'How to Get a TMDB API Key',
+              style: TextStyle(
+                color: theme.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Follow these steps on themoviedb.org to create your free API key:',
+              style: TextStyle(color: theme.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            _buildGuideStep(
+              '1',
+              'Sign in or create a free TMDB account.',
+              theme,
+            ),
+            const SizedBox(height: 10),
+            _buildGuideStep(
+              '2',
+              'Open Settings > API in your profile menu.',
+              theme,
+            ),
+            const SizedBox(height: 10),
+            _buildGuideStep(
+              '3',
+              'Select "Create" and choose the "Developer" option.',
+              theme,
+            ),
+            const SizedBox(height: 10),
+            _buildGuideStep(
+              '4',
+              'Copy your API Key (v3 auth) or API Read Access Token and paste it into REELHOUSE.',
+              theme,
+            ),
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.accent,
+              foregroundColor: theme.onAccent,
+            ),
+            child: const Text('Got It'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideStep(String number, String text, CinemaThemeData theme) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: theme.surface2,
+            shape: BoxShape.circle,
+            border: Border.all(color: theme.border),
+          ),
+          child: Text(
+            number,
+            style: TextStyle(
+              color: theme.accent,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        );
-      }
-    }
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: theme.textPrimary,
+              fontSize: 13,
+              height: 1.3,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   void _validateAndAdvanceFromProfile() {

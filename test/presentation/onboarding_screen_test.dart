@@ -96,6 +96,24 @@ class MockTmdbApiClient extends TmdbApiClient {
   MockTmdbApiClient() : super(apiKey: 'dummy_key');
 
   @override
+  Future<TmdbAuthValidationResult> validateAuthentication([
+    String? candidateKey,
+  ]) async {
+    if (shouldValidateSuccessfully) {
+      return const TmdbAuthValidationResult(
+        status: TmdbAuthStatus.connected,
+        message: 'TMDB connection successful.',
+        statusCode: 200,
+      );
+    }
+    return const TmdbAuthValidationResult(
+      status: TmdbAuthStatus.invalidKey,
+      message: 'Invalid TMDB API Key.',
+      statusCode: 401,
+    );
+  }
+
+  @override
   Future<List<TmdbMovieSearchResult>> searchMovies(
     String query, {
     int? year,
@@ -269,6 +287,40 @@ void main() {
         findsNWidgets(2),
       ); // Card title + button
       expect(find.text('Import Existing Library'), findsOneWidget);
+    });
+
+    testWidgets('Step 3: Entering valid TMDB key validates and saves key', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 800));
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // Step 1 -> Step 2
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      // Step 2 -> Step 3
+      await tester.enterText(find.byType(TextField), 'Viewer');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      // Reveal input
+      await tester.tap(find.text('I Have an API Key'));
+      await tester.pumpAndSettle();
+
+      // Enter key
+      await tester.enterText(find.byType(TextField), 'my-valid-api-key');
+      await tester.pumpAndSettle();
+
+      // Test & Save
+      await tester.tap(find.text('Test & Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('TMDB connection successful.'), findsOneWidget);
+      expect(settingsService.tmdbApiKey, equals('my-valid-api-key'));
+      expect(find.text('Continue'), findsOneWidget);
     });
 
     testWidgets('Step 4: Start a New Library completes onboarding', (
