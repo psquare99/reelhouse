@@ -111,7 +111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _settingsService = widget.settingsService;
     _filePickerService = widget.filePickerService ?? FilePickerServiceImpl();
-    _feedbackService = widget.feedbackService ?? const FeedbackServiceImpl();
+    _feedbackService = widget.feedbackService ?? FeedbackServiceImpl();
     _libraryBackupService =
         widget.libraryBackupService ??
         LibraryBackupServiceImpl(

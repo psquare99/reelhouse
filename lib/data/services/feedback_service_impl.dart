@@ -1,16 +1,35 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 import '../../domain/models/feedback_models.dart';
 import '../../domain/services/feedback_service.dart';
 
-/// Concrete implementation of [FeedbackService] using native OS process execution
-/// and Flutter platform clipboard services.
+/// Concrete implementation of [FeedbackService] connecting to the dedicated
+/// stateless Cloudflare feedback submission worker.
 class FeedbackServiceImpl implements FeedbackService {
-  final String recipientEmail;
+  final String endpointUrl;
+  final http.Client _client;
+  final Duration timeout;
+  final Uuid _uuid;
 
-  const FeedbackServiceImpl({this.recipientEmail = 'feedback@reelhouse.app'});
+  FeedbackServiceImpl({
+    String? endpointUrl,
+    http.Client? client,
+    this.timeout = const Duration(seconds: 15),
+    Uuid? uuid,
+  }) : endpointUrl =
+           endpointUrl ??
+           const String.fromEnvironment(
+             'FEEDBACK_ENDPOINT_URL',
+             defaultValue: 'https://feedback.reelhouse.app',
+           ),
+       _client = client ?? http.Client(),
+       _uuid = uuid ?? const Uuid();
 
   @override
   String getPlatformIdentifier() {
@@ -27,24 +46,46 @@ class FeedbackServiceImpl implements FeedbackService {
   }
 
   @override
-  Future<bool> launchFeedbackEmail(FeedbackPayload payload) async {
-    final mailtoUri = payload.toMailtoUri(recipient: recipientEmail);
-    final urlString = mailtoUri.toString();
+  Future<FeedbackSubmissionResult> submitFeedback(
+    FeedbackPayload payload,
+  ) async {
+    final submissionUri = Uri.parse(
+      '${endpointUrl.replaceAll(RegExp(r'/+$'), '')}/v1/feedback',
+    );
+
+    final idempotencyKey = _uuid.v4();
+    final requestBody = jsonEncode(payload.toJson());
 
     try {
-      if (Platform.isWindows) {
-        final result = await Process.run('cmd', ['/c', 'start', '', urlString]);
-        return result.exitCode == 0;
-      } else if (Platform.isMacOS) {
-        final result = await Process.run('open', [urlString]);
-        return result.exitCode == 0;
-      } else if (Platform.isLinux) {
-        final result = await Process.run('xdg-open', [urlString]);
-        return result.exitCode == 0;
+      final response = await _client
+          .post(
+            submissionUri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Idempotency-Key': idempotencyKey,
+              'X-Idempotency-Key': idempotencyKey,
+            },
+            body: requestBody,
+          )
+          .timeout(timeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return FeedbackSubmissionResult.success();
+      } else if (response.statusCode == 429) {
+        return FeedbackSubmissionResult.rateLimited();
+      } else if (response.statusCode == 400) {
+        return FeedbackSubmissionResult.validationError();
+      } else {
+        return FeedbackSubmissionResult.serverError();
       }
-      return false;
+    } on SocketException {
+      return FeedbackSubmissionResult.networkError();
+    } on TimeoutException {
+      return FeedbackSubmissionResult.networkError();
+    } on http.ClientException {
+      return FeedbackSubmissionResult.networkError();
     } catch (_) {
-      return false;
+      return FeedbackSubmissionResult.networkError();
     }
   }
 

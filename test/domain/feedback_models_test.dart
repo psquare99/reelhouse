@@ -4,50 +4,47 @@ import 'package:reelhouse/domain/models/feedback_models.dart';
 void main() {
   group('FeedbackCategory', () {
     test('provides distinct user-facing display names and subject tags', () {
-      expect(FeedbackCategory.bug.displayName, equals('Report a Bug'));
-      expect(FeedbackCategory.bug.subjectTag, equals('[Bug Report]'));
+      expect(FeedbackCategory.bug.displayName, 'Report a Bug');
+      expect(FeedbackCategory.bug.subjectTag, '[Bug]');
+      expect(FeedbackCategory.bug.wireCategory, 'bug');
 
       expect(
         FeedbackCategory.improvement.displayName,
-        equals('Suggest an Improvement'),
+        'Suggest an Improvement',
       );
-      expect(
-        FeedbackCategory.improvement.subjectTag,
-        equals('[Feature Suggestion]'),
-      );
+      expect(FeedbackCategory.improvement.subjectTag, '[Suggestion]');
+      expect(FeedbackCategory.improvement.wireCategory, 'suggestion');
 
-      expect(FeedbackCategory.general.displayName, equals('General Feedback'));
-      expect(FeedbackCategory.general.subjectTag, equals('[General Feedback]'));
+      expect(FeedbackCategory.general.displayName, 'General Feedback');
+      expect(FeedbackCategory.general.subjectTag, '[General]');
+      expect(FeedbackCategory.general.wireCategory, 'general');
     });
   });
 
   group('FeedbackPayload', () {
     test('formats subject line with and without optional subject', () {
-      const withSubject = FeedbackPayload(
+      const pWithSubject = FeedbackPayload(
         category: FeedbackCategory.bug,
-        subject: 'Poster loading issue',
-        message: 'Posters do not appear on startup.',
+        subject: 'Player crash',
+        message: 'Something went wrong',
       );
-      expect(
-        withSubject.formatSubject(),
-        equals('REELHOUSE [Bug Report]: Poster loading issue'),
-      );
+      expect(pWithSubject.formatSubject(), '[REELHOUSE][Bug] Player crash');
 
-      const withoutSubject = FeedbackPayload(
+      const pWithoutSubject = FeedbackPayload(
         category: FeedbackCategory.improvement,
-        message: 'Add custom theme colors.',
+        message: 'Add subtitles search',
       );
       expect(
-        withoutSubject.formatSubject(),
-        equals('REELHOUSE [Feature Suggestion]'),
+        pWithoutSubject.formatSubject(),
+        '[REELHOUSE][Suggestion] Feedback',
       );
     });
 
     test('formats body with message and non-sensitive diagnostic context', () {
       const payload = FeedbackPayload(
         category: FeedbackCategory.bug,
-        subject: 'Playback glitch',
-        message: 'Video stuttered at minute 14.',
+        subject: 'Subtitle sync issue',
+        message: 'Subtitles are 2 seconds ahead of video playback.',
         includeDiagnostics: true,
         appVersion: '1.0.0',
         platformName: 'Windows',
@@ -56,51 +53,161 @@ void main() {
       final body = payload.formatBody();
 
       expect(body, contains('Category: Report a Bug'));
-      expect(body, contains('Subject: Playback glitch'));
-      expect(body, contains('Video stuttered at minute 14.'));
-      expect(body, contains('Diagnostic Context (Non-Sensitive):'));
-      expect(body, contains('Application: REELHOUSE v1.0.0'));
-      expect(body, contains('Platform: Windows'));
-
-      // Privacy verification: ensures no sensitive data or keywords exist
-      expect(body, isNot(contains('api_key')));
-      expect(body, isNot(contains('tmdbApiKey')));
-      expect(body, isNot(contains('password')));
-      expect(body, isNot(contains('secret')));
-      expect(body, isNot(contains('movies')));
+      expect(body, contains('Subject: Subtitle sync issue'));
+      expect(
+        body,
+        contains('Message:\nSubtitles are 2 seconds ahead of video playback.'),
+      );
+      expect(
+        body,
+        contains('Diagnostics:\nREELHOUSE 1.0.0\nPlatform: Windows'),
+      );
     });
 
-    test('omits diagnostic context when includeDiagnostics is false', () {
+    test('formats body when diagnostics are omitted', () {
       const payload = FeedbackPayload(
         category: FeedbackCategory.general,
-        message: 'Love the cinema design!',
+        message: 'Great application!',
         includeDiagnostics: false,
       );
 
       final body = payload.formatBody();
-      expect(body, contains('Love the cinema design!'));
-      expect(body, isNot(contains('Diagnostic Context')));
+      expect(body, contains('Category: General Feedback'));
+      expect(body, contains('Message:\nGreat application!'));
+      expect(body, contains('Diagnostics:\nNot included'));
     });
 
-    test('generates valid mailto URI with encoded query parameters', () {
+    test('toJson serializes strictly allowlisted fields with diagnostics', () {
       const payload = FeedbackPayload(
-        category: FeedbackCategory.improvement,
-        subject: 'Keyboard shortcuts',
-        message: 'Please add spacebar to pause.',
+        category: FeedbackCategory.bug,
+        subject: 'Crash on launch',
+        message: 'App closes immediately',
+        includeDiagnostics: true,
+        appVersion: '1.0.0',
+        platformName: 'macOS',
       );
 
-      final uri = payload.toMailtoUri(recipient: 'feedback@reelhouse.app');
+      final json = payload.toJson();
+      expect(json, {
+        'category': 'bug',
+        'subject': 'Crash on launch',
+        'message': 'App closes immediately',
+        'diagnostics': {'appVersion': '1.0.0', 'platform': 'macOS'},
+      });
+    });
 
-      expect(uri.scheme, equals('mailto'));
-      expect(uri.path, equals('feedback@reelhouse.app'));
+    test(
+      'toJson serializes null diagnostics when includeDiagnostics is false',
+      () {
+        const payload = FeedbackPayload(
+          category: FeedbackCategory.improvement,
+          message: 'Add dark mode auto-schedule',
+          includeDiagnostics: false,
+        );
+
+        final json = payload.toJson();
+        expect(json, {
+          'category': 'suggestion',
+          'message': 'Add dark mode auto-schedule',
+          'diagnostics': null,
+        });
+      },
+    );
+  });
+
+  group('FeedbackPayload Security & Privacy Isolation', () {
+    test(
+      'CRITICAL: Payload serialization NEVER contains sensitive keys or state',
+      () {
+        const payload = FeedbackPayload(
+          category: FeedbackCategory.bug,
+          subject: 'Security validation test',
+          message: 'Safe test message',
+          includeDiagnostics: true,
+          appVersion: '1.0.0',
+          platformName: 'Windows',
+        );
+
+        final json = payload.toJson();
+
+        // Forbidden keys check
+        const forbiddenKeys = [
+          'tmdbApiKey',
+          'apiKey',
+          'accessToken',
+          'bearerToken',
+          'library',
+          'movies',
+          'tvShows',
+          'mediaSources',
+          'storagePaths',
+          'collections',
+          'playbackHistory',
+          'profile',
+          'profilePhoto',
+          'avatarPath',
+          'deviceId',
+          'ipAddress',
+        ];
+
+        for (final key in forbiddenKeys) {
+          expect(
+            json.containsKey(key),
+            isFalse,
+            reason: 'Payload must never include $key',
+          );
+        }
+
+        // Validate top-level keys are only category, subject, message, diagnostics
+        expect(
+          json.keys.toSet().difference({
+            'category',
+            'subject',
+            'message',
+            'diagnostics',
+          }),
+          isEmpty,
+        );
+
+        // Validate diagnostics keys
+        if (json['diagnostics'] != null) {
+          final diagMap = json['diagnostics'] as Map<String, dynamic>;
+          expect(
+            diagMap.keys.toSet().difference({'appVersion', 'platform'}),
+            isEmpty,
+          );
+        }
+      },
+    );
+  });
+
+  group('FeedbackSubmissionResult', () {
+    test('provides distinct factory results and user messages', () {
+      final success = FeedbackSubmissionResult.success();
+      expect(success.isSuccess, isTrue);
+      expect(success.status, FeedbackSubmissionStatus.success);
+
+      final networkErr = FeedbackSubmissionResult.networkError();
+      expect(networkErr.isSuccess, isFalse);
       expect(
-        uri.queryParameters['subject'],
-        equals('REELHOUSE [Feature Suggestion]: Keyboard shortcuts'),
+        networkErr.userMessage,
+        "Couldn't send feedback. Check your internet connection and try again.",
       );
+
+      final rateLimited = FeedbackSubmissionResult.rateLimited();
+      expect(rateLimited.isSuccess, isFalse);
+      expect(rateLimited.userMessage, 'Please try again later.');
+
+      final serverErr = FeedbackSubmissionResult.serverError();
+      expect(serverErr.isSuccess, isFalse);
       expect(
-        uri.queryParameters['body'],
-        contains('Please add spacebar to pause.'),
+        serverErr.userMessage,
+        "Feedback couldn't be sent right now. Please try again later.",
       );
+
+      final valErr = FeedbackSubmissionResult.validationError();
+      expect(valErr.isSuccess, isFalse);
+      expect(valErr.userMessage, 'Invalid feedback request.');
     });
   });
 }

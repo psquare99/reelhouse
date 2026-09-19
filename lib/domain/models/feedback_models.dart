@@ -27,13 +27,80 @@ extension FeedbackCategoryExtension on FeedbackCategory {
   String get subjectTag {
     switch (this) {
       case FeedbackCategory.bug:
-        return '[Bug Report]';
+        return '[Bug]';
       case FeedbackCategory.improvement:
-        return '[Feature Suggestion]';
+        return '[Suggestion]';
       case FeedbackCategory.general:
-        return '[General Feedback]';
+        return '[General]';
     }
   }
+
+  /// Wire format string for the JSON API contract.
+  String get wireCategory {
+    switch (this) {
+      case FeedbackCategory.bug:
+        return 'bug';
+      case FeedbackCategory.improvement:
+        return 'suggestion';
+      case FeedbackCategory.general:
+        return 'general';
+    }
+  }
+}
+
+/// Status of an in-app feedback submission.
+enum FeedbackSubmissionStatus {
+  success,
+  networkError,
+  rateLimited,
+  serverError,
+  validationError,
+}
+
+/// Result of submitting feedback.
+class FeedbackSubmissionResult {
+  final FeedbackSubmissionStatus status;
+  final String? userMessage;
+
+  const FeedbackSubmissionResult({required this.status, this.userMessage});
+
+  bool get isSuccess => status == FeedbackSubmissionStatus.success;
+
+  factory FeedbackSubmissionResult.success() =>
+      const FeedbackSubmissionResult(status: FeedbackSubmissionStatus.success);
+
+  factory FeedbackSubmissionResult.networkError([
+    String? message,
+  ]) => FeedbackSubmissionResult(
+    status: FeedbackSubmissionStatus.networkError,
+    userMessage:
+        message ??
+        "Couldn't send feedback. Check your internet connection and try again.",
+  );
+
+  factory FeedbackSubmissionResult.rateLimited([String? message]) =>
+      FeedbackSubmissionResult(
+        status: FeedbackSubmissionStatus.rateLimited,
+        userMessage: message ?? 'Please try again later.',
+      );
+
+  factory FeedbackSubmissionResult.serverError([String? message]) =>
+      FeedbackSubmissionResult(
+        status: FeedbackSubmissionStatus.serverError,
+        userMessage:
+            message ??
+            "Feedback couldn't be sent right now. Please try again later.",
+      );
+
+  factory FeedbackSubmissionResult.validationError([String? message]) =>
+      FeedbackSubmissionResult(
+        status: FeedbackSubmissionStatus.validationError,
+        userMessage: message ?? 'Invalid feedback request.',
+      );
+
+  @override
+  String toString() =>
+      'FeedbackSubmissionResult(status: $status, userMessage: $userMessage)';
 }
 
 /// Structured feedback message payload.
@@ -61,9 +128,9 @@ class FeedbackPayload {
   String formatSubject() {
     final cleanSubject = subject?.trim();
     if (cleanSubject != null && cleanSubject.isNotEmpty) {
-      return 'REELHOUSE ${category.subjectTag}: $cleanSubject';
+      return '[REELHOUSE]${category.subjectTag} $cleanSubject';
     }
-    return 'REELHOUSE ${category.subjectTag}';
+    return '[REELHOUSE]${category.subjectTag} Feedback';
   }
 
   /// Formats the plain-text feedback body including optional diagnostic block.
@@ -80,21 +147,42 @@ class FeedbackPayload {
 
     if (includeDiagnostics) {
       buffer.writeln('---');
-      buffer.writeln('Diagnostic Context (Non-Sensitive):');
-      buffer.writeln('• Application: REELHOUSE v$appVersion');
-      buffer.writeln('• Platform: $platformName');
+      buffer.writeln('Diagnostics:');
+      buffer.writeln('REELHOUSE $appVersion');
+      buffer.writeln('Platform: $platformName');
+      buffer.writeln('---');
+    } else {
+      buffer.writeln('---');
+      buffer.writeln('Diagnostics:');
+      buffer.writeln('Not included');
       buffer.writeln('---');
     }
 
     return buffer.toString();
   }
 
-  /// Generates a standard mailto URI for external mail client handoff.
-  Uri toMailtoUri({String recipient = 'feedback@reelhouse.app'}) {
-    return Uri(
-      scheme: 'mailto',
-      path: recipient,
-      queryParameters: {'subject': formatSubject(), 'body': formatBody()},
-    );
+  /// Serializes strictly allowlisted fields for the Cloudflare Worker JSON endpoint.
+  ///
+  /// CRITICAL SECURITY: Does not and can never serialize library databases, media paths,
+  /// TMDB keys, profile images, or arbitrary state.
+  Map<String, dynamic> toJson() {
+    final cleanSubject = subject?.trim();
+    final json = <String, dynamic>{
+      'category': category.wireCategory,
+      if (cleanSubject != null && cleanSubject.isNotEmpty)
+        'subject': cleanSubject,
+      'message': message.trim(),
+    };
+
+    if (includeDiagnostics) {
+      json['diagnostics'] = {
+        'appVersion': appVersion.trim(),
+        'platform': platformName.trim(),
+      };
+    } else {
+      json['diagnostics'] = null;
+    }
+
+    return json;
   }
 }
