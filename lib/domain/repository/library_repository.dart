@@ -159,4 +159,8 @@ abstract interface class LibraryRepository {
     String? movieId,
     String? tvShowId,
   });
+
+  /// Removes a storage location, its media sources, and any orphaned catalogue entities
+  /// while preserving surviving entities and never touching physical files on disk.
+  Future<void> removeStorage(String storageId);
 }

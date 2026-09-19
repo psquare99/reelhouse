@@ -160,6 +160,120 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
+  /// Removes a storage location from REELHOUSE and performs full transactional catalogue cleanup:
+  /// 1. Verifies storage is not DEVICE_LOCAL_STORAGE.
+  /// 2. Deletes associated TransferJobs for the media sources or destination.
+  /// 3. Deletes associated MediaSources on this storage.
+  /// 4. Deletes orphaned Movies (and their CollectionItems) that have no remaining MediaSources.
+  /// 5. Deletes orphaned Episodes that have no remaining MediaSources, and cascades to Seasons/TvShows
+  ///    if they have no remaining child episodes/seasons.
+  /// 6. Deletes the Storage record.
+  ///
+  /// Physical files on disk are NEVER touched, deleted, or renamed.
+  Future<void> removeStorageLocation(String storageId) async {
+    final storage = await getStorageById(storageId);
+    if (storage == null) return;
+    if (storage.storageType == 'DEVICE_LOCAL_STORAGE') {
+      throw UnsupportedError('Device local offline storage cannot be removed.');
+    }
+
+    await transaction(() async {
+      // 1. Find all media sources for this storage
+      final sources = await (select(
+        mediaSources,
+      )..where((m) => m.storageId.equals(storageId))).get();
+      final sourceIds = sources.map((s) => s.id).toSet();
+      final movieIds = sources
+          .map((s) => s.movieId)
+          .whereType<String>()
+          .toSet();
+      final episodeIds = sources
+          .map((s) => s.episodeId)
+          .whereType<String>()
+          .toSet();
+
+      // 2. Delete transfer jobs referencing these sources or destination storage
+      if (sourceIds.isNotEmpty) {
+        await (delete(transferJobs)..where(
+              (j) =>
+                  j.sourceMediaSourceId.isIn(sourceIds) |
+                  j.destinationStorageId.equals(storageId),
+            ))
+            .go();
+      } else {
+        await (delete(
+          transferJobs,
+        )..where((j) => j.destinationStorageId.equals(storageId))).go();
+      }
+
+      // 3. Delete all media sources belonging to this storage
+      await (delete(
+        mediaSources,
+      )..where((m) => m.storageId.equals(storageId))).go();
+
+      // 4. Reconcile movies: if a movie has no remaining media sources, delete it and its collection items
+      for (final movieId in movieIds) {
+        final remainingSources = await (select(
+          mediaSources,
+        )..where((m) => m.movieId.equals(movieId))).get();
+        if (remainingSources.isEmpty) {
+          await (delete(
+            collectionItems,
+          )..where((ci) => ci.movieId.equals(movieId))).go();
+          await (delete(movies)..where((m) => m.id.equals(movieId))).go();
+        }
+      }
+
+      // 5. Reconcile TV shows/seasons/episodes
+      final affectedSeasonIds = <String>{};
+      for (final episodeId in episodeIds) {
+        final remainingSources = await (select(
+          mediaSources,
+        )..where((m) => m.episodeId.equals(episodeId))).get();
+        if (remainingSources.isEmpty) {
+          final ep = await (select(
+            episodes,
+          )..where((e) => e.id.equals(episodeId))).getSingleOrNull();
+          if (ep != null) {
+            affectedSeasonIds.add(ep.seasonId);
+          }
+          await (delete(episodes)..where((e) => e.id.equals(episodeId))).go();
+        }
+      }
+
+      final affectedShowIds = <String>{};
+      for (final seasonId in affectedSeasonIds) {
+        final remainingEpisodes = await (select(
+          episodes,
+        )..where((e) => e.seasonId.equals(seasonId))).get();
+        if (remainingEpisodes.isEmpty) {
+          final s = await (select(
+            seasons,
+          )..where((sn) => sn.id.equals(seasonId))).getSingleOrNull();
+          if (s != null) {
+            affectedShowIds.add(s.showId);
+          }
+          await (delete(seasons)..where((sn) => sn.id.equals(seasonId))).go();
+        }
+      }
+
+      for (final showId in affectedShowIds) {
+        final remainingSeasons = await (select(
+          seasons,
+        )..where((sn) => sn.showId.equals(showId))).get();
+        if (remainingSeasons.isEmpty) {
+          await (delete(
+            collectionItems,
+          )..where((ci) => ci.tvShowId.equals(showId))).go();
+          await (delete(tvShows)..where((t) => t.id.equals(showId))).go();
+        }
+      }
+
+      // 6. Delete the storage entry
+      await (delete(storages)..where((s) => s.id.equals(storageId))).go();
+    });
+  }
+
   // --- Transfer Jobs Queries (Milestone 5) ---
 
   /// Insert or update a transfer job record.

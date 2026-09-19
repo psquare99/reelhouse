@@ -330,4 +330,8 @@ class DriftLibraryRepository implements LibraryRepository {
     movieId: movieId,
     tvShowId: tvShowId,
   );
+
+  @override
+  Future<void> removeStorage(String storageId) =>
+      db.removeStorageLocation(storageId);
 }

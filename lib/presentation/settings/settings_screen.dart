@@ -387,6 +387,117 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _confirmRemoveStorage(Storage storage) async {
+    final theme = CinemaTheme.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: theme.surface,
+        title: Text(
+          'Remove Storage Location',
+          style: TextStyle(
+            color: theme.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to remove "${storage.name}" (${storage.rootUri}) from REELHOUSE?',
+              style: TextStyle(color: theme.textSecondary, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.surface2,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: theme.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: theme.accent),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Important Details:',
+                        style: TextStyle(
+                          color: theme.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '• Media items that only exist on this storage location will be removed from your cinema collection.\n'
+                    '• Media items with offline copies on this device or other drives will remain in your library.\n'
+                    '• Physical video files on your disk will NOT be deleted or modified.',
+                    style: TextStyle(
+                      color: theme.textMuted,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel', style: TextStyle(color: theme.textSecondary)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.statusMissing,
+              foregroundColor: theme.textPrimary,
+            ),
+            child: const Text('Remove Location'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await widget.repository.removeStorage(storage.id);
+        await _refreshStorageStats();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Storage location "${storage.name}" removed.',
+                style: TextStyle(color: theme.textPrimary),
+              ),
+              backgroundColor: theme.surface2,
+            ),
+          );
+          setState(() {});
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error removing storage location: $e',
+                style: TextStyle(color: theme.statusMissing),
+              ),
+              backgroundColor: theme.surface2,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = CinemaTheme.of(context);
@@ -631,30 +742,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ],
                               if (!isLocal) ...[
                                 const SizedBox(height: 6),
-                                InkWell(
-                                  onTap: () async {
-                                    await (widget.database.update(
-                                          widget.database.storages,
-                                        )..where(
-                                          (s) => s.id.equals(storage.id),
-                                        ))
-                                        .write(
-                                          StoragesCompanion(
-                                            available: drift.Value(
-                                              !storage.available,
-                                            ),
-                                          ),
-                                        );
-                                  },
-                                  child: Text(
-                                    storage.available
-                                        ? 'Simulate Disconnect'
-                                        : 'Simulate Reconnect',
+                                OutlinedButton.icon(
+                                  onPressed: () =>
+                                      _confirmRemoveStorage(storage),
+                                  icon: Icon(
+                                    Icons.delete_outline,
+                                    size: 13,
+                                    color: theme.statusMissing,
+                                  ),
+                                  label: Text(
+                                    'Remove',
                                     style: TextStyle(
-                                      color: theme.accent,
+                                      color: theme.statusMissing,
                                       fontSize: 11,
-                                      decoration: TextDecoration.underline,
+                                      fontWeight: FontWeight.w500,
                                     ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                      color: theme.statusMissing.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    minimumSize: const Size(0, 26),
+                                    visualDensity: VisualDensity.compact,
                                   ),
                                 ),
                               ],
