@@ -17,6 +17,9 @@ import '../../domain/services/device_storage_service.dart';
 import '../../domain/services/local_storage_manager.dart';
 import '../../domain/services/settings_service.dart';
 import '../../domain/services/storage_identity_service.dart';
+import '../../data/services/library_backup_service_impl.dart';
+import '../../domain/models/library_backup_models.dart';
+import '../../domain/services/library_backup_service.dart';
 import '../../domain/services/transfer_coordinator.dart';
 import '../../domain/services/transfer_service.dart';
 import 'needs_verification_screen.dart';
@@ -32,6 +35,7 @@ class SettingsScreen extends StatefulWidget {
   final SettingsService? settingsService;
   final TransferCoordinator? transferCoordinator;
   final TransferService? transferService;
+  final LibraryBackupService? libraryBackupService;
 
   SettingsScreen({
     super.key,
@@ -45,6 +49,7 @@ class SettingsScreen extends StatefulWidget {
     this.settingsService,
     this.transferCoordinator,
     this.transferService,
+    this.libraryBackupService,
   }) : repository = repository ?? DriftLibraryRepository(database),
        libraryScannerService =
            libraryScannerService ??
@@ -70,6 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   late MetadataService _metadataService;
   SettingsService? _settingsService;
+  late LibraryBackupService _libraryBackupService;
   late TextEditingController _apiKeyController;
   bool _isApiKeyObscured = true;
   bool _isTestingConnection = false;
@@ -82,6 +88,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _settingsService = widget.settingsService;
+    _libraryBackupService =
+        widget.libraryBackupService ??
+        LibraryBackupServiceImpl(
+          database: widget.database,
+          settingsService: widget.settingsService,
+        );
     _transferCoordinator =
         widget.transferCoordinator ??
         TransferCoordinator(
@@ -284,6 +296,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showExportLibraryDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) =>
+          ExportBackupDialog(libraryBackupService: _libraryBackupService),
+    );
+  }
+
+  Future<void> _showImportLibraryDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => ImportBackupDialog(
+        libraryBackupService: _libraryBackupService,
+        onImportSuccess: () {
+          if (mounted) setState(() {});
+        },
       ),
     );
   }
@@ -1198,6 +1230,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 32),
 
+          // Section: Library Backup & Restore (RC.1)
+          Text('LIBRARY BACKUP & RESTORE', style: CinemaTheme.eyebrow(context)),
+          const SizedBox(height: 14),
+
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.backup_outlined,
+                        color: theme.accent,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Backup & Portability',
+                              style: TextStyle(
+                                color: theme.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Export your catalogue, custom collections, and watch history to a versioned JSON backup, or restore a previous backup into this installation.',
+                              style: TextStyle(
+                                color: theme.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _showExportLibraryDialog,
+                        icon: const Icon(Icons.file_upload_outlined, size: 16),
+                        label: const Text('Export Library'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.surface2,
+                          foregroundColor: theme.textPrimary,
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _showImportLibraryDialog,
+                        icon: const Icon(
+                          Icons.file_download_outlined,
+                          size: 16,
+                        ),
+                        label: const Text('Import Library'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: theme.textPrimary,
+                          side: BorderSide(color: theme.border),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+
           // Section: Appearance & Theme
           Text('APPEARANCE & THEME', style: CinemaTheme.eyebrow(context)),
           const SizedBox(height: 14),
@@ -1760,6 +1869,490 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class ExportBackupDialog extends StatefulWidget {
+  final LibraryBackupService libraryBackupService;
+
+  const ExportBackupDialog({super.key, required this.libraryBackupService});
+
+  @override
+  State<ExportBackupDialog> createState() => _ExportBackupDialogState();
+}
+
+class _ExportBackupDialogState extends State<ExportBackupDialog> {
+  late final TextEditingController _pathController;
+  bool _isExporting = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final timestamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(':', '-')
+        .split('.')
+        .first;
+    _pathController = TextEditingController(
+      text: 'reelhouse_backup_$timestamp.json',
+    );
+  }
+
+  @override
+  void dispose() {
+    _pathController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CinemaTheme.of(context);
+
+    return AlertDialog(
+      backgroundColor: theme.surface,
+      title: Text(
+        'Export Library Backup',
+        style: TextStyle(color: theme.textPrimary, fontWeight: FontWeight.w500),
+      ),
+      content: SizedBox(
+        width: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Create a versioned, portable backup of your REELHOUSE catalogue, custom collections, and watch states.',
+              style: TextStyle(color: theme.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.surface2,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: theme.borderSubtle),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        size: 16,
+                        color: theme.accent,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Included: Movies, TV Shows, Episodes, Collections, Watch History, User Preferences',
+                          style: TextStyle(
+                            color: theme.textPrimary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.lock_outline, size: 16, color: theme.warning),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Excluded: Video files and TMDB API credentials (never exported)',
+                          style: TextStyle(
+                            color: theme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _pathController,
+              decoration: InputDecoration(
+                labelText: 'Target File Path',
+                hintText: 'e.g. reelhouse_backup.json',
+                labelStyle: TextStyle(color: theme.textSecondary),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: theme.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: theme.accent),
+                ),
+              ),
+              style: TextStyle(color: theme.textPrimary, fontSize: 14),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                style: TextStyle(color: theme.stateUnavailable, fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isExporting ? null : () => Navigator.of(context).pop(),
+          child: Text('Cancel', style: TextStyle(color: theme.textSecondary)),
+        ),
+        ElevatedButton.icon(
+          onPressed: _isExporting
+              ? null
+              : () async {
+                  final targetPath = _pathController.text.trim();
+                  if (targetPath.isEmpty) {
+                    setState(() {
+                      _error = 'Please provide a target file path.';
+                    });
+                    return;
+                  }
+                  setState(() {
+                    _isExporting = true;
+                    _error = null;
+                  });
+
+                  final messenger = ScaffoldMessenger.of(context);
+                  final navigator = Navigator.of(context);
+                  try {
+                    final savedPath = await widget.libraryBackupService
+                        .exportBackupToFile(targetPath);
+                    if (!mounted) return;
+                    setState(() {
+                      _isExporting = false;
+                    });
+                    navigator.pop();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Library exported successfully to $savedPath',
+                          style: TextStyle(color: theme.textPrimary),
+                        ),
+                        backgroundColor: theme.surface2,
+                      ),
+                    );
+                  } catch (e) {
+                    if (mounted) {
+                      setState(() {
+                        _isExporting = false;
+                        _error = 'Export failed: $e';
+                      });
+                    }
+                  }
+                },
+          icon: _isExporting
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.download, size: 16),
+          label: Text(_isExporting ? 'Exporting...' : 'Export Backup'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: theme.accent,
+            foregroundColor: theme.onAccent,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class ImportBackupDialog extends StatefulWidget {
+  final LibraryBackupService libraryBackupService;
+  final VoidCallback onImportSuccess;
+
+  const ImportBackupDialog({
+    super.key,
+    required this.libraryBackupService,
+    required this.onImportSuccess,
+  });
+
+  @override
+  State<ImportBackupDialog> createState() => _ImportBackupDialogState();
+}
+
+class _ImportBackupDialogState extends State<ImportBackupDialog> {
+  late final TextEditingController _pathController;
+  BackupSummary? _summary;
+  BackupImportResult? _importResult;
+  bool _isInspecting = false;
+  bool _isImporting = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _pathController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _pathController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CinemaTheme.of(context);
+
+    if (_importResult != null) {
+      final result = _importResult!;
+      return AlertDialog(
+        backgroundColor: theme.surface,
+        title: Text(
+          'Import Complete',
+          style: TextStyle(
+            color: theme.textPrimary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Successfully reconciled backup into library:',
+              style: TextStyle(color: theme.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '• ${result.moviesImported} new movies added (${result.moviesUpdated} updated)\n'
+              '• ${result.showsImported} new shows, ${result.episodesImported} new episodes (${result.episodesUpdated} watch states merged)\n'
+              '• ${result.collectionsImported} collections restored (${result.collectionsUpdated} updated)',
+              style: TextStyle(
+                color: theme.textPrimary,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+            if (result.warnings.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Warnings: ${result.warnings.length} items skipped or modified.',
+                style: TextStyle(color: theme.warning, fontSize: 11),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      );
+    }
+
+    return AlertDialog(
+      backgroundColor: theme.surface,
+      title: Text(
+        'Import Library Backup',
+        style: TextStyle(color: theme.textPrimary, fontWeight: FontWeight.w500),
+      ),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select a REELHOUSE JSON backup to restore or merge into your current library.',
+              style: TextStyle(color: theme.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _pathController,
+                    decoration: InputDecoration(
+                      labelText: 'Backup File Path',
+                      hintText: 'e.g. C:/backup/reelhouse_backup.json',
+                      labelStyle: TextStyle(color: theme.textSecondary),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: theme.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: theme.accent),
+                      ),
+                    ),
+                    style: TextStyle(color: theme.textPrimary, fontSize: 14),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: _isInspecting || _isImporting
+                      ? null
+                      : () async {
+                          final path = _pathController.text.trim();
+                          if (path.isEmpty) return;
+                          setState(() {
+                            _isInspecting = true;
+                            _error = null;
+                          });
+                          try {
+                            final s = await widget.libraryBackupService
+                                .inspectBackupFile(path);
+                            if (mounted) {
+                              setState(() {
+                                _summary = s;
+                                _isInspecting = false;
+                              });
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              setState(() {
+                                _error = 'Failed to inspect backup: $e';
+                                _summary = null;
+                                _isInspecting = false;
+                              });
+                            }
+                          }
+                        },
+                  child: _isInspecting
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Inspect'),
+                ),
+              ],
+            ),
+            if (_summary != null) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.surface2,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: theme.borderSubtle),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Backup Payload Overview (v${_summary!.formatVersion})',
+                      style: TextStyle(
+                        color: theme.accent,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '• ${_summary!.movieCount} Movies\n'
+                      '• ${_summary!.tvShowCount} TV Shows (${_summary!.seasonCount} Seasons, ${_summary!.episodeCount} Episodes)\n'
+                      '• ${_summary!.collectionCount} Curated Collections\n'
+                      '• Exported: ${_summary!.exportedAt.toLocal().toString().split('.').first}',
+                      style: TextStyle(
+                        color: theme.textPrimary,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: theme.warningSubtle,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: theme.warning.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: theme.warning),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Notice: Media files are NOT included in backups. Physical files must exist on your storage devices. Imported items remain unavailable until original media sources are scanned.',
+                      style: TextStyle(
+                        color: theme.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                style: TextStyle(color: theme.stateUnavailable, fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isImporting ? null : () => Navigator.of(context).pop(),
+          child: Text('Cancel', style: TextStyle(color: theme.textSecondary)),
+        ),
+        ElevatedButton.icon(
+          onPressed: _isImporting
+              ? null
+              : () async {
+                  final path = _pathController.text.trim();
+                  if (path.isEmpty) {
+                    setState(() {
+                      _error = 'Please provide a backup file path.';
+                    });
+                    return;
+                  }
+                  setState(() {
+                    _isImporting = true;
+                    _error = null;
+                  });
+
+                  final result = await widget.libraryBackupService
+                      .importBackupFromFile(path);
+                  if (!mounted) return;
+                  if (result.success) {
+                    widget.onImportSuccess();
+                    setState(() {
+                      _isImporting = false;
+                      _importResult = result;
+                    });
+                  } else {
+                    setState(() {
+                      _isImporting = false;
+                      _error =
+                          'Import failed: ${result.errorMessage ?? 'Unknown error'}';
+                    });
+                  }
+                },
+          icon: _isImporting
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.upload, size: 16),
+          label: Text(_isImporting ? 'Importing...' : 'Restore Library'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: theme.accent,
+            foregroundColor: theme.onAccent,
+          ),
+        ),
+      ],
     );
   }
 }
