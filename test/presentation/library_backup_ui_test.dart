@@ -10,6 +10,7 @@ import 'package:reelhouse/domain/metadata/image_cache_service.dart';
 import 'package:reelhouse/domain/metadata/metadata_matcher.dart';
 import 'package:reelhouse/domain/metadata/metadata_service.dart';
 import 'package:reelhouse/domain/models/library_backup_models.dart';
+import 'package:reelhouse/domain/services/file_picker_service.dart';
 import 'package:reelhouse/domain/services/library_backup_service.dart';
 import 'package:reelhouse/domain/services/local_storage_manager.dart';
 import 'package:reelhouse/domain/services/settings_service.dart';
@@ -17,16 +18,20 @@ import 'package:reelhouse/domain/services/storage_identity_service.dart';
 import 'package:reelhouse/presentation/settings/settings_screen.dart';
 
 class MockStorageIdentityService implements StorageIdentityService {
+  bool isConnectedResult = true;
+  String displayNameResult = 'Mock Storage';
+
   @override
   Future<String> getFilesystemIdentifier(String rootUriOrPath) async =>
-      'mock-fs';
+      'mock-fs-id';
 
   @override
   Future<String> getStorageDisplayName(String rootUriOrPath) async =>
-      'Mock Storage';
+      displayNameResult;
 
   @override
-  Future<bool> isStorageConnected(String rootUriOrPath) async => true;
+  Future<bool> isStorageConnected(String rootUriOrPath) async =>
+      isConnectedResult;
 
   @override
   Future<String?> readMarkerIdentifier(String rootUriOrPath) async => null;
@@ -65,10 +70,47 @@ class MockLocalStorageManager implements LocalStorageManager {
   Future<bool> deleteLocalCopy(String relativePath) async => true;
 }
 
+class FakeFilePickerService implements FilePickerService {
+  String? directoryToReturn;
+  String? backupFileToReturn;
+  String? saveFileToReturn;
+  bool pickDirectoryCalled = false;
+  bool pickBackupFileCalled = false;
+  bool saveBackupFileCalled = false;
+
+  FakeFilePickerService({
+    this.directoryToReturn,
+    this.backupFileToReturn,
+    this.saveFileToReturn,
+  });
+
+  @override
+  Future<String?> pickDirectory({String? dialogTitle}) async {
+    pickDirectoryCalled = true;
+    return directoryToReturn;
+  }
+
+  @override
+  Future<String?> pickBackupFile({String? dialogTitle}) async {
+    pickBackupFileCalled = true;
+    return backupFileToReturn;
+  }
+
+  @override
+  Future<String?> saveBackupFile({
+    String? dialogTitle,
+    String? suggestedFileName,
+  }) async {
+    saveBackupFileCalled = true;
+    return saveFileToReturn;
+  }
+}
+
 class FakeLibraryBackupService implements LibraryBackupService {
   final BackupSummary? summaryToReturn;
   final BackupImportResult? importResultToReturn;
   final String exportedPathToReturn;
+  final bool shouldThrowOnInspect;
   String? lastExportedPath;
   String? lastImportedPath;
 
@@ -76,6 +118,7 @@ class FakeLibraryBackupService implements LibraryBackupService {
     this.summaryToReturn,
     this.importResultToReturn,
     this.exportedPathToReturn = '/fake/export.json',
+    this.shouldThrowOnInspect = false,
   });
 
   @override
@@ -91,6 +134,9 @@ class FakeLibraryBackupService implements LibraryBackupService {
   @override
   Future<BackupSummary> inspectBackupFile(String filePath) async {
     lastImportedPath = filePath;
+    if (shouldThrowOnInspect) {
+      throw const FormatException('Invalid JSON payload structure');
+    }
     return summaryToReturn ??
         BackupSummary(
           formatVersion: 1,
@@ -222,14 +268,18 @@ void main() {
   );
 
   testWidgets(
-    'ExportBackupDialog renders scope notices and exports library to target path',
+    'ExportBackupDialog opens picker, selects destination, and exports library',
     (WidgetTester tester) async {
       tester.view.physicalSize = const Size(1280, 1024);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final fakeBackup = FakeLibraryBackupService();
+      final exportPath = '${tempDir.path}/reelhouse_backup.json';
+      final fakePicker = FakeFilePickerService(saveFileToReturn: exportPath);
+      final fakeBackup = FakeLibraryBackupService(
+        exportedPathToReturn: exportPath,
+      );
 
       await tester.pumpWidget(
         MaterialApp(
@@ -238,8 +288,10 @@ void main() {
               builder: (ctx) => ElevatedButton(
                 onPressed: () => showDialog<void>(
                   context: ctx,
-                  builder: (_) =>
-                      ExportBackupDialog(libraryBackupService: fakeBackup),
+                  builder: (_) => ExportBackupDialog(
+                    libraryBackupService: fakeBackup,
+                    filePickerService: fakePicker,
+                  ),
                 ),
                 child: const Text('Open Export Dialog'),
               ),
@@ -253,68 +305,104 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.text('Export Library Backup'), findsOneWidget);
+      expect(find.text('Choose where to save your backup.'), findsOneWidget);
       expect(
-        find.text(
-          'Included: Movies, TV Shows, Episodes, Collections, Watch History, User Preferences',
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.text(
-          'Excluded: Video files and TMDB API credentials (never exported)',
-        ),
+        find.widgetWithText(OutlinedButton, 'Choose Save Location'),
         findsOneWidget,
       );
 
-      final exportPath = '${tempDir.path}/direct_export.json';
-      final pathField = find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.byType(TextField),
+      // Tap Choose Save Location
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, 'Choose Save Location'),
       );
-      await tester.enterText(pathField, exportPath);
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
-      // Tap Export Backup button
+      expect(fakePicker.saveBackupFileCalled, isTrue);
+      expect(find.text(exportPath), findsOneWidget);
+
+      // Tap Export Backup
       await tester.tap(find.widgetWithText(ElevatedButton, 'Export Backup'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Verify service was invoked with correct target path
       expect(fakeBackup.lastExportedPath, equals(exportPath));
     },
   );
 
   testWidgets(
-    'ImportBackupDialog inspects backup summary and restores library on confirmation',
+    'ExportBackupDialog cancellation does not export and does not display error',
+    (WidgetTester tester) async {
+      final fakePicker = FakeFilePickerService(saveFileToReturn: null);
+      final fakeBackup = FakeLibraryBackupService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () => showDialog<void>(
+                  context: ctx,
+                  builder: (_) => ExportBackupDialog(
+                    libraryBackupService: fakeBackup,
+                    filePickerService: fakePicker,
+                  ),
+                ),
+                child: const Text('Open Export Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Open Export Dialog'));
+      await tester.pump();
+
+      // Tap Choose Save Location and cancel picker
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, 'Choose Save Location'),
+      );
+      await tester.pump();
+
+      expect(fakePicker.saveBackupFileCalled, isTrue);
+      expect(fakeBackup.lastExportedPath, isNull);
+      expect(find.textContaining('failed'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'ImportBackupDialog selects backup file, inspects summary, and restores library',
     (WidgetTester tester) async {
       tester.view.physicalSize = const Size(1280, 1024);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
+      final importPath = '${tempDir.path}/sample_backup.json';
+      final fakePicker = FakeFilePickerService(backupFileToReturn: importPath);
       final fakeBackup = FakeLibraryBackupService(
         summaryToReturn: BackupSummary(
           formatVersion: 1,
           appVersion: '1.0.0',
           schemaVersion: 6,
           exportedAt: DateTime.now(),
-          movieCount: 1,
-          tvShowCount: 0,
-          seasonCount: 0,
-          episodeCount: 0,
-          collectionCount: 0,
+          movieCount: 3,
+          tvShowCount: 1,
+          seasonCount: 2,
+          episodeCount: 10,
+          collectionCount: 2,
           hasSettings: false,
         ),
         importResultToReturn: const BackupImportResult(
           success: true,
-          moviesImported: 1,
+          moviesImported: 3,
           moviesUpdated: 0,
-          showsImported: 0,
+          showsImported: 1,
           showsUpdated: 0,
-          seasonsImported: 0,
-          episodesImported: 0,
+          seasonsImported: 2,
+          episodesImported: 10,
           episodesUpdated: 0,
-          collectionsImported: 0,
+          collectionsImported: 2,
           collectionsUpdated: 0,
           settingsImported: false,
         ),
@@ -331,6 +419,7 @@ void main() {
                   context: ctx,
                   builder: (_) => ImportBackupDialog(
                     libraryBackupService: fakeBackup,
+                    filePickerService: fakePicker,
                     onImportSuccess: () {
                       successNotified = true;
                     },
@@ -348,25 +437,25 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.text('Import Library Backup'), findsOneWidget);
-
-      final importPath = '${tempDir.path}/sample_import.json';
-      final importPathField = find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.byType(TextField),
+      expect(
+        find.text('Select a REELHOUSE backup to restore.'),
+        findsOneWidget,
       );
-      await tester.enterText(importPathField, importPath);
-      await tester.pump();
+      expect(
+        find.widgetWithText(OutlinedButton, 'Choose Backup'),
+        findsOneWidget,
+      );
 
-      // Tap Inspect
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Inspect'));
+      // Tap Choose Backup
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Choose Backup'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(find.textContaining('1 Movies'), findsOneWidget);
-      expect(
-        find.textContaining('Notice: Media files are NOT included in backups.'),
-        findsOneWidget,
-      );
+      expect(fakePicker.pickBackupFileCalled, isTrue);
+      expect(fakeBackup.lastImportedPath, equals(importPath));
+      expect(find.text(importPath), findsOneWidget);
+      expect(find.textContaining('3 Movies'), findsOneWidget);
+      expect(find.textContaining('1 TV Shows'), findsOneWidget);
 
       // Tap Restore Library
       await tester.tap(find.widgetWithText(ElevatedButton, 'Restore Library'));
@@ -375,13 +464,263 @@ void main() {
 
       // Import complete dialog
       expect(find.text('Import Complete'), findsOneWidget);
-      expect(find.textContaining('1 new movies added'), findsOneWidget);
+      expect(find.textContaining('3 new movies added'), findsOneWidget);
       expect(successNotified, isTrue);
 
       // Dismiss dialog
       await tester.tap(find.text('OK'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
+    },
+  );
+
+  testWidgets(
+    'ImportBackupDialog handles picker cancellation and corrupt backup inspection failure',
+    (WidgetTester tester) async {
+      final fakePicker = FakeFilePickerService(backupFileToReturn: null);
+      final fakeBackup = FakeLibraryBackupService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () => showDialog<void>(
+                  context: ctx,
+                  builder: (_) => ImportBackupDialog(
+                    libraryBackupService: fakeBackup,
+                    filePickerService: fakePicker,
+                    onImportSuccess: () {},
+                  ),
+                ),
+                child: const Text('Open Import Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Open Import Dialog'));
+      await tester.pump();
+
+      // Tap Choose Backup and cancel
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Choose Backup'));
+      await tester.pump();
+
+      expect(fakePicker.pickBackupFileCalled, isTrue);
+      expect(fakeBackup.lastImportedPath, isNull);
+      expect(fakePicker.pickBackupFileCalled, isTrue);
+      expect(fakeBackup.lastImportedPath, isNull);
+      expect(find.textContaining('Failed to inspect'), findsNothing);
+
+      // Dismiss dialog
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Now set corrupt file and re-trigger
+      fakePicker.backupFileToReturn = '/bad/corrupt.json';
+      final corruptBackup = FakeLibraryBackupService(
+        shouldThrowOnInspect: true,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () => showDialog<void>(
+                  context: ctx,
+                  builder: (_) => ImportBackupDialog(
+                    libraryBackupService: corruptBackup,
+                    filePickerService: fakePicker,
+                    onImportSuccess: () {},
+                  ),
+                ),
+                child: const Text('Open Import Dialog 2'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Open Import Dialog 2'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Choose Backup'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.textContaining('Failed to inspect backup:'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'AddStorageDialog selects folder, creates storage, and deduplicates existing storage',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 1024);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final fakePicker = FakeFilePickerService(directoryToReturn: 'D:\\Movies');
+      final mockIdentity = MockStorageIdentityService();
+      bool addedNotified = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () => showDialog<void>(
+                  context: ctx,
+                  builder: (_) => AddStorageDialog(
+                    database: db,
+                    storageIdentityService: mockIdentity,
+                    filePickerService: fakePicker,
+                    onStorageAdded: () {
+                      addedNotified = true;
+                    },
+                  ),
+                ),
+                child: const Text('Open Storage Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Open Storage Dialog'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.text('Add Storage Location'), findsOneWidget);
+      expect(
+        find.text('Choose the folder containing your media library.'),
+        findsOneWidget,
+      );
+      expect(
+        find.widgetWithText(OutlinedButton, 'Choose Folder'),
+        findsOneWidget,
+      );
+
+      // Tap Choose Folder
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Choose Folder'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(fakePicker.pickDirectoryCalled, isTrue);
+      expect(find.text('D:\\Movies'), findsOneWidget);
+      expect(find.text('Mock Storage'), findsOneWidget);
+
+      // Tap Add Storage
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Add Storage'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(addedNotified, isTrue);
+
+      final storages = (await db.getAllStorages())
+          .where((s) => s.storageType != 'DEVICE_LOCAL_STORAGE')
+          .toList();
+      expect(storages.length, equals(1));
+      expect(storages.first.rootUri, equals('D:\\Movies'));
+      expect(storages.first.name, equals('Mock Storage'));
+      expect(storages.first.filesystemIdentifier, equals('mock-fs-id'));
+
+      // Test deduplication: re-adding same folder does not create duplicate storage record
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () => showDialog<void>(
+                  context: ctx,
+                  builder: (_) => AddStorageDialog(
+                    database: db,
+                    storageIdentityService: mockIdentity,
+                    filePickerService: fakePicker,
+                  ),
+                ),
+                child: const Text('Open Storage Dialog 2'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Open Storage Dialog 2'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Choose Folder'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Add Storage'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final deduplicatedStorages = (await db.getAllStorages())
+          .where((s) => s.storageType != 'DEVICE_LOCAL_STORAGE')
+          .toList();
+      expect(deduplicatedStorages.length, equals(1));
+    },
+  );
+
+  testWidgets(
+    'AddStorageDialog handles cancellation and inaccessible directory cleanly',
+    (WidgetTester tester) async {
+      final fakePicker = FakeFilePickerService(directoryToReturn: null);
+      final mockIdentity = MockStorageIdentityService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () => showDialog<void>(
+                  context: ctx,
+                  builder: (_) => AddStorageDialog(
+                    database: db,
+                    storageIdentityService: mockIdentity,
+                    filePickerService: fakePicker,
+                  ),
+                ),
+                child: const Text('Open Storage Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Open Storage Dialog'));
+      await tester.pump();
+
+      // Tap Choose Folder and cancel
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Choose Folder'));
+      await tester.pump();
+
+      expect(fakePicker.pickDirectoryCalled, isTrue);
+      final removableStorages = (await db.getAllStorages())
+          .where((s) => s.storageType != 'DEVICE_LOCAL_STORAGE')
+          .toList();
+      expect(removableStorages, isEmpty);
+      expect(find.textContaining('inaccessible'), findsNothing);
+
+      // Now set inaccessible directory
+      fakePicker.directoryToReturn = 'E:\\Inaccessible';
+      mockIdentity.isConnectedResult = false;
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Choose Folder'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(
+        find.textContaining('Selected directory is inaccessible'),
+        findsOneWidget,
+      );
     },
   );
 }

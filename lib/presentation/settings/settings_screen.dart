@@ -17,8 +17,10 @@ import '../../domain/services/device_storage_service.dart';
 import '../../domain/services/local_storage_manager.dart';
 import '../../domain/services/settings_service.dart';
 import '../../domain/services/storage_identity_service.dart';
+import '../../data/services/file_picker_service_impl.dart';
 import '../../data/services/library_backup_service_impl.dart';
 import '../../domain/models/library_backup_models.dart';
+import '../../domain/services/file_picker_service.dart';
 import '../../domain/services/library_backup_service.dart';
 import '../../domain/services/transfer_coordinator.dart';
 import '../../domain/services/transfer_service.dart';
@@ -36,6 +38,7 @@ class SettingsScreen extends StatefulWidget {
   final TransferCoordinator? transferCoordinator;
   final TransferService? transferService;
   final LibraryBackupService? libraryBackupService;
+  final FilePickerService? filePickerService;
 
   SettingsScreen({
     super.key,
@@ -50,6 +53,7 @@ class SettingsScreen extends StatefulWidget {
     this.transferCoordinator,
     this.transferService,
     this.libraryBackupService,
+    this.filePickerService,
   }) : repository = repository ?? DriftLibraryRepository(database),
        libraryScannerService =
            libraryScannerService ??
@@ -76,6 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late MetadataService _metadataService;
   SettingsService? _settingsService;
   late LibraryBackupService _libraryBackupService;
+  late final FilePickerService _filePickerService;
   late TextEditingController _apiKeyController;
   bool _isApiKeyObscured = true;
   bool _isTestingConnection = false;
@@ -88,6 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _settingsService = widget.settingsService;
+    _filePickerService = widget.filePickerService ?? FilePickerServiceImpl();
     _libraryBackupService =
         widget.libraryBackupService ??
         LibraryBackupServiceImpl(
@@ -303,8 +309,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _showExportLibraryDialog() async {
     await showDialog<void>(
       context: context,
-      builder: (ctx) =>
-          ExportBackupDialog(libraryBackupService: _libraryBackupService),
+      builder: (ctx) => ExportBackupDialog(
+        libraryBackupService: _libraryBackupService,
+        filePickerService: _filePickerService,
+      ),
     );
   }
 
@@ -313,6 +321,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => ImportBackupDialog(
         libraryBackupService: _libraryBackupService,
+        filePickerService: _filePickerService,
         onImportSuccess: () {
           if (mounted) setState(() {});
         },
@@ -345,99 +354,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showAddStorageDialog() async {
-    final theme = CinemaTheme.of(context);
-    final pathController = TextEditingController();
-    final nameController = TextEditingController();
-
     await showDialog<void>(
       context: context,
-      builder: (dialogCtx) {
-        return AlertDialog(
-          backgroundColor: theme.surface,
-          title: Text(
-            'Add Storage Location',
-            style: TextStyle(
-              color: theme.textPrimary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: pathController,
-                decoration: InputDecoration(
-                  labelText: 'Root Path or Document URI',
-                  hintText: r'e.g. D:\Movies or content://...',
-                  labelStyle: TextStyle(color: theme.textSecondary),
-                  hintStyle: TextStyle(color: theme.textMuted),
-                  filled: true,
-                  fillColor: theme.surface2,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: theme.border),
-                  ),
-                ),
-                style: TextStyle(color: theme.textPrimary),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: 'Display Name (optional)',
-                  hintText: 'e.g. Movies HDD',
-                  labelStyle: TextStyle(color: theme.textSecondary),
-                  hintStyle: TextStyle(color: theme.textMuted),
-                  filled: true,
-                  fillColor: theme.surface2,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: theme.border),
-                  ),
-                ),
-                style: TextStyle(color: theme.textPrimary),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(),
-              child: Text('Cancel', style: TextStyle(color: theme.textMuted)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final path = pathController.text.trim();
-                if (path.isEmpty) return;
-
-                Navigator.of(dialogCtx).pop();
-
-                final fsId = await widget.storageIdentityService
-                    .getFilesystemIdentifier(path);
-                final autoName = await widget.storageIdentityService
-                    .getStorageDisplayName(path);
-                final chosenName = nameController.text.trim().isNotEmpty
-                    ? nameController.text.trim()
-                    : autoName;
-                final isConn = await widget.storageIdentityService
-                    .isStorageConnected(path);
-
-                final newStorage = StoragesCompanion.insert(
-                  id: const Uuid().v4(),
-                  name: chosenName,
-                  storageType: 'REMOVABLE_VOLUME',
-                  filesystemIdentifier: fsId,
-                  rootUri: path,
-                  lastSeenAt: DateTime.now(),
-                  available: drift.Value(isConn),
-                );
-
-                await widget.database.upsertStorage(newStorage);
-              },
-              child: const Text('Add Storage'),
-            ),
-          ],
-        );
-      },
+      builder: (dialogCtx) => AddStorageDialog(
+        database: widget.database,
+        storageIdentityService: widget.storageIdentityService,
+        filePickerService: _filePickerService,
+        onStorageAdded: () {
+          if (mounted) setState(() {});
+        },
+      ),
     );
   }
 
@@ -1873,37 +1799,405 @@ class _ScannerProgressSheetState extends State<_ScannerProgressSheet> {
   }
 }
 
+class AddStorageDialog extends StatefulWidget {
+  final AppDatabase database;
+  final StorageIdentityService storageIdentityService;
+  final FilePickerService? filePickerService;
+  final VoidCallback? onStorageAdded;
+
+  const AddStorageDialog({
+    super.key,
+    required this.database,
+    required this.storageIdentityService,
+    this.filePickerService,
+    this.onStorageAdded,
+  });
+
+  @override
+  State<AddStorageDialog> createState() => _AddStorageDialogState();
+}
+
+class _AddStorageDialogState extends State<AddStorageDialog> {
+  late final FilePickerService _filePickerService;
+  late final TextEditingController _nameController;
+  String? _selectedPath;
+  bool _isPicking = false;
+  bool _isSubmitting = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _filePickerService = widget.filePickerService ?? FilePickerServiceImpl();
+    _nameController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickFolder() async {
+    setState(() {
+      _isPicking = true;
+      _error = null;
+    });
+
+    try {
+      final path = await _filePickerService.pickDirectory(
+        dialogTitle: 'Select Media Library Folder',
+      );
+      if (!mounted) return;
+
+      if (path != null && path.trim().isNotEmpty) {
+        final cleanPath = path.trim();
+        final isConn = await widget.storageIdentityService.isStorageConnected(
+          cleanPath,
+        );
+        if (!isConn) {
+          setState(() {
+            _isPicking = false;
+            _error = 'Selected directory is inaccessible or does not exist.';
+          });
+          return;
+        }
+
+        final autoName = await widget.storageIdentityService
+            .getStorageDisplayName(cleanPath);
+        setState(() {
+          _selectedPath = cleanPath;
+          if (_nameController.text.trim().isEmpty) {
+            _nameController.text = autoName;
+          }
+          _isPicking = false;
+          _error = null;
+        });
+      } else {
+        setState(() {
+          _isPicking = false;
+          // User cancellation is not an error
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isPicking = false;
+          _error = 'Folder selection failed: $e';
+        });
+      }
+    }
+  }
+
+  Future<void> _submit() async {
+    if (_selectedPath == null || _selectedPath!.isEmpty) {
+      setState(() {
+        _error = 'Please choose a folder first.';
+      });
+      return;
+    }
+
+    final path = _selectedPath!;
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+
+    try {
+      final fsId = await widget.storageIdentityService.getFilesystemIdentifier(
+        path,
+      );
+      final autoName = await widget.storageIdentityService
+          .getStorageDisplayName(path);
+      final chosenName = _nameController.text.trim().isNotEmpty
+          ? _nameController.text.trim()
+          : autoName;
+      final isConn = await widget.storageIdentityService.isStorageConnected(
+        path,
+      );
+
+      final allStorages = await widget.database.getAllStorages();
+      final existing = allStorages.cast<Storage?>().firstWhere(
+        (s) =>
+            s != null && (s.filesystemIdentifier == fsId || s.rootUri == path),
+        orElse: () => null,
+      );
+
+      final storageId = existing?.id ?? const Uuid().v4();
+
+      final newStorage = StoragesCompanion.insert(
+        id: storageId,
+        name: chosenName,
+        storageType: 'REMOVABLE_VOLUME',
+        filesystemIdentifier: fsId,
+        rootUri: path,
+        lastSeenAt: DateTime.now(),
+        available: drift.Value(isConn),
+      );
+
+      await widget.database.upsertStorage(newStorage);
+      if (!mounted) return;
+      widget.onStorageAdded?.call();
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _error = 'Failed to add storage: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CinemaTheme.of(context);
+
+    return AlertDialog(
+      backgroundColor: theme.surface,
+      title: Text(
+        'Add Storage Location',
+        style: TextStyle(color: theme.textPrimary, fontWeight: FontWeight.w500),
+      ),
+      content: SizedBox(
+        width: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Choose the folder containing your media library.',
+              style: TextStyle(color: theme.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            if (_selectedPath == null) ...[
+              OutlinedButton.icon(
+                onPressed: _isPicking || _isSubmitting ? null : _pickFolder,
+                icon: _isPicking
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.folder_open, size: 18),
+                label: Text(_isPicking ? 'Selecting...' : 'Choose Folder'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.accent,
+                  side: BorderSide(color: theme.border),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.surface2,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: theme.borderSubtle),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.folder, color: theme.accent, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Selected Media Folder',
+                            style: TextStyle(
+                              color: theme.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _selectedPath!,
+                            style: TextStyle(
+                              color: theme.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Change Folder',
+                      onPressed: _isPicking || _isSubmitting
+                          ? null
+                          : _pickFolder,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: 'Display Name (optional)',
+                hintText: 'e.g. Movies HDD',
+                labelStyle: TextStyle(color: theme.textSecondary),
+                hintStyle: TextStyle(color: theme.textMuted),
+                filled: true,
+                fillColor: theme.surface2,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: theme.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: theme.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: theme.accent),
+                ),
+              ),
+              style: TextStyle(color: theme.textPrimary, fontSize: 14),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _error!,
+                style: TextStyle(color: theme.stateUnavailable, fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: Text('Cancel', style: TextStyle(color: theme.textMuted)),
+        ),
+        ElevatedButton.icon(
+          onPressed: (_isSubmitting || _selectedPath == null) ? null : _submit,
+          icon: _isSubmitting
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.add, size: 16),
+          label: Text(_isSubmitting ? 'Adding...' : 'Add Storage'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: theme.accent,
+            foregroundColor: theme.onAccent,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class ExportBackupDialog extends StatefulWidget {
   final LibraryBackupService libraryBackupService;
+  final FilePickerService? filePickerService;
 
-  const ExportBackupDialog({super.key, required this.libraryBackupService});
+  const ExportBackupDialog({
+    super.key,
+    required this.libraryBackupService,
+    this.filePickerService,
+  });
 
   @override
   State<ExportBackupDialog> createState() => _ExportBackupDialogState();
 }
 
 class _ExportBackupDialogState extends State<ExportBackupDialog> {
-  late final TextEditingController _pathController;
+  late final FilePickerService _filePickerService;
+  String? _selectedPath;
   bool _isExporting = false;
+  bool _isPicking = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _filePickerService = widget.filePickerService ?? FilePickerServiceImpl();
+  }
+
+  String _generateSuggestedFilename() {
     final timestamp = DateTime.now()
         .toIso8601String()
         .replaceAll(':', '-')
         .split('.')
         .first;
-    _pathController = TextEditingController(
-      text: 'reelhouse_backup_$timestamp.json',
-    );
+    return 'reelhouse_backup_$timestamp.json';
   }
 
-  @override
-  void dispose() {
-    _pathController.dispose();
-    super.dispose();
+  Future<void> _pickSaveLocation() async {
+    setState(() {
+      _isPicking = true;
+      _error = null;
+    });
+
+    try {
+      final path = await _filePickerService.saveBackupFile(
+        dialogTitle: 'Save REELHOUSE Backup',
+        suggestedFileName: _generateSuggestedFilename(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _isPicking = false;
+        if (path != null && path.trim().isNotEmpty) {
+          _selectedPath = path.trim();
+          _error = null;
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isPicking = false;
+          _error = 'Save location selection failed: $e';
+        });
+      }
+    }
+  }
+
+  Future<void> _executeExport(String targetPath) async {
+    setState(() {
+      _isExporting = true;
+      _error = null;
+    });
+
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final theme = CinemaTheme.of(context);
+
+    try {
+      final savedPath = await widget.libraryBackupService.exportBackupToFile(
+        targetPath,
+      );
+      if (!mounted) return;
+      setState(() {
+        _isExporting = false;
+      });
+      navigator.pop();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Library exported successfully to $savedPath',
+            style: TextStyle(color: theme.textPrimary),
+          ),
+          backgroundColor: theme.surface2,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+          _error = 'Export failed: $e';
+        });
+      }
+    }
   }
 
   @override
@@ -1976,21 +2270,82 @@ class _ExportBackupDialogState extends State<ExportBackupDialog> {
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _pathController,
-              decoration: InputDecoration(
-                labelText: 'Target File Path',
-                hintText: 'e.g. reelhouse_backup.json',
-                labelStyle: TextStyle(color: theme.textSecondary),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: theme.border),
+            Text(
+              'Choose where to save your backup.',
+              style: TextStyle(color: theme.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 10),
+            if (_selectedPath == null) ...[
+              OutlinedButton.icon(
+                onPressed: _isExporting || _isPicking
+                    ? null
+                    : _pickSaveLocation,
+                icon: _isPicking
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.folder_open, size: 18),
+                label: Text(
+                  _isPicking ? 'Selecting...' : 'Choose Save Location',
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: theme.accent),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.accent,
+                  side: BorderSide(color: theme.border),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
               ),
-              style: TextStyle(color: theme.textPrimary, fontSize: 14),
-            ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.surface2,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: theme.borderSubtle),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.save_as_outlined, color: theme.accent, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Save Location',
+                            style: TextStyle(
+                              color: theme.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _selectedPath!,
+                            style: TextStyle(
+                              color: theme.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Change Location',
+                      onPressed: _isExporting || _isPicking
+                          ? null
+                          : _pickSaveLocation,
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(
@@ -2010,43 +2365,16 @@ class _ExportBackupDialogState extends State<ExportBackupDialog> {
           onPressed: _isExporting
               ? null
               : () async {
-                  final targetPath = _pathController.text.trim();
-                  if (targetPath.isEmpty) {
-                    setState(() {
-                      _error = 'Please provide a target file path.';
-                    });
-                    return;
-                  }
-                  setState(() {
-                    _isExporting = true;
-                    _error = null;
-                  });
-
-                  final messenger = ScaffoldMessenger.of(context);
-                  final navigator = Navigator.of(context);
-                  try {
-                    final savedPath = await widget.libraryBackupService
-                        .exportBackupToFile(targetPath);
-                    if (!mounted) return;
-                    setState(() {
-                      _isExporting = false;
-                    });
-                    navigator.pop();
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Library exported successfully to $savedPath',
-                          style: TextStyle(color: theme.textPrimary),
-                        ),
-                        backgroundColor: theme.surface2,
-                      ),
+                  if (_selectedPath != null) {
+                    await _executeExport(_selectedPath!);
+                  } else {
+                    final path = await _filePickerService.saveBackupFile(
+                      dialogTitle: 'Save REELHOUSE Backup',
+                      suggestedFileName: _generateSuggestedFilename(),
                     );
-                  } catch (e) {
-                    if (mounted) {
-                      setState(() {
-                        _isExporting = false;
-                        _error = 'Export failed: $e';
-                      });
+                    if (path != null && path.trim().isNotEmpty && mounted) {
+                      _selectedPath = path.trim();
+                      await _executeExport(path.trim());
                     }
                   }
                 },
@@ -2071,11 +2399,13 @@ class _ExportBackupDialogState extends State<ExportBackupDialog> {
 class ImportBackupDialog extends StatefulWidget {
   final LibraryBackupService libraryBackupService;
   final VoidCallback onImportSuccess;
+  final FilePickerService? filePickerService;
 
   const ImportBackupDialog({
     super.key,
     required this.libraryBackupService,
     required this.onImportSuccess,
+    this.filePickerService,
   });
 
   @override
@@ -2083,9 +2413,11 @@ class ImportBackupDialog extends StatefulWidget {
 }
 
 class _ImportBackupDialogState extends State<ImportBackupDialog> {
-  late final TextEditingController _pathController;
+  late final FilePickerService _filePickerService;
+  String? _selectedPath;
   BackupSummary? _summary;
   BackupImportResult? _importResult;
+  bool _isPicking = false;
   bool _isInspecting = false;
   bool _isImporting = false;
   String? _error;
@@ -2093,13 +2425,64 @@ class _ImportBackupDialogState extends State<ImportBackupDialog> {
   @override
   void initState() {
     super.initState();
-    _pathController = TextEditingController();
+    _filePickerService = widget.filePickerService ?? FilePickerServiceImpl();
   }
 
-  @override
-  void dispose() {
-    _pathController.dispose();
-    super.dispose();
+  Future<void> _pickBackupFile() async {
+    setState(() {
+      _isPicking = true;
+      _error = null;
+    });
+
+    try {
+      final path = await _filePickerService.pickBackupFile(
+        dialogTitle: 'Select REELHOUSE Backup File',
+      );
+      if (!mounted) return;
+
+      if (path != null && path.trim().isNotEmpty) {
+        final cleanPath = path.trim();
+        setState(() {
+          _selectedPath = cleanPath;
+          _isPicking = false;
+          _isInspecting = true;
+          _error = null;
+          _summary = null;
+        });
+
+        try {
+          final s = await widget.libraryBackupService.inspectBackupFile(
+            cleanPath,
+          );
+          if (mounted) {
+            setState(() {
+              _summary = s;
+              _isInspecting = false;
+            });
+          }
+        } catch (e) {
+          if (mounted) {
+            setState(() {
+              _error = 'Failed to inspect backup: $e';
+              _summary = null;
+              _isInspecting = false;
+            });
+          }
+        }
+      } else {
+        setState(() {
+          _isPicking = false;
+          // Cancellation is not an error
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isPicking = false;
+          _error = 'File selection failed: $e';
+        });
+      }
+    }
   }
 
   @override
@@ -2167,69 +2550,100 @@ class _ImportBackupDialogState extends State<ImportBackupDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Select a REELHOUSE JSON backup to restore or merge into your current library.',
+              'Select a REELHOUSE backup to restore.',
               style: TextStyle(color: theme.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _pathController,
-                    decoration: InputDecoration(
-                      labelText: 'Backup File Path',
-                      hintText: 'e.g. C:/backup/reelhouse_backup.json',
-                      labelStyle: TextStyle(color: theme.textSecondary),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: theme.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: theme.accent),
-                      ),
-                    ),
-                    style: TextStyle(color: theme.textPrimary, fontSize: 14),
+            if (_selectedPath == null) ...[
+              OutlinedButton.icon(
+                onPressed: _isPicking || _isInspecting || _isImporting
+                    ? null
+                    : _pickBackupFile,
+                icon: _isPicking
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.file_open, size: 18),
+                label: Text(_isPicking ? 'Selecting...' : 'Choose Backup'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.accent,
+                  side: BorderSide(color: theme.border),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
                 ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: _isInspecting || _isImporting
-                      ? null
-                      : () async {
-                          final path = _pathController.text.trim();
-                          if (path.isEmpty) return;
-                          setState(() {
-                            _isInspecting = true;
-                            _error = null;
-                          });
-                          try {
-                            final s = await widget.libraryBackupService
-                                .inspectBackupFile(path);
-                            if (mounted) {
-                              setState(() {
-                                _summary = s;
-                                _isInspecting = false;
-                              });
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              setState(() {
-                                _error = 'Failed to inspect backup: $e';
-                                _summary = null;
-                                _isInspecting = false;
-                              });
-                            }
-                          }
-                        },
-                  child: _isInspecting
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Inspect'),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.surface2,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: theme.borderSubtle),
                 ),
-              ],
-            ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      color: theme.accent,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Selected Backup File',
+                            style: TextStyle(
+                              color: theme.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _selectedPath!,
+                            style: TextStyle(
+                              color: theme.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Change File',
+                      onPressed: _isPicking || _isInspecting || _isImporting
+                          ? null
+                          : _pickBackupFile,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (_isInspecting) ...[
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Inspecting backup file...',
+                    style: TextStyle(color: theme.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
             if (_summary != null) ...[
               const SizedBox(height: 14),
               Container(
@@ -2307,16 +2721,14 @@ class _ImportBackupDialogState extends State<ImportBackupDialog> {
           child: Text('Cancel', style: TextStyle(color: theme.textSecondary)),
         ),
         ElevatedButton.icon(
-          onPressed: _isImporting
+          onPressed:
+              (_isImporting ||
+                  _isInspecting ||
+                  _selectedPath == null ||
+                  _summary == null)
               ? null
               : () async {
-                  final path = _pathController.text.trim();
-                  if (path.isEmpty) {
-                    setState(() {
-                      _error = 'Please provide a backup file path.';
-                    });
-                    return;
-                  }
+                  final path = _selectedPath!;
                   setState(() {
                     _isImporting = true;
                     _error = null;
