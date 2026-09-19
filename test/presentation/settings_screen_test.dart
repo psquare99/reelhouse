@@ -277,4 +277,56 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     },
   );
+
+  testWidgets(
+    'SettingsScreen renders Feedback & Suggestions section and opens FeedbackDialog',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsScreen(
+            database: db,
+            storageIdentityService: FakeStorageIdentityService(),
+            localStorageManager: FakeLocalStorageManager(),
+            metadataService: metadataService,
+            settingsService: settingsService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Scroll to bottom to reveal Feedback section
+      await tester.drag(find.byType(ListView), const Offset(0, -1200));
+      await tester.pumpAndSettle();
+
+      expect(find.text('FEEDBACK & SUGGESTIONS'), findsOneWidget);
+      expect(
+        find.text(
+          'Help improve REELHOUSE by reporting bugs, suggesting improvements, or sharing feedback.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Send Feedback'), findsOneWidget);
+
+      // Tap Send Feedback -> opens FeedbackDialog
+      await tester.tap(find.text('Send Feedback'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Report a Bug'), findsOneWidget);
+      expect(find.text('Suggest an Improvement'), findsOneWidget);
+      expect(find.text('General Feedback'), findsOneWidget);
+
+      // Dismiss dialog
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Unmount and flush
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
+    },
+  );
 }

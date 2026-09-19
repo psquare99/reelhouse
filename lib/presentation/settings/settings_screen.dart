@@ -19,14 +19,17 @@ import '../../domain/services/device_storage_service.dart';
 import '../../domain/services/local_storage_manager.dart';
 import '../../domain/services/settings_service.dart';
 import '../../domain/services/storage_identity_service.dart';
+import '../../data/services/feedback_service_impl.dart';
 import '../../data/services/file_picker_service_impl.dart';
 import '../../data/services/library_backup_service_impl.dart';
+import '../../domain/services/feedback_service.dart';
 import '../../domain/services/file_picker_service.dart';
 import '../../domain/services/library_backup_service.dart';
 import '../../domain/services/transfer_coordinator.dart';
 import '../../domain/services/transfer_service.dart';
 import '../profile/profile_screen.dart';
 import '../widgets/cinema_profile_avatar.dart';
+import '../widgets/feedback_dialog.dart';
 import '../widgets/library_backup_dialogs.dart';
 import 'needs_verification_screen.dart';
 
@@ -43,6 +46,7 @@ class SettingsScreen extends StatefulWidget {
   final TransferService? transferService;
   final LibraryBackupService? libraryBackupService;
   final FilePickerService? filePickerService;
+  final FeedbackService? feedbackService;
   final VoidCallback? onNavigateToProfile;
 
   SettingsScreen({
@@ -59,6 +63,7 @@ class SettingsScreen extends StatefulWidget {
     this.transferService,
     this.libraryBackupService,
     this.filePickerService,
+    this.feedbackService,
     this.onNavigateToProfile,
   }) : repository = repository ?? DriftLibraryRepository(database),
        libraryScannerService =
@@ -87,6 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   SettingsService? _settingsService;
   late LibraryBackupService _libraryBackupService;
   late final FilePickerService _filePickerService;
+  late final FeedbackService _feedbackService;
   late TextEditingController _apiKeyController;
   bool _isApiKeyObscured = true;
   bool _isTestingConnection = false;
@@ -105,6 +111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _settingsService = widget.settingsService;
     _filePickerService = widget.filePickerService ?? FilePickerServiceImpl();
+    _feedbackService = widget.feedbackService ?? const FeedbackServiceImpl();
     _libraryBackupService =
         widget.libraryBackupService ??
         LibraryBackupServiceImpl(
@@ -328,6 +335,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showFeedbackDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => FeedbackDialog(feedbackService: _feedbackService),
     );
   }
 
@@ -1950,6 +1964,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   OutlinedButton(
                     onPressed: _showPlayerDialog,
                     child: const Text('Change'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Section: Feedback & Suggestions (RC.4)
+          Text('FEEDBACK & SUGGESTIONS', style: CinemaTheme.eyebrow(context)),
+          const SizedBox(height: 14),
+
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.feedback_outlined,
+                        color: theme.accent,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Feedback & Suggestions',
+                              style: TextStyle(
+                                color: theme.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Help improve REELHOUSE by reporting bugs, suggesting improvements, or sharing feedback.',
+                              style: TextStyle(
+                                color: theme.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _showFeedbackDialog,
+                    icon: const Icon(Icons.send_outlined, size: 16),
+                    label: const Text('Send Feedback'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.accent,
+                      foregroundColor: theme.onAccent,
+                    ),
                   ),
                 ],
               ),
