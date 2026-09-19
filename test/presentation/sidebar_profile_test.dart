@@ -172,7 +172,73 @@ void main() {
   );
 
   testWidgets(
-    'Sidebar collapsed: shows avatar tooltip and navigates to ProfileScreen',
+    'Sidebar expanded: profile is anchored to bottom with flexible space below Offline and Settings',
+    (tester) async {
+      tester.view.physicalSize = const Size(1400, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await settingsService.setUserDisplayName('Denis Villeneuve');
+
+      await tester.pumpWidget(buildShellWidget());
+      await tester.pump();
+
+      final offlinePos = tester.getTopLeft(find.text('Offline'));
+      final settingsPos = tester.getTopLeft(find.text('Settings'));
+      final profilePos = tester.getTopLeft(find.text('Denis Villeneuve'));
+
+      // Verify vertical sequence: Offline -> (flexible space) -> Settings -> Profile
+      expect(
+        settingsPos.dy,
+        greaterThan(offlinePos.dy + 100),
+      ); // Significant flexible space
+      expect(profilePos.dy, greaterThan(settingsPos.dy));
+
+      // Profile is near the bottom of the 1000px high viewport (within 100px of bottom)
+      expect(profilePos.dy, greaterThan(900));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
+    },
+  );
+
+  testWidgets(
+    'Sidebar dynamic resize: profile remains bottom-anchored when height changes',
+    (tester) async {
+      // 1. Initial height: 700px
+      tester.view.physicalSize = const Size(1400, 700);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await settingsService.setUserDisplayName('Guillermo del Toro');
+
+      await tester.pumpWidget(buildShellWidget());
+      await tester.pump();
+
+      final profilePosAt700 = tester.getTopLeft(
+        find.text('Guillermo del Toro'),
+      );
+      expect(profilePosAt700.dy, greaterThan(600));
+
+      // 2. Resize height to 1200px
+      tester.view.physicalSize = const Size(1400, 1200);
+      await tester.pump();
+
+      final profilePosAt1200 = tester.getTopLeft(
+        find.text('Guillermo del Toro'),
+      );
+      expect(profilePosAt1200.dy, greaterThan(1100));
+      expect(profilePosAt1200.dy, greaterThan(profilePosAt700.dy + 450));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
+    },
+  );
+
+  testWidgets(
+    'Sidebar collapsed: shows avatar tooltip and navigates to ProfileScreen at bottom',
     (tester) async {
       tester.view.physicalSize = const Size(1400, 900);
       tester.view.devicePixelRatio = 1.0;
@@ -191,6 +257,13 @@ void main() {
       // Collapsed state: avatar tooltip contains display name
       expect(find.byTooltip('Nolan'), findsOneWidget);
       expect(find.text('N'), findsOneWidget);
+
+      final settingsIconPos = tester.getTopLeft(find.byTooltip('Settings'));
+      final profileAvatarPos = tester.getTopLeft(find.byTooltip('Nolan'));
+
+      // Bottom-anchored relative to settings
+      expect(profileAvatarPos.dy, greaterThan(settingsIconPos.dy));
+      expect(profileAvatarPos.dy, greaterThan(800));
 
       // Tap collapsed avatar → navigate to ProfileScreen
       await tester.tap(find.byTooltip('Nolan'));

@@ -457,12 +457,18 @@ class _CollapsibleCinemaRail extends StatelessWidget {
           // Group 2: Library
           ..._buildGroup(context, _libraryGroup),
 
-          // Divider 2
+          // Flexible space to anchor Settings and Profile to the bottom
+          const Spacer(),
+
+          // Group 3: Utility (Settings)
+          ..._buildGroup(context, _utilityGroup),
+
+          // Divider 2 (Separates application settings from personal profile)
           _buildGroupDivider(tokens),
 
-          // Identity & Utility (Profile & Settings)
+          // Bottom-anchored Personal Profile Identity
           _buildProfileItem(context, tokens),
-          ..._buildGroup(context, _utilityGroup),
+          const SizedBox(height: 12),
         ],
       ),
     );
