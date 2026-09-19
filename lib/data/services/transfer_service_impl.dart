@@ -682,7 +682,9 @@ class TransferServiceImpl implements TransferService {
     void Function(TransferProgress)? onProgress,
   ) {
     _activeProgress[progress.mediaId] = progress;
-    _progressController.add(progress);
+    if (!_progressController.isClosed) {
+      _progressController.add(progress);
+    }
     onProgress?.call(progress);
   }
 
