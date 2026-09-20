@@ -23,9 +23,12 @@ import '../../domain/services/storage_identity_service.dart';
 import '../../data/services/feedback_service_impl.dart';
 import '../../data/services/file_picker_service_impl.dart';
 import '../../data/services/library_backup_service_impl.dart';
+import '../../data/services/update_models.dart';
+import '../../data/services/update_service_impl.dart';
 import '../../domain/services/feedback_service.dart';
 import '../../domain/services/file_picker_service.dart';
 import '../../domain/services/library_backup_service.dart';
+import '../../domain/services/update_service.dart';
 import '../../domain/services/transfer_coordinator.dart';
 import '../../domain/services/transfer_service.dart';
 import '../profile/profile_screen.dart';
@@ -48,6 +51,7 @@ class SettingsScreen extends StatefulWidget {
   final LibraryBackupService? libraryBackupService;
   final FilePickerService? filePickerService;
   final FeedbackService? feedbackService;
+  final UpdateService? updateService;
   final VoidCallback? onNavigateToProfile;
 
   SettingsScreen({
@@ -65,6 +69,7 @@ class SettingsScreen extends StatefulWidget {
     this.libraryBackupService,
     this.filePickerService,
     this.feedbackService,
+    this.updateService,
     this.onNavigateToProfile,
   }) : repository = repository ?? DriftLibraryRepository(database),
        libraryScannerService =
@@ -94,6 +99,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late LibraryBackupService _libraryBackupService;
   late final FilePickerService _filePickerService;
   late final FeedbackService _feedbackService;
+  late final UpdateService _updateService;
+  UpdateCheckResult? _updateCheckResult;
+  bool _isCheckingForUpdate = false;
   late TextEditingController _apiKeyController;
   bool _isApiKeyObscured = true;
   bool _isTestingConnection = false;
@@ -113,6 +121,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _settingsService = widget.settingsService;
     _filePickerService = widget.filePickerService ?? FilePickerServiceImpl();
     _feedbackService = widget.feedbackService ?? FeedbackServiceImpl();
+    _updateService = widget.updateService ?? UpdateServiceImpl();
     _libraryBackupService =
         widget.libraryBackupService ??
         LibraryBackupServiceImpl(
@@ -1090,6 +1099,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  // ── RC.7 Update check ──────────────────────────────────────────────────
+
+  Future<void> _performUpdateCheck() async {
+    setState(() {
+      _isCheckingForUpdate = true;
+      _updateCheckResult = null;
+    });
+
+    final result = await _updateService.checkForUpdate();
+    if (!mounted) return;
+
+    setState(() {
+      _isCheckingForUpdate = false;
+      _updateCheckResult = result;
+    });
   }
 
   // ── RC.5 About helpers ──────────────────────────────────────────────────
@@ -2246,6 +2272,103 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Media, Copyright & User Responsibility',
                     'https://feedback.thelongwayhome.dev/media-responsibility',
                   ),
+
+                  // ── RC.7 — Check for Updates ────────────────────────────
+                  const SizedBox(height: 16),
+                  Text(
+                    'UPDATES',
+                    style: TextStyle(
+                      color: theme.textMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 1.8,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Status row — only shown after a check.
+                  if (_updateCheckResult != null) ...[
+                    _buildUpdateStatusRow(theme, _updateCheckResult!),
+                    const SizedBox(height: 10),
+                  ],
+
+                  // Check button / spinner.
+                  SizedBox(
+                    width: double.infinity,
+                    child: _isCheckingForUpdate
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Center(
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                          )
+                        : OutlinedButton.icon(
+                            onPressed: _performUpdateCheck,
+                            icon: const Icon(Icons.update, size: 16),
+                            label: const Text('Check for Updates'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: theme.textSecondary,
+                              side: BorderSide(color: theme.border),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                            ),
+                          ),
+                  ),
+
+                  // View Update link — only when an update is available.
+                  if (_updateCheckResult?.hasUpdate == true &&
+                      _updateCheckResult?.releaseInfo != null) ...[
+                    const SizedBox(height: 8),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () async {
+                          final url = _updateCheckResult!.releaseInfo!.htmlUrl;
+                          try {
+                            await launchUrl(
+                              Uri.parse(url),
+                              mode: LaunchMode.externalApplication,
+                            );
+                          } catch (e) {
+                            debugPrint('Failed to open update link: $e');
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                            horizontal: 4,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.open_in_new,
+                                size: 14,
+                                color: theme.accent,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'View Update',
+                                style: TextStyle(
+                                  color: theme.accent,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -2253,6 +2376,160 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  // ── RC.7 Update helpers ────────────────────────────────────────────────
+
+  static Widget _buildUpdateStatusRow(
+    CinemaThemeData theme,
+    UpdateCheckResult result,
+  ) {
+    switch (result.status) {
+      case UpdateCheckStatus.updateAvailable:
+        final info = result.releaseInfo!;
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: theme.accent.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.new_releases_outlined, size: 18, color: theme.accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Update available: ${info.version}',
+                      style: TextStyle(
+                        color: theme.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Published ${_formatPublishDate(info.publishedAt)}',
+                      style: TextStyle(
+                        color: theme.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case UpdateCheckStatus.upToDate:
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.stateAvailable.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: theme.stateAvailable.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.check_circle_outline,
+                size: 18,
+                color: theme.stateAvailable,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'You\'re up to date.',
+                style: TextStyle(
+                  color: theme.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case UpdateCheckStatus.aheadOfRelease:
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.stateAvailable.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: theme.stateAvailable.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.check_circle_outline,
+                size: 18,
+                color: theme.stateAvailable,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'You\'re running a newer version than the latest release.',
+                style: TextStyle(
+                  color: theme.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case UpdateCheckStatus.checkFailed:
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.surface2,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: theme.borderSubtle),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.error_outline, size: 18, color: theme.textMuted),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  result.errorMessage ?? 'Unable to check for updates.',
+                  style: TextStyle(color: theme.textSecondary, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        );
+    }
+  }
+
+  static String _formatPublishDate(String isoDate) {
+    try {
+      final date = DateTime.parse(isoDate).toLocal();
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+      return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    } catch (_) {
+      return isoDate;
+    }
   }
 
   /// Builds a tappable legal link row.
