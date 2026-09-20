@@ -329,4 +329,68 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     },
   );
+
+  testWidgets(
+    'SettingsScreen renders About & Credits section with required information',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsScreen(
+            database: db,
+            storageIdentityService: FakeStorageIdentityService(),
+            localStorageManager: FakeLocalStorageManager(),
+            metadataService: metadataService,
+            settingsService: settingsService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Scroll to the very bottom to reveal About section
+      await tester.drag(find.byType(ListView), const Offset(0, -1600));
+      await tester.pumpAndSettle();
+
+      // Verify About eyebrow
+      expect(find.text('ABOUT'), findsOneWidget);
+
+      // Verify application identity
+      expect(find.text('REELHOUSE'), findsOneWidget);
+      expect(find.text('Personal Digital Cinema'), findsOneWidget);
+
+      // Verify version information
+      expect(find.text('Version'), findsOneWidget);
+      expect(find.text('1.0.0+1'), findsOneWidget);
+      expect(find.text('Platform'), findsOneWidget);
+
+      // Verify credits
+      expect(find.text('CREDITS'), findsOneWidget);
+      expect(find.text('Built with'), findsOneWidget);
+      expect(find.text('Flutter & Dart'), findsOneWidget);
+      expect(find.text('Metadata'), findsOneWidget);
+      expect(find.text('The Movie Database (TMDB)'), findsOneWidget);
+
+      // Verify open-source acknowledgements
+      expect(find.text('ACKNOWLEDGEMENTS'), findsOneWidget);
+      expect(find.text('drift'), findsOneWidget);
+      expect(find.text('path_provider'), findsOneWidget);
+      expect(find.text('uuid'), findsOneWidget);
+
+      // Verify TMDB attribution is still present
+      expect(
+        find.text(
+          'This product uses the TMDB API but is not endorsed or certified by TMDB.',
+        ),
+        findsAtLeastNWidgets(1),
+      );
+
+      // Unmount and flush
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
+    },
+  );
 }

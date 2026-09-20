@@ -1091,6 +1091,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ── RC.5 About helpers ──────────────────────────────────────────────────
+
+  static Widget _buildInfoRow(
+    CinemaThemeData theme,
+    String label,
+    String value,
+  ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: theme.textMuted, fontSize: 12)),
+        Text(
+          value,
+          style: TextStyle(
+            color: theme.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  static Widget _buildPackageChip(CinemaThemeData theme, String name) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.surface2,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: theme.borderSubtle),
+      ),
+      child: Text(
+        name,
+        style: TextStyle(
+          color: theme.textMuted,
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  static String _getPlatformLabel() {
+    if (Platform.isAndroid) return 'Android';
+    if (Platform.isIOS) return 'iOS';
+    if (Platform.isWindows) return 'Windows';
+    if (Platform.isMacOS) return 'macOS';
+    if (Platform.isLinux) return 'Linux';
+    return 'Unknown';
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final theme = CinemaTheme.of(context);
@@ -2030,44 +2083,145 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 32),
 
-          // Section: About & Attribution (Section 40)
-          Column(
-            children: [
-              Text(
-                'REELHOUSE v1.0 • Personal Digital Cinema',
-                style: TextStyle(
-                  color: theme.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.surface,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: theme.borderSubtle),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.info_outline, size: 16, color: theme.textMuted),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        'This product uses the TMDB API but is not endorsed or certified by TMDB.',
-                        style: TextStyle(color: theme.textMuted, fontSize: 11),
-                        textAlign: TextAlign.center,
+          // Section: About & Credits (RC.5)
+          Text('ABOUT', style: CinemaTheme.eyebrow(context)),
+          const SizedBox(height: 14),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // App identity
+                  Row(
+                    children: [
+                      Icon(Icons.movie_filter, color: theme.accent, size: 28),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'REELHOUSE',
+                              style: TextStyle(
+                                color: theme.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Personal Digital Cinema',
+                              style: TextStyle(
+                                color: theme.textSecondary,
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Version info
+                  _buildInfoRow(theme, 'Version', '1.0.0+1'),
+                  const SizedBox(height: 8),
+                  _buildInfoRow(theme, 'Platform', _getPlatformLabel()),
+                  const SizedBox(height: 16),
+
+                  // Description
+                  Text(
+                    'A personal cinema application for organising and '
+                    'discovering your movie and TV collection with rich '
+                    'metadata from The Movie Database.',
+                    style: TextStyle(
+                      color: theme.textSecondary,
+                      fontSize: 13,
+                      height: 1.5,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Credits
+                  Text(
+                    'CREDITS',
+                    style: TextStyle(
+                      color: theme.textMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 1.8,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildInfoRow(theme, 'Built with', 'Flutter & Dart'),
+                  const SizedBox(height: 6),
+                  _buildInfoRow(theme, 'Metadata', 'The Movie Database (TMDB)'),
+                  const SizedBox(height: 16),
+
+                  // Open-source acknowledgements
+                  Text(
+                    'ACKNOWLEDGEMENTS',
+                    style: TextStyle(
+                      color: theme.textMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 1.8,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'REELHOUSE is built with these open-source packages:',
+                    style: TextStyle(color: theme.textSecondary, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _buildPackageChip(theme, 'drift'),
+                      _buildPackageChip(theme, 'path_provider'),
+                      _buildPackageChip(theme, 'uuid'),
+                      _buildPackageChip(theme, 'http'),
+                      _buildPackageChip(theme, 'file_picker'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // TMDB attribution
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.surface2,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: theme.borderSubtle),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 14,
+                          color: theme.textMuted,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'This product uses the TMDB API but is not '
+                            'endorsed or certified by TMDB.',
+                            style: TextStyle(
+                              color: theme.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ],
       ),
