@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme/cinema_colors.dart';
@@ -91,20 +93,23 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
     );
 
     _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
+      if (status == AnimationStatus.completed && !_completed) {
+        _completed = true;
         widget.onComplete();
       }
     });
   }
 
   bool _animationStarted = false;
+  bool _completed = false;
+  Timer? _holdTimer;
 
   void _startAnimation() {
-    if (_animationStarted) return;
+    if (_animationStarted || _completed) return;
     _animationStarted = true;
     // Brief async pause before starting (200ms) for a clean dark frame.
     Future<void>.delayed(const Duration(milliseconds: 200)).then((_) {
-      if (mounted) {
+      if (mounted && !_completed) {
         _controller.forward();
       }
     });
@@ -112,8 +117,63 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
 
   @override
   void dispose() {
+    _holdTimer?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Static branded opening for reduced-motion users — no animation, same
+  /// visual identity at full opacity.
+  Widget _buildStaticOpening() {
+    return ColoredBox(
+      color: CinemaColors.darkBackground,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: CinemaColors.darkAccent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: CinemaColors.darkAccent.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.movie_filter_rounded,
+                  color: CinemaColors.darkAccent,
+                  size: 38,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'REELHOUSE',
+              style: TextStyle(
+                color: CinemaColors.darkTextPrimary,
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 3.0,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Personal Digital Cinema',
+              style: TextStyle(
+                color: CinemaColors.darkAccent,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -121,13 +181,14 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
     final bool skipAnimations = MediaQuery.of(context).disableAnimations;
 
     if (skipAnimations) {
-      // Reduced-motion: skip straight to showing content, then complete.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _controller.isDismissed) {
-          widget.onComplete();
-        }
-      });
-      return const SizedBox.expand();
+      // Reduced-motion: show static branded opening, hold briefly, then complete.
+      if (!_completed) {
+        _completed = true;
+        _holdTimer = Timer(const Duration(milliseconds: 600), () {
+          if (mounted) widget.onComplete();
+        });
+      }
+      return _buildStaticOpening();
     }
 
     // Start the animation on first build (guarded against multiple calls).
