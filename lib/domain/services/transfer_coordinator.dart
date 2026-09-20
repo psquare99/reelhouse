@@ -200,6 +200,64 @@ class TransferCoordinator extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Deletes all device-managed offline MediaSource registrations and their
+  /// physical files. Cancels any active transfers for affected items first.
+  ///
+  /// Returns the count of deleted copies. Never touches original HDD sources,
+  /// logical library records, metadata, watch state, or collections.
+  Future<int> clearAllOfflineCopies() async {
+    final allSources = await database.getAllMediaSources();
+    final deviceSources = allSources
+        .where((s) => s.sourceType == 'localDevice')
+        .toList();
+
+    int deletedCount = 0;
+    for (final source in deviceSources) {
+      // Cancel any active or queued transfer for this item before deleting.
+      final mediaId = source.movieId ?? source.episodeId;
+      if (mediaId != null) {
+        try {
+          await cancelMediaTransfer(mediaId);
+        } catch (_) {}
+      }
+
+      try {
+        await deleteOfflineCopy(source.id);
+        deletedCount++;
+      } catch (_) {}
+    }
+
+    notifyListeners();
+    return deletedCount;
+  }
+
+  /// Deletes all device-managed offline copies for episodes of a specific
+  /// TV show. Returns the count of deleted copies.
+  Future<int> deleteOfflineCopiesForShow(String showId) async {
+    final sources = await database.getSourcesForTvShow(showId);
+    final deviceSources = sources
+        .where((s) => s.sourceType == 'localDevice')
+        .toList();
+
+    int deletedCount = 0;
+    for (final source in deviceSources) {
+      final episodeId = source.episodeId;
+      if (episodeId != null) {
+        try {
+          await cancelMediaTransfer(episodeId);
+        } catch (_) {}
+      }
+
+      try {
+        await deleteOfflineCopy(source.id);
+        deletedCount++;
+      } catch (_) {}
+    }
+
+    notifyListeners();
+    return deletedCount;
+  }
+
   /// Clean stale temporary files in application-managed device storage.
   Future<int> cleanStalePartials() async {
     final count = await transferService.cleanStalePartials();

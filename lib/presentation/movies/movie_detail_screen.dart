@@ -687,38 +687,60 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                           ),
                                         )
                                       else if (hasLocalCopy)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 8,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: tokens.surface1,
-                                            borderRadius: BorderRadius.circular(
-                                              6,
+                                        GestureDetector(
+                                          onTap: () {
+                                            final localSource = sources
+                                                .cast<MediaSource?>()
+                                                .firstWhere(
+                                                  (s) =>
+                                                      s?.sourceType ==
+                                                      'localDevice',
+                                                  orElse: () => null,
+                                                );
+                                            if (localSource != null) {
+                                              _confirmDeleteLocalCopy(
+                                                localSource,
+                                              );
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 8,
                                             ),
-                                            border: Border.all(
-                                              color: tokens.border,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                Icons.check_circle,
-                                                color: tokens.stateOffline,
-                                                size: 14,
+                                            decoration: BoxDecoration(
+                                              color: tokens.surface1,
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: tokens.border,
                                               ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                'AVAILABLE OFFLINE',
-                                                style: TextStyle(
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.check_circle,
                                                   color: tokens.stateOffline,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w500,
+                                                  size: 14,
                                                 ),
-                                              ),
-                                            ],
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  'AVAILABLE OFFLINE',
+                                                  style: TextStyle(
+                                                    color: tokens.stateOffline,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Icon(
+                                                  Icons.close,
+                                                  color: tokens.stateOffline,
+                                                  size: 12,
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
 

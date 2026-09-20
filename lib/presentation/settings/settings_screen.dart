@@ -870,6 +870,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _confirmClearAllOfflineStorage() {
+    final theme = CinemaTheme.of(context);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: theme.surface2,
+        title: Text(
+          'Clear All Offline Storage?',
+          style: TextStyle(color: theme.textPrimary),
+        ),
+        content: Text(
+          'This will remove all device-downloaded offline copies to reclaim '
+          'storage space.\n\n'
+          'Your original media files, cinema library history, and external '
+          'storage connections will remain untouched.',
+          style: TextStyle(color: theme.textSecondary, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel', style: TextStyle(color: theme.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final count = await _transferCoordinator.clearAllOfflineCopies();
+              await _refreshStorageStats();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      count == 0
+                          ? 'No offline copies to remove.'
+                          : '$count offline ${count == 1 ? "copy" : "copies"} removed.',
+                    ),
+                    backgroundColor: theme.surface1,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.stateUnavailable,
+              foregroundColor: theme.onAccent,
+            ),
+            child: const Text('Clear All'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatBytes(int bytes) {
     if (bytes <= 0) return '0 B';
     const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -1511,6 +1562,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       color: theme.textMuted,
                       fontSize: 12,
                       height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _confirmClearAllOfflineStorage(),
+                      icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                      label: const Text('Clear All Offline Storage'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.stateUnavailable,
+                        side: BorderSide(color: theme.borderStrong),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
                   ),
                 ],

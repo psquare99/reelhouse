@@ -302,6 +302,61 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
     );
   }
 
+  void _handleRemoveShowOfflineCopies() {
+    final tokens = CinemaTheme.of(context);
+    final showId = widget.showId;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: tokens.surface2,
+        title: Text(
+          'Remove All Offline Copies?',
+          style: TextStyle(color: tokens.textPrimary),
+        ),
+        content: Text(
+          'This will remove all device-downloaded copies for this show '
+          'from this device to reclaim storage space.\n\n'
+          'Your original copies on external storage and your cinema library '
+          'history will remain untouched.',
+          style: TextStyle(color: tokens.textSecondary, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: tokens.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final count = await _transferCoordinator
+                  .deleteOfflineCopiesForShow(showId);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      count == 0
+                          ? 'No offline copies to remove.'
+                          : '$count offline ${count == 1 ? "copy" : "copies"} removed.',
+                    ),
+                    backgroundColor: tokens.surface1,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: tokens.stateUnavailable,
+              foregroundColor: tokens.onAccent,
+            ),
+            child: const Text('Remove Copies'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _handleSaveEpisodeOffline(EpisodeLibraryItem episode) async {
     final tokens = CinemaTheme.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -334,6 +389,70 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
       SnackBar(
         content: Text('Cancelled transfer for "${episode.displayName}".'),
         backgroundColor: tokens.surface1,
+      ),
+    );
+  }
+
+  void _handleRemoveEpisodeOffline(EpisodeLibraryItem episode) {
+    final tokens = CinemaTheme.of(context);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: tokens.surface2,
+        title: Text(
+          'Delete Offline Copy?',
+          style: TextStyle(color: tokens.textPrimary),
+        ),
+        content: Text(
+          'This will remove the offline copy of "${episode.displayName}" '
+          'from this device to reclaim storage space.\n\n'
+          'Your original copy on external storage and your cinema library '
+          'history will remain untouched.',
+          style: TextStyle(color: tokens.textSecondary, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: tokens.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await _transferCoordinator.cancelMediaTransfer(episode.id);
+              } catch (_) {
+                // Transfer may not exist; proceed with deletion.
+              }
+              final db = AppDatabase();
+              final sources = await db.getSourcesForEpisode(episode.id);
+              final localSource = sources.cast<MediaSource?>().firstWhere(
+                (s) => s?.sourceType == 'localDevice',
+                orElse: () => null,
+              );
+              if (localSource != null) {
+                await _transferCoordinator.deleteOfflineCopy(localSource.id);
+              }
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Offline copy of "${episode.displayName}" removed.',
+                    ),
+                    backgroundColor: tokens.surface1,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: tokens.stateUnavailable,
+              foregroundColor: tokens.onAccent,
+            ),
+            child: const Text('Delete Copy'),
+          ),
+        ],
       ),
     );
   }
@@ -663,6 +782,28 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                           );
                                         },
                                       ),
+                                    if (selectedSeason != null &&
+                                        selectedSeason.seasonNumber >= 0)
+                                      OutlinedButton.icon(
+                                        onPressed: () =>
+                                            _handleRemoveShowOfflineCopies(),
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 14,
+                                        ),
+                                        label: const Text(
+                                          'REMOVE OFFLINE',
+                                          style: TextStyle(fontSize: 11),
+                                        ),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor:
+                                              tokens.stateUnavailable,
+                                          side: BorderSide(
+                                            color: tokens.borderStrong,
+                                          ),
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
@@ -908,6 +1049,8 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                         _handleSaveEpisodeOffline(episode),
                                     onCancelOffline: () =>
                                         _handleCancelEpisodeTransfer(episode),
+                                    onRemoveOffline: () =>
+                                        _handleRemoveEpisodeOffline(episode),
                                   );
                                 }, childCount: episodes.length),
                               ),
@@ -936,6 +1079,7 @@ class _EpisodeCard extends StatelessWidget {
   final VoidCallback onPlay;
   final VoidCallback onSaveOffline;
   final VoidCallback onCancelOffline;
+  final VoidCallback onRemoveOffline;
 
   const _EpisodeCard({
     required this.episode,
@@ -946,6 +1090,7 @@ class _EpisodeCard extends StatelessWidget {
     required this.onPlay,
     required this.onSaveOffline,
     required this.onCancelOffline,
+    required this.onRemoveOffline,
   });
 
   PlaybackResolution get _resolution {
@@ -1196,24 +1341,33 @@ class _EpisodeCard extends StatelessWidget {
                         ),
                       );
                     } else if (isLocal) {
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.offline_pin,
-                            color: tokens.stateOffline,
-                            size: 14,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'OFFLINE',
-                            style: TextStyle(
+                      return GestureDetector(
+                        onTap: onRemoveOffline,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.offline_pin,
                               color: tokens.stateOffline,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
+                              size: 14,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            Text(
+                              'OFFLINE',
+                              style: TextStyle(
+                                color: tokens.stateOffline,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.close,
+                              color: tokens.stateOffline,
+                              size: 12,
+                            ),
+                          ],
+                        ),
                       );
                     }
                     return const SizedBox.shrink();
@@ -1234,24 +1388,29 @@ class _EpisodeCard extends StatelessWidget {
                   ),
                 )
               else if (isLocal)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.offline_pin,
-                      color: tokens.stateOffline,
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'OFFLINE',
-                      style: TextStyle(
+                GestureDetector(
+                  onTap: onRemoveOffline,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.offline_pin,
                         color: tokens.stateOffline,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                        size: 14,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Text(
+                        'OFFLINE',
+                        style: TextStyle(
+                          color: tokens.stateOffline,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.close, color: tokens.stateOffline, size: 12),
+                    ],
+                  ),
                 ),
             ],
           ),

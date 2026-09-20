@@ -372,6 +372,9 @@ class AppDatabase extends _$AppDatabase {
   Future<List<MediaSource>> getSourcesForStorage(String storageId) =>
       (select(mediaSources)..where((s) => s.storageId.equals(storageId))).get();
 
+  /// Get all media sources across the entire database.
+  Future<List<MediaSource>> getAllMediaSources() => select(mediaSources).get();
+
   /// Find an existing movie by detected title and optional detected year (case-insensitive title match).
   Future<Movie?> findMovieByDetectedTitleAndYear(
     String detectedTitle,
