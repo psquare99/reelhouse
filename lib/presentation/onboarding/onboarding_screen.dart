@@ -23,7 +23,7 @@ import '../../domain/services/transfer_coordinator.dart';
 import '../../domain/services/transfer_service.dart';
 import '../widgets/library_backup_dialogs.dart';
 
-/// One-time First-Run Onboarding Flow for newly installed REELHOUSE.
+/// One-time First-Run Onboarding Flow for newly installed MATINEE.
 ///
 /// Implements REELHOUSE_V1_RELEASE_COMPLETENESS_SPECIFICATION_v1.0 Milestone RC.2:
 /// 1. Welcome Screen
@@ -246,7 +246,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 10),
             _buildGuideStep(
               '4',
-              'Copy your API Key (v3 auth) or API Read Access Token and paste it into REELHOUSE.',
+              'Copy your API Key (v3 auth) or API Read Access Token and paste it into MATINEE.',
               theme,
             ),
           ],
@@ -367,7 +367,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               )
             : null,
         title: Text(
-          'REELHOUSE SETUP',
+          'MATINEE SETUP',
           style: TextStyle(
             color: theme.textMuted,
             fontSize: 12,
@@ -429,7 +429,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 28),
         Text(
-          'Welcome to REELHOUSE',
+          'Welcome to MATINEE',
           style: TextStyle(
             color: theme.textPrimary,
             fontSize: 28,
@@ -500,7 +500,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'How should REELHOUSE greet you?',
+          'How should MATINEE greet you?',
           style: TextStyle(color: theme.textSecondary, fontSize: 15),
         ),
         const SizedBox(height: 24),
@@ -613,7 +613,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Profiles in REELHOUSE are strictly local. No cloud account, email, or password required.',
+                'Profiles in MATINEE are strictly local. No cloud account, email, or password required.',
                 style: TextStyle(color: theme.textMuted, fontSize: 11),
                 textAlign: TextAlign.center,
               ),
@@ -649,7 +649,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Connect REELHOUSE to TMDB',
+          'Connect MATINEE to TMDB',
           style: TextStyle(
             color: theme.textPrimary,
             fontSize: 26,
@@ -658,7 +658,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'REELHOUSE uses The Movie Database (TMDB) to identify your movies and TV shows and load official metadata, cast, and artwork.',
+          'MATINEE uses The Movie Database (TMDB) to identify your movies and TV shows and load official metadata, cast, and artwork.',
           style: TextStyle(
             color: theme.textSecondary,
             fontSize: 14,
@@ -800,7 +800,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ],
                 ] else ...[
                   Text(
-                    'An official free API key from TMDB allows REELHOUSE to automatically identify movies and series as soon as you connect your hard drives.',
+                    'An official free API key from TMDB allows MATINEE to automatically identify movies and series as soon as you connect your hard drives.',
                     style: TextStyle(
                       color: theme.textMuted,
                       fontSize: 12,
@@ -913,7 +913,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'You can continue using REELHOUSE, but identifying your library and loading metadata will require a TMDB API key.\n\nYou can add it at any time from Settings → TMDB.',
+                  'You can continue using MATINEE, but identifying your library and loading metadata will require a TMDB API key.\n\nYou can add it at any time from Settings → TMDB.',
                   style: TextStyle(
                     color: theme.textSecondary,
                     fontSize: 13,
@@ -972,7 +972,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'How would you like to get started with REELHOUSE?',
+          'How would you like to get started with MATINEE?',
           style: TextStyle(color: theme.textSecondary, fontSize: 15),
         ),
         const SizedBox(height: 24),
@@ -1088,7 +1088,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Restore a previous REELHOUSE backup file',
+                            'Restore a previous MATINEE backup file',
                             style: TextStyle(
                               color: theme.textMuted,
                               fontSize: 12,
@@ -1101,7 +1101,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Restore an existing REELHOUSE JSON export file. Reconciles your movies, TV shows, custom collections, and watch progress.',
+                  'Restore an existing MATINEE JSON export file. Reconciles your movies, TV shows, custom collections, and watch progress.',
                   style: TextStyle(
                     color: theme.textSecondary,
                     fontSize: 13,

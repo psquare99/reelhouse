@@ -9,7 +9,7 @@ abstract class FilePickerService {
   /// Returns the selected directory path, or `null` if cancelled by the user.
   Future<String?> pickDirectory({String? dialogTitle});
 
-  /// Prompts the user to select a REELHOUSE JSON backup file for import.
+  /// Prompts the user to select a MATINEE JSON backup file for import.
   /// Returns the selected file path, or `null` if cancelled by the user.
   Future<String?> pickBackupFile({String? dialogTitle});
 

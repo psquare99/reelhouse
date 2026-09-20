@@ -4,7 +4,7 @@
   "compatibility_date": "2025-02-01",
   "vars": {
     "FEEDBACK_TO_EMAIL": "prateekpal99@gmail.com",
-    "FEEDBACK_FROM_EMAIL": "REELHOUSE Feedback <feedback@thelongwayhome.dev>"
+    "FEEDBACK_FROM_EMAIL": "MATINEE Feedback <feedback@thelongwayhome.dev>"
   },
   "ratelimits": [
     {

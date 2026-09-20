@@ -149,7 +149,7 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Thanks for helping improve REELHOUSE.',
+            'Thanks for helping improve MATINEE.',
             textAlign: TextAlign.center,
             style: TextStyle(color: theme.textSecondary, fontSize: 14),
           ),
@@ -224,7 +224,7 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Help improve REELHOUSE by reporting bugs or sharing ideas.',
+                                'Help improve MATINEE by reporting bugs or sharing ideas.',
                                 style: TextStyle(
                                   color: theme.textSecondary,
                                   fontSize: 12,
@@ -416,7 +416,7 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'REELHOUSE v${widget.appVersion} • Platform: ${widget.feedbackService.getPlatformIdentifier()}',
+                                  'MATINEE v${widget.appVersion} • Platform: ${widget.feedbackService.getPlatformIdentifier()}',
                                   style: TextStyle(
                                     color: theme.textMuted,
                                     fontSize: 11,
@@ -450,7 +450,7 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
                           Expanded(
                             child: Text(
                               'Your feedback is sent only when you choose to submit it. '
-                              'REELHOUSE does not automatically attach your library, media files, TMDB API key, or personal profile data.',
+                              'MATINEE does not automatically attach your library, media files, TMDB API key, or personal profile data.',
                               style: TextStyle(
                                 color: theme.textMuted,
                                 fontSize: 11,

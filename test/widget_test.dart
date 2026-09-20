@@ -73,7 +73,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify cinematic header
-    expect(find.text('REELHOUSE'), findsAtLeastNWidgets(1));
+    expect(find.text('MATINEE'), findsAtLeastNWidgets(1));
     expect(find.text('Personal Digital Cinema'), findsOneWidget);
     expect(find.text('EXPLORE CINEMA'), findsOneWidget);
 

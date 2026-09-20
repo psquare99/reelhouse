@@ -58,7 +58,7 @@ void main() {
 
     testWidgets('renders all FAQ questions', (tester) async {
       await tester.pumpWidget(buildTestable());
-      expect(find.text('What is REELHOUSE?'), findsOneWidget);
+      expect(find.text('What is MATINEE?'), findsOneWidget);
       expect(find.text('How do I add my media?'), findsOneWidget);
       expect(find.text('How do I rescan a folder?'), findsOneWidget);
       expect(
@@ -87,7 +87,7 @@ void main() {
       await tester.pumpWidget(buildTestable());
       expect(
         find.text(
-          'REELHOUSE is a personal media library app for your computer. '
+          'MATINEE is a personal media library app for your computer. '
           'It lets you organize movies and TV shows in one place, with '
           'beautiful metadata like posters and descriptions. You can also '
           'save copies of your files for offline playback.',
@@ -99,12 +99,12 @@ void main() {
     testWidgets('tapping a question reveals the answer', (tester) async {
       await tester.pumpWidget(buildTestable());
 
-      await tester.tap(find.text('What is REELHOUSE?'));
+      await tester.tap(find.text('What is MATINEE?'));
       await tester.pumpAndSettle();
 
       expect(
         find.text(
-          'REELHOUSE is a personal media library app for your computer. '
+          'MATINEE is a personal media library app for your computer. '
           'It lets you organize movies and TV shows in one place, with '
           'beautiful metadata like posters and descriptions. You can also '
           'save copies of your files for offline playback.',
@@ -117,11 +117,11 @@ void main() {
       await tester.pumpWidget(buildTestable());
 
       // Expand
-      await tester.tap(find.text('What is REELHOUSE?'));
+      await tester.tap(find.text('What is MATINEE?'));
       await tester.pumpAndSettle();
       expect(
         find.text(
-          'REELHOUSE is a personal media library app for your computer. '
+          'MATINEE is a personal media library app for your computer. '
           'It lets you organize movies and TV shows in one place, with '
           'beautiful metadata like posters and descriptions. You can also '
           'save copies of your files for offline playback.',
@@ -130,11 +130,11 @@ void main() {
       );
 
       // Collapse
-      await tester.tap(find.text('What is REELHOUSE?'));
+      await tester.tap(find.text('What is MATINEE?'));
       await tester.pumpAndSettle();
       expect(
         find.text(
-          'REELHOUSE is a personal media library app for your computer. '
+          'MATINEE is a personal media library app for your computer. '
           'It lets you organize movies and TV shows in one place, with '
           'beautiful metadata like posters and descriptions. You can also '
           'save copies of your files for offline playback.',
@@ -169,7 +169,7 @@ void main() {
       await tester.pumpWidget(buildTestable());
 
       // Expand first
-      await tester.tap(find.text('What is REELHOUSE?'));
+      await tester.tap(find.text('What is MATINEE?'));
       await tester.pumpAndSettle();
 
       // Expand TMDB question
@@ -181,7 +181,7 @@ void main() {
       // Both answers should be visible
       expect(
         find.text(
-          'REELHOUSE is a personal media library app for your computer. '
+          'MATINEE is a personal media library app for your computer. '
           'It lets you organize movies and TV shows in one place, with '
           'beautiful metadata like posters and descriptions. You can also '
           'save copies of your files for offline playback.',
@@ -190,7 +190,7 @@ void main() {
       );
       expect(
         find.text(
-          'REELHOUSE looks up titles on TMDB (The Movie Database), a free '
+          'MATINEE looks up titles on TMDB (The Movie Database), a free '
           'online database of movies and TV shows. If you enable TMDB in '
           'Settings, the app will automatically fetch posters, descriptions, '
           'ratings, and episode details for your media.',

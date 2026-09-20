@@ -135,7 +135,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         ),
         content: Text(
           'This movie is located on "${storageName ?? 'an external drive'}".\n\n'
-          'Please connect the storage disk to this device. REELHOUSE will automatically recognize it without re-importing.',
+          'Please connect the storage disk to this device. MATINEE will automatically recognize it without re-importing.',
           style: TextStyle(
             color: tokens.textSecondary,
             fontSize: 14,

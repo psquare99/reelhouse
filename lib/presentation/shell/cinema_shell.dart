@@ -411,7 +411,7 @@ class _CollapsibleCinemaRail extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'REELHOUSE',
+                              'MATINEE',
                               style: TextStyle(
                                 color: tokens.accent,
                                 fontSize: 12,

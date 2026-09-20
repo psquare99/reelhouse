@@ -50,7 +50,7 @@ class _ExportBackupDialogState extends State<ExportBackupDialog> {
 
     try {
       final path = await _filePickerService.saveBackupFile(
-        dialogTitle: 'Save REELHOUSE Backup',
+        dialogTitle: 'Save MATINEE Backup',
         suggestedFileName: _generateSuggestedFilename(),
       );
       if (!mounted) return;
@@ -126,7 +126,7 @@ class _ExportBackupDialogState extends State<ExportBackupDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Create a versioned, portable backup of your REELHOUSE catalogue, custom collections, and watch states.',
+              'Create a versioned, portable backup of your MATINEE catalogue, custom collections, and watch states.',
               style: TextStyle(color: theme.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 12),
@@ -278,7 +278,7 @@ class _ExportBackupDialogState extends State<ExportBackupDialog> {
                     await _executeExport(_selectedPath!);
                   } else {
                     final path = await _filePickerService.saveBackupFile(
-                      dialogTitle: 'Save REELHOUSE Backup',
+                      dialogTitle: 'Save MATINEE Backup',
                       suggestedFileName: _generateSuggestedFilename(),
                     );
                     if (path != null && path.trim().isNotEmpty && mounted) {
@@ -345,7 +345,7 @@ class _ImportBackupDialogState extends State<ImportBackupDialog> {
 
     try {
       final path = await _filePickerService.pickBackupFile(
-        dialogTitle: 'Select REELHOUSE Backup File',
+        dialogTitle: 'Select MATINEE Backup File',
       );
       if (!mounted) return;
 
@@ -459,7 +459,7 @@ class _ImportBackupDialogState extends State<ImportBackupDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Select a REELHOUSE backup to restore.',
+              'Select a MATINEE backup to restore.',
               style: TextStyle(color: theme.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 14),

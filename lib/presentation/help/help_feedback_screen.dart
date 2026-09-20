@@ -6,7 +6,7 @@ import '../widgets/feedback_dialog.dart';
 
 /// A help center with FAQ accordion and a Send Feedback entry point.
 ///
-/// This screen answers common user questions about REELHOUSE and provides
+/// This screen answers common user questions about MATINEE and provides
 /// a single entry to the existing FeedbackDialog.
 class HelpFeedbackScreen extends StatelessWidget {
   const HelpFeedbackScreen({super.key, required this.feedbackService});
@@ -67,9 +67,9 @@ const List<_FaqSectionData> _faqSections = [
     title: 'Getting Started',
     items: [
       _FaqItemData(
-        question: 'What is REELHOUSE?',
+        question: 'What is MATINEE?',
         answer:
-            'REELHOUSE is a personal media library app for your computer. '
+            'MATINEE is a personal media library app for your computer. '
             'It lets you organize movies and TV shows in one place, with '
             'beautiful metadata like posters and descriptions. You can also '
             'save copies of your files for offline playback.',
@@ -79,7 +79,7 @@ const List<_FaqSectionData> _faqSections = [
         answer:
             'Go to Settings > Storage Locations and click "Add Storage" to '
             'choose a folder on your computer that contains your video files. '
-            'REELHOUSE will scan the folder and add everything it finds to '
+            'MATINEE will scan the folder and add everything it finds to '
             'your library.',
       ),
       _FaqItemData(
@@ -97,7 +97,7 @@ const List<_FaqSectionData> _faqSections = [
       _FaqItemData(
         question: 'Where do movie and TV show details come from?',
         answer:
-            'REELHOUSE looks up titles on TMDB (The Movie Database), a free '
+            'MATINEE looks up titles on TMDB (The Movie Database), a free '
             'online database of movies and TV shows. If you enable TMDB in '
             'Settings, the app will automatically fetch posters, descriptions, '
             'ratings, and episode details for your media.',
@@ -119,7 +119,7 @@ const List<_FaqSectionData> _faqSections = [
         question: 'Can I watch videos offline?',
         answer:
             'Yes. When you click the download button on a movie or episode, '
-            'REELHOUSE saves a copy of the file to the offline storage folder '
+            'MATINEE saves a copy of the file to the offline storage folder '
             'you configured in Settings > Offline Storage. You can then watch '
             'it without accessing the original file. These are copies, not '
             'moves — your original files stay where they are.',
@@ -127,7 +127,7 @@ const List<_FaqSectionData> _faqSections = [
       _FaqItemData(
         question: 'What video formats are supported?',
         answer:
-            'REELHOUSE plays most common video formats, including MP4, MKV, '
+            'MATINEE plays most common video formats, including MP4, MKV, '
             'AVI, MOV, and WebM. The exact list depends on your system. If a '
             'file does not play, it may use a codec that is not available on '
             'your computer.',
@@ -142,7 +142,7 @@ const List<_FaqSectionData> _faqSections = [
         answer:
             'Yes. You can add as many folders as you need in Settings > Storage '
             'Locations. You can even connect to network drives or shared folders. '
-            'REELHOUSE keeps track of which files live in which locations.',
+            'MATINEE keeps track of which files live in which locations.',
       ),
       _FaqItemData(
         question: 'How do I back up my library data?',
@@ -158,7 +158,7 @@ const List<_FaqSectionData> _faqSections = [
             'If some of your files were not automatically matched to a movie '
             'or TV show, you can click "Identify Unmatched Media" in Settings > '
             'TMDB. This lets you search for a title and link it to a file that '
-            'REELHOUSE could not identify.',
+            'MATINEE could not identify.',
       ),
     ],
   ),

@@ -115,7 +115,7 @@ export async function handleFeedbackRequest(
 
   const toEmail = env.FEEDBACK_TO_EMAIL || 'prateekpal99@gmail.com';
   const fromEmail =
-    env.FEEDBACK_FROM_EMAIL || 'REELHOUSE Feedback <feedback@thelongwayhome.dev>';
+    env.FEEDBACK_FROM_EMAIL || 'MATINEE Feedback <feedback@thelongwayhome.dev>';
 
   const subject = formatEmailSubject(feedbackData);
   const bodyText = formatEmailBody(feedbackData);

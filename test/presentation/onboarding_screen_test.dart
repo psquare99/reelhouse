@@ -197,7 +197,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('Welcome to REELHOUSE'), findsOneWidget);
+      expect(find.text('Welcome to MATINEE'), findsOneWidget);
       expect(find.text('Your personal digital cinema.'), findsOneWidget);
       expect(find.text('Continue'), findsOneWidget);
 
@@ -206,7 +206,7 @@ void main() {
 
       // Should now be on Step 2 (Profile Setup)
       expect(find.text('Your Profile'), findsOneWidget);
-      expect(find.text('How should REELHOUSE greet you?'), findsOneWidget);
+      expect(find.text('How should MATINEE greet you?'), findsOneWidget);
       expect(find.byType(TextField), findsOneWidget);
     });
 
@@ -253,7 +253,7 @@ void main() {
         );
 
         // Should now be on Step 3 (TMDB)
-        expect(find.text('Connect REELHOUSE to TMDB'), findsOneWidget);
+        expect(find.text('Connect MATINEE to TMDB'), findsOneWidget);
       },
     );
 
@@ -272,7 +272,7 @@ void main() {
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Connect REELHOUSE to TMDB'), findsOneWidget);
+      expect(find.text('Connect MATINEE to TMDB'), findsOneWidget);
       expect(find.text('I Have an API Key'), findsOneWidget);
       expect(find.text('Skip for Now'), findsOneWidget);
 

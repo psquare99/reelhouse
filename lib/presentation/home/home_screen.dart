@@ -209,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'REELHOUSE',
+                'MATINEE',
                 style: CinemaTheme.eyebrow(context, fontSize: 13),
               ),
               const SizedBox(height: 2),
@@ -539,7 +539,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Fallback: Themed neutral cinema surface
         return _HeroCard(
-          eyebrow: 'REELHOUSE CINEMA',
+          eyebrow: 'MATINEE CINEMA',
           title: 'Your Personal Digital Cinema',
           subtitle:
               'Permanent catalogue preserved across all your storage disks.',

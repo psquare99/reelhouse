@@ -6,7 +6,7 @@ import 'parsed_media_info.dart';
 class FilenameParser {
   const FilenameParser();
 
-  /// Supported video file extensions in REELHOUSE.
+  /// Supported video file extensions in MATINEE.
   static const Set<String> supportedExtensions = {
     'mkv',
     'mp4',

@@ -1,4 +1,4 @@
-/// Represents the physical availability state of a logical media item in REELHOUSE.
+/// Represents the physical availability state of a logical media item in MATINEE.
 ///
 /// Availability is source-aware and dynamically computed from all physical
 /// [MediaSource] records associated with a Movie or TV Episode.

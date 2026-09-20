@@ -1,6 +1,6 @@
 import '../models/library_backup_models.dart';
 
-/// Application domain service for exporting and importing versioned REELHOUSE library backups.
+/// Application domain service for exporting and importing versioned MATINEE library backups.
 ///
 /// Implements RC.1 requirements:
 /// - Portable versioned JSON representation of logical library data.

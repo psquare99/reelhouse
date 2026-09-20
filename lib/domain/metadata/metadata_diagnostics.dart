@@ -2,7 +2,7 @@
 ///
 /// Distinguishes between:
 /// - "The provider doesn't know this title" (providerUnknownTitle)
-/// - "REELHOUSE failed to identify or match the title" (matchingAmbiguity, parsingError)
+/// - "MATINEE failed to identify or match the title" (matchingAmbiguity, parsingError)
 /// - Infrastructure issues (network, rate limit, missing key)
 enum MetadataFailureCategory {
   /// The upstream provider has no record of this title or year query.
@@ -11,7 +11,7 @@ enum MetadataFailureCategory {
 
   /// Candidates were returned by the provider, but confidence was below the
   /// 0.85 safety threshold, or multiple remakes produced ambiguous scores.
-  /// ("REELHOUSE failed to disambiguate the title")
+  /// ("MATINEE failed to disambiguate the title")
   matchingAmbiguity,
 
   /// The local filename heuristic parser could not extract a reliable title or year.
@@ -56,7 +56,7 @@ class MetadataDiagnostic {
   bool get isProviderUnknown =>
       category == MetadataFailureCategory.providerUnknownTitle;
 
-  /// True if the upstream provider had candidates, but REELHOUSE confidence scoring
+  /// True if the upstream provider had candidates, but MATINEE confidence scoring
   /// safely rejected an automatic match to protect catalogue integrity.
   bool get isReelhouseMatchingFailure =>
       category == MetadataFailureCategory.matchingAmbiguity ||

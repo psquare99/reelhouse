@@ -14,12 +14,12 @@ enum SortDirection {
 /// Null ordering policy for deterministic sorting when metadata fields may be null.
 ///
 /// Section 12:
-/// - Default REELHOUSE rule: NULL values appear last in both ASC and DESC order.
+/// - Default MATINEE rule: NULL values appear last in both ASC and DESC order.
 enum NullsOrder {
   /// Null values appear at the beginning of the result set.
   first,
 
-  /// Null values appear at the end of the result set (default REELHOUSE policy).
+  /// Null values appear at the end of the result set (default MATINEE policy).
   last;
 
   bool get isFirst => this == NullsOrder.first;

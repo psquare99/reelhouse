@@ -1,9 +1,9 @@
-/// The category of a storage location registered with REELHOUSE.
+/// The category of a storage location registered with MATINEE.
 enum StorageType {
   /// External removable storage (USB HDD, USB-OTG drive, SD card).
   removableVolume,
 
-  /// Internal device storage dedicated to REELHOUSE application-managed offline media.
+  /// Internal device storage dedicated to MATINEE application-managed offline media.
   deviceLocalStorage,
 
   /// Network-attached share (SMB/NFS/CIFS mount).

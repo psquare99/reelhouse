@@ -10,9 +10,9 @@ export function formatEmailSubject(data: FeedbackRequest): string {
 
   const cleanSubject = data.subject?.trim();
   if (cleanSubject && cleanSubject.length > 0) {
-    return `[REELHOUSE]${categoryTag} ${cleanSubject}`;
+    return `[MATINEE]${categoryTag} ${cleanSubject}`;
   }
-  return `[REELHOUSE]${categoryTag} Feedback`;
+  return `[MATINEE]${categoryTag} Feedback`;
 }
 
 export function formatEmailBody(data: FeedbackRequest): string {
@@ -30,8 +30,8 @@ export function formatEmailBody(data: FeedbackRequest): string {
   if (data.diagnostics) {
     const version = data.diagnostics.appVersion.trim() || 'Unknown';
     const platform = data.diagnostics.platform.trim() || 'Unknown';
-    diagnosticsBlock = `Diagnostics:\nREELHOUSE ${version}\nPlatform: ${platform}`;
+    diagnosticsBlock = `Diagnostics:\nMATINEE ${version}\nPlatform: ${platform}`;
   }
 
-  return `REELHOUSE Feedback\n────────────────────────\n\nCategory:\n${categoryName}\n\nSubject:\n${subjectLine}\n\nMessage:\n${cleanMessage}\n\n────────────────────────\n\n${diagnosticsBlock}\n`;
+  return `MATINEE Feedback\n────────────────────────\n\nCategory:\n${categoryName}\n\nSubject:\n${subjectLine}\n\nMessage:\n${cleanMessage}\n\n────────────────────────\n\n${diagnosticsBlock}\n`;
 }

@@ -1,4 +1,4 @@
-/// Supported feedback categories for REELHOUSE.
+/// Supported feedback categories for MATINEE.
 enum FeedbackCategory {
   /// Bug report.
   bug,
@@ -128,9 +128,9 @@ class FeedbackPayload {
   String formatSubject() {
     final cleanSubject = subject?.trim();
     if (cleanSubject != null && cleanSubject.isNotEmpty) {
-      return '[REELHOUSE]${category.subjectTag} $cleanSubject';
+      return '[MATINEE]${category.subjectTag} $cleanSubject';
     }
-    return '[REELHOUSE]${category.subjectTag} Feedback';
+    return '[MATINEE]${category.subjectTag} Feedback';
   }
 
   /// Formats the plain-text feedback body including optional diagnostic block.
@@ -148,7 +148,7 @@ class FeedbackPayload {
     if (includeDiagnostics) {
       buffer.writeln('---');
       buffer.writeln('Diagnostics:');
-      buffer.writeln('REELHOUSE $appVersion');
+      buffer.writeln('MATINEE $appVersion');
       buffer.writeln('Platform: $platformName');
       buffer.writeln('---');
     } else {

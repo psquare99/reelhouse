@@ -145,7 +145,7 @@ class AppDatabase extends _$AppDatabase {
     storages,
   )..where((s) => s.filesystemIdentifier.equals(identifier))).getSingleOrNull();
 
-  /// Find the registered REELHOUSE application-managed device storage record.
+  /// Find the registered MATINEE application-managed device storage record.
   Future<Storage?> getDeviceStorage() =>
       (select(storages)
             ..where((s) => s.storageType.equals('DEVICE_LOCAL_STORAGE')))
@@ -160,7 +160,7 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
-  /// Removes a storage location from REELHOUSE and performs full transactional catalogue cleanup:
+  /// Removes a storage location from MATINEE and performs full transactional catalogue cleanup:
   /// 1. Verifies storage is not DEVICE_LOCAL_STORAGE.
   /// 2. Deletes associated TransferJobs for the media sources or destination.
   /// 3. Deletes associated MediaSources on this storage.

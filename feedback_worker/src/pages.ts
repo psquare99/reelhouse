@@ -6,7 +6,7 @@ export const PRIVACY_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>REELHOUSE — Privacy Policy</title>
+  <title>MATINEE — Privacy Policy</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.7; color: #e0e0e0; background: #0d0d0d; margin: 0; padding: 0; }
     .container { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
@@ -25,11 +25,11 @@ export const PRIVACY_HTML = `<!DOCTYPE html>
     <h1>Privacy Policy</h1>
     <p class="updated">Last updated: September 2026</p>
 
-    <h2>1. What REELHOUSE Is</h2>
-    <p><span class="brand">REELHOUSE</span> is a personal digital cinema application for organising and discovering your movie and TV collection. It runs entirely on your local device.</p>
+    <h2>1. What MATINEE Is</h2>
+    <p><span class="brand">MATINEE</span> is a personal digital cinema application for organising and discovering your movie and TV collection. It runs entirely on your local device.</p>
 
     <h2>2. Data Stored on Your Device</h2>
-    <p>REELHOUSE stores the following data locally on your device only:</p>
+    <p>MATINEE stores the following data locally on your device only:</p>
     <ul>
       <li>Movie and TV show metadata (titles, descriptions, ratings, artwork URLs)</li>
       <li>Your media library structure (files, folders, storage associations)</li>
@@ -41,7 +41,7 @@ export const PRIVACY_HTML = `<!DOCTYPE html>
     <p>This data never leaves your device except as described in the sections below.</p>
 
     <h2>3. External Metadata Services</h2>
-    <p>When you choose to look up or refresh metadata for your media, REELHOUSE sends search queries to:</p>
+    <p>When you choose to look up or refresh metadata for your media, MATINEE sends search queries to:</p>
     <ul>
       <li><strong>TMDB (api.themoviedb.org)</strong> — primary metadata source</li>
       <li><strong>TVMaze (api.tvmaze.com)</strong> — fallback metadata source</li>
@@ -50,7 +50,7 @@ export const PRIVACY_HTML = `<!DOCTYPE html>
     <p>These requests include only the search query (e.g. a movie title) and your TMDB API key. No personal data, media files, or library contents are transmitted to these services.</p>
 
     <h2>4. Feedback</h2>
-    <p>When you submit feedback, REELHOUSE sends only the following to our feedback endpoint:</p>
+    <p>When you submit feedback, MATINEE sends only the following to our feedback endpoint:</p>
     <ul>
       <li>Feedback category (bug, suggestion, or general)</li>
       <li>Subject and message you type</li>
@@ -58,20 +58,20 @@ export const PRIVACY_HTML = `<!DOCTYPE html>
     </ul>
     <p>No media files, personal files, library contents, API credentials, or device-identifying information is included with feedback submissions.</p>
 
-    <h2>5. What REELHOUSE Does Not Do</h2>
+    <h2>5. What MATINEE Does Not Do</h2>
     <ul>
-      <li>REELHOUSE does not collect analytics, telemetry, or crash reports.</li>
-      <li>REELHOUSE does not use tracking cookies or fingerprinting.</li>
-      <li>REELHOUSE does not require user accounts or online authentication.</li>
-      <li>REELHOUSE does not sync your library to any cloud service.</li>
-      <li>REELHOUSE does not upload, stream, or share your media files.</li>
+      <li>MATINEE does not collect analytics, telemetry, or crash reports.</li>
+      <li>MATINEE does not use tracking cookies or fingerprinting.</li>
+      <li>MATINEE does not require user accounts or online authentication.</li>
+      <li>MATINEE does not sync your library to any cloud service.</li>
+      <li>MATINEE does not upload, stream, or share your media files.</li>
     </ul>
 
     <h2>6. Backups</h2>
-    <p>Library backups created by REELHOUSE exclude your TMDB API key and other credentials. Backups may contain relative file paths to your media, but these paths are only useful on your own devices.</p>
+    <p>Library backups created by MATINEE exclude your TMDB API key and other credentials. Backups may contain relative file paths to your media, but these paths are only useful on your own devices.</p>
 
     <h2>7. Children's Privacy</h2>
-    <p>REELHOUSE is not directed at children under 13. It does not knowingly collect information from children.</p>
+    <p>MATINEE is not directed at children under 13. It does not knowingly collect information from children.</p>
 
     <h2>8. Changes to This Policy</h2>
     <p>If this privacy policy changes, the updated version will be available at this URL. The app will link to the current version from the About section.</p>
@@ -87,7 +87,7 @@ export const MEDIA_RESPONSIBILITY_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>REELHOUSE — Media, Copyright &amp; User Responsibility</title>
+  <title>MATINEE — Media, Copyright &amp; User Responsibility</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.7; color: #e0e0e0; background: #0d0d0d; margin: 0; padding: 0; }
     .container { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
@@ -107,32 +107,32 @@ export const MEDIA_RESPONSIBILITY_HTML = `<!DOCTYPE html>
     <h1>Media, Copyright &amp; User Responsibility</h1>
     <p class="updated">Last updated: September 2026</p>
 
-    <h2>1. What REELHOUSE Is</h2>
-    <p><span class="brand">REELHOUSE</span> is a personal media library organiser. It helps you catalogue, browse, and manage the movies and TV shows you already own on your local devices and storage.</p>
+    <h2>1. What MATINEE Is</h2>
+    <p><span class="brand">MATINEE</span> is a personal media library organiser. It helps you catalogue, browse, and manage the movies and TV shows you already own on your local devices and storage.</p>
 
     <div class="notice">
-      <strong>REELHOUSE does not provide, sell, host, stream, or distribute any media content.</strong> All media in your REELHOUSE library comes from your own local storage.
+      <strong>MATINEE does not provide, sell, host, stream, or distribute any media content.</strong> All media in your MATINEE library comes from your own local storage.
     </div>
 
     <h2>2. Your Media Is Your Responsibility</h2>
-    <p>You are solely responsible for the media files you add to your REELHOUSE library. This includes:</p>
+    <p>You are solely responsible for the media files you add to your MATINEE library. This includes:</p>
     <ul>
       <li>Ensuring you have the legal right to possess and view each media file</li>
       <li>Complying with all applicable copyright and intellectual-property laws in your jurisdiction</li>
-      <li>Understanding that REELHOUSE is a management tool — it does not grant any rights to media content</li>
+      <li>Understanding that MATINEE is a management tool — it does not grant any rights to media content</li>
     </ul>
 
     <h2>3. No Piracy Facilitation</h2>
-    <p>REELHOUSE is designed exclusively for managing media you legally own or have the right to access. It does not facilitate, encourage, or enable piracy or copyright infringement. REELHOUSE does not search for, download, or provide access to unlicensed media content.</p>
+    <p>MATINEE is designed exclusively for managing media you legally own or have the right to access. It does not facilitate, encourage, or enable piracy or copyright infringement. MATINEE does not search for, download, or provide access to unlicensed media content.</p>
 
     <h2>4. Metadata and Third-Party Content</h2>
-    <p>REELHOUSE retrieves metadata (titles, descriptions, ratings, artwork) from The Movie Database (TMDB) and related services. This metadata is used solely to enrich your library catalogue. All artwork and metadata remain the property of their respective owners and are used under the terms of each service.</p>
+    <p>MATINEE retrieves metadata (titles, descriptions, ratings, artwork) from The Movie Database (TMDB) and related services. This metadata is used solely to enrich your library catalogue. All artwork and metadata remain the property of their respective owners and are used under the terms of each service.</p>
 
     <h2>5. TMDB Attribution</h2>
     <p>This product uses the TMDB API but is not endorsed or certified by TMDB. TMDB metadata and artwork are used in accordance with the TMDB API terms of use.</p>
 
     <h2>6. No Warranty</h2>
-    <p>REELHOUSE is provided as-is for personal library management. The developers make no claims about the legality of any specific use of the application and are not responsible for how users choose to use it.</p>
+    <p>MATINEE is provided as-is for personal library management. The developers make no claims about the legality of any specific use of the application and are not responsible for how users choose to use it.</p>
 
     <h2>7. Contact</h2>
     <p>For questions about this notice, contact us at <a href="mailto:feedback@thelongwayhome.dev">feedback@thelongwayhome.dev</a>.</p>

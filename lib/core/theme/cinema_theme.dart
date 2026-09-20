@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'cinema_colors.dart';
 
-/// Semantic token data extension for REELHOUSE themes.
+/// Semantic token data extension for MATINEE themes.
 ///
-/// Contains all 14 Layer-3 semantic tokens defined in REELHOUSE UI & Theme System:
+/// Contains all 14 Layer-3 semantic tokens defined in MATINEE UI & Theme System:
 /// - `background`, `surface1`, `surface2`
 /// - `border`, `borderStrong`
 /// - `textPrimary`, `textSecondary`, `textMuted`
@@ -155,7 +155,7 @@ class CinemaThemeData extends ThemeExtension<CinemaThemeData> {
   }
 }
 
-/// Cinematic theme system for REELHOUSE: Personal Digital Cinema.
+/// Cinematic theme system for MATINEE: Personal Digital Cinema.
 ///
 /// Implements token-based ThemeData for both Screening Room (Dark) and Gallery Linen (Light)
 /// with typography, component shapes, flat elevations, and dynamic theme extensions.

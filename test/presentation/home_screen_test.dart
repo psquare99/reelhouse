@@ -228,7 +228,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('REELHOUSE'), findsOneWidget);
+    expect(find.text('MATINEE'), findsOneWidget);
     expect(find.text('Personal Digital Cinema'), findsOneWidget);
     expect(find.text('EXPLORE CINEMA'), findsOneWidget);
     expect(find.text('Movies'), findsOneWidget);
@@ -531,7 +531,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('REELHOUSE'), findsOneWidget);
+    expect(find.text('MATINEE'), findsOneWidget);
     expect(find.text('Severance'), findsWidgets);
 
     await tester.pumpWidget(const SizedBox());

@@ -332,7 +332,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 10),
             _buildGuideStep(
               '4',
-              'Copy your API Key (v3 auth) or API Read Access Token and paste it into REELHOUSE.',
+              'Copy your API Key (v3 auth) or API Read Access Token and paste it into MATINEE.',
               theme,
             ),
           ],
@@ -455,7 +455,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              'REELHOUSE uses The Movie Database (TMDB) to identify your movies and TV shows and load official posters, backdrops, and details.',
+              'MATINEE uses The Movie Database (TMDB) to identify your movies and TV shows and load official posters, backdrops, and details.',
               style: TextStyle(color: theme.textMuted, fontSize: 12),
             ),
             const SizedBox(height: 16),
@@ -934,7 +934,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Are you sure you want to remove "${storage.name}" (${storage.rootUri}) from REELHOUSE?',
+              'Are you sure you want to remove "${storage.name}" (${storage.rootUri}) from MATINEE?',
               style: TextStyle(color: theme.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 16),
@@ -2123,7 +2123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'REELHOUSE',
+                              'MATINEE',
                               style: TextStyle(
                                 color: theme.textPrimary,
                                 fontSize: 18,
@@ -2194,7 +2194,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'REELHOUSE is built with these open-source packages:',
+                    'MATINEE is built with these open-source packages:',
                     style: TextStyle(color: theme.textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 8),

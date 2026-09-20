@@ -134,7 +134,7 @@ class ReelhouseApp extends StatelessWidget {
       builder: (context, _) {
         final currentMode = settingsService?.themeMode ?? ThemeMode.dark;
         return MaterialApp(
-          title: 'REELHOUSE',
+          title: 'MATINEE',
           debugShowCheckedModeBanner: false,
           theme: CinemaTheme.lightTheme,
           darkTheme: CinemaTheme.darkTheme,

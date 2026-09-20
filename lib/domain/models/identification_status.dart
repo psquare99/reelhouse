@@ -1,4 +1,4 @@
-/// Durable identification state of a logical media item in REELHOUSE.
+/// Durable identification state of a logical media item in MATINEE.
 ///
 /// Discovered filesystem names are discovery hints, NOT canonical media identity.
 /// Network/provider failures are operational failures, not durable identity states.

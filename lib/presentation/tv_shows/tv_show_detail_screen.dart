@@ -138,7 +138,7 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
         ),
         content: Text(
           'Episodes for this show are stored on "${storageName ?? 'an external drive'}".\n\n'
-          'Please connect the storage disk to this device. REELHOUSE will automatically recognize it.',
+          'Please connect the storage disk to this device. MATINEE will automatically recognize it.',
           style: TextStyle(
             color: tokens.textSecondary,
             fontSize: 14,

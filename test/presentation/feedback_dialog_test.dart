@@ -87,11 +87,11 @@ void main() {
         find.text('Include non-sensitive diagnostic info'),
         findsOneWidget,
       );
-      expect(find.text('REELHOUSE v1.0.0 • Platform: TestOS'), findsOneWidget);
+      expect(find.text('MATINEE v1.0.0 • Platform: TestOS'), findsOneWidget);
       expect(
         find.text(
           'Your feedback is sent only when you choose to submit it. '
-          'REELHOUSE does not automatically attach your library, media files, TMDB API key, or personal profile data.',
+          'MATINEE does not automatically attach your library, media files, TMDB API key, or personal profile data.',
         ),
         findsOneWidget,
       );
@@ -172,10 +172,7 @@ void main() {
 
       // Verify in-app success screen rendered
       expect(find.text('Feedback sent'), findsOneWidget);
-      expect(
-        find.text('Thanks for helping improve REELHOUSE.'),
-        findsOneWidget,
-      );
+      expect(find.text('Thanks for helping improve MATINEE.'), findsOneWidget);
       expect(find.text('Close'), findsOneWidget);
 
       // Close dialog

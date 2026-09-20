@@ -441,10 +441,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.text('Import Library Backup'), findsOneWidget);
-      expect(
-        find.text('Select a REELHOUSE backup to restore.'),
-        findsOneWidget,
-      );
+      expect(find.text('Select a MATINEE backup to restore.'), findsOneWidget);
       expect(
         find.widgetWithText(OutlinedButton, 'Choose Backup'),
         findsOneWidget,

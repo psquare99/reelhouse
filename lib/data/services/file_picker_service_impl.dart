@@ -22,7 +22,7 @@ class FilePickerServiceImpl implements FilePickerService {
   Future<String?> pickBackupFile({String? dialogTitle}) async {
     try {
       final file = await FilePicker.pickFile(
-        dialogTitle: dialogTitle ?? 'Select REELHOUSE Backup File',
+        dialogTitle: dialogTitle ?? 'Select MATINEE Backup File',
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
@@ -39,7 +39,7 @@ class FilePickerServiceImpl implements FilePickerService {
   }) async {
     try {
       final uri = await FilePicker.saveFile(
-        dialogTitle: dialogTitle ?? 'Save REELHOUSE Backup',
+        dialogTitle: dialogTitle ?? 'Save MATINEE Backup',
         fileName: suggestedFileName ?? 'reelhouse_backup.json',
         type: FileType.custom,
         allowedExtensions: ['json'],

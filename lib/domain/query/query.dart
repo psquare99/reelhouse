@@ -1,4 +1,4 @@
-/// Domain query contracts for REELHOUSE Library Query & Discovery.
+/// Domain query contracts for MATINEE Library Query & Discovery.
 ///
 /// Implements REELHOUSE_LIBRARY_QUERY_DISCOVERY_SPECIFICATION_v1.1.
 library;

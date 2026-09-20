@@ -1,4 +1,4 @@
-/// Abstract contract for managing REELHOUSE application-managed offline media storage.
+/// Abstract contract for managing MATINEE application-managed offline media storage.
 ///
 /// Hides platform filesystem and app directory differences (e.g. `getExternalFilesDir`
 /// on Android vs AppData / Application Support on Desktop).
@@ -12,7 +12,7 @@ abstract class LocalStorageManager {
   /// Returns the total capacity of the host device storage in bytes.
   Future<int> getTotalDeviceStorageBytes();
 
-  /// Returns the total bytes consumed by REELHOUSE offline media on this device.
+  /// Returns the total bytes consumed by MATINEE offline media on this device.
   Future<int> getUsedOfflineStorageBytes();
 
   /// Resolves the absolute local path for a given relative media path.

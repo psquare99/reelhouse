@@ -1,6 +1,6 @@
 import '../models/device_storage_destination.dart';
 
-/// Abstract service contract for managing REELHOUSE application-managed device storage.
+/// Abstract service contract for managing MATINEE application-managed device storage.
 ///
 /// Implements M5.1 Device Storage Foundation:
 /// - Provides a dedicated boundary for discovering and resolving the device storage destination.
@@ -18,7 +18,7 @@ abstract class DeviceStorageService {
   /// - [DeviceStorageResolutionStatus.notRegistered]
   Future<DeviceStorageResolution> resolveDestination();
 
-  /// Ensures that the default REELHOUSE-managed device destination is registered persistently.
+  /// Ensures that the default MATINEE-managed device destination is registered persistently.
   ///
   /// If already registered, returns the resolved destination. If not, establishes the default
   /// platform-appropriate directory, ensures it exists on disk, and records it in the database.

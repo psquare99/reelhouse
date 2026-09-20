@@ -9,7 +9,7 @@ const String kCurrentBackupAppVersion = '1.0.0';
 /// Supported schema version (matching Drift database schema version).
 const int kCurrentBackupSchemaVersion = 6;
 
-/// Versioned, portable envelope containing exported REELHOUSE logical library data.
+/// Versioned, portable envelope containing exported MATINEE logical library data.
 ///
 /// Pure logical representation: Contains zero physical filesystem paths, zero
 /// MediaSource entries, zero credentials/API keys, and zero binary media bytes.

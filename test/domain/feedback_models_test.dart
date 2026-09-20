@@ -28,16 +28,13 @@ void main() {
         subject: 'Player crash',
         message: 'Something went wrong',
       );
-      expect(pWithSubject.formatSubject(), '[REELHOUSE][Bug] Player crash');
+      expect(pWithSubject.formatSubject(), '[MATINEE][Bug] Player crash');
 
       const pWithoutSubject = FeedbackPayload(
         category: FeedbackCategory.improvement,
         message: 'Add subtitles search',
       );
-      expect(
-        pWithoutSubject.formatSubject(),
-        '[REELHOUSE][Suggestion] Feedback',
-      );
+      expect(pWithoutSubject.formatSubject(), '[MATINEE][Suggestion] Feedback');
     });
 
     test('formats body with message and non-sensitive diagnostic context', () {
@@ -58,10 +55,7 @@ void main() {
         body,
         contains('Message:\nSubtitles are 2 seconds ahead of video playback.'),
       );
-      expect(
-        body,
-        contains('Diagnostics:\nREELHOUSE 1.0.0\nPlatform: Windows'),
-      );
+      expect(body, contains('Diagnostics:\nMATINEE 1.0.0\nPlatform: Windows'));
     });
 
     test('formats body when diagnostics are omitted', () {

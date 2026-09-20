@@ -242,7 +242,7 @@ class PlaybackLauncherService {
               errorMessage:
                   'VLC Media Player was not found on this system.\n\n'
                   'Please install VLC Media Player or switch your player preference to '
-                  '"System Default Player" in REELHOUSE Settings.',
+                  '"System Default Player" in MATINEE Settings.',
             );
           }
         }

@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Manages application-level user preferences and settings for REELHOUSE.
+/// Manages application-level user preferences and settings for MATINEE.
 ///
 /// Implements persistent settings storage for:
 /// - TMDB API key (with environment variable fallback)

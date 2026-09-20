@@ -2,4 +2,4 @@
 # Copy to .dev.vars (which is gitignored) and add your test Resend API key
 RESEND_API_KEY=re_123456789_abcdef
 FEEDBACK_TO_EMAIL=developer@example.com
-FEEDBACK_FROM_EMAIL=REELHOUSE Feedback <onboarding@resend.dev>
+FEEDBACK_FROM_EMAIL=MATINEE Feedback <onboarding@resend.dev>

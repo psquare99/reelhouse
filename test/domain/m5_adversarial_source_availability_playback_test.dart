@@ -424,7 +424,7 @@ void main() {
         (s) => s.sourceType == 'localDevice',
       );
 
-      // Delete physical file manually behind REELHOUSE's back
+      // Delete physical file manually behind MATINEE's back
       final physicalFile = File(
         p.join(deviceDir.path, localSource.relativePath),
       );

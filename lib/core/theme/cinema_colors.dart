@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'cinema_theme.dart';
 
-/// 3-Layer Token Palette for REELHOUSE: Personal Digital Cinema.
+/// 3-Layer Token Palette for MATINEE: Personal Digital Cinema.
 ///
-/// Follows REELHOUSE UI & Theme System Specification:
+/// Follows MATINEE UI & Theme System Specification:
 /// - Layer 1 (Palette): Raw hex definitions.
 /// - Layer 2 (Theme): Screening Room (Dark) and Gallery Linen (Light) mappings.
 /// - Layer 3 (Semantic Roles): Resolved dynamically via `CinemaTheme.of(context)`

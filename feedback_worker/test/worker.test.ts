@@ -12,7 +12,7 @@ describe('Worker Formatter', () => {
       message: 'Posters are blank on the movies tab.',
       diagnostics: { appVersion: '1.0.0', platform: 'Windows' },
     });
-    expect(subject).toBe("[REELHOUSE][Bug] Artwork doesn't load");
+    expect(subject).toBe("[MATINEE][Bug] Artwork doesn't load");
 
     const body = formatEmailBody({
       category: 'bug',
@@ -23,7 +23,7 @@ describe('Worker Formatter', () => {
     expect(body).toContain('Category:\nBug Report');
     expect(body).toContain("Subject:\nArtwork doesn't load");
     expect(body).toContain('Message:\nPosters are blank on the movies tab.');
-    expect(body).toContain('Diagnostics:\nREELHOUSE 1.0.0\nPlatform: Windows');
+    expect(body).toContain('Diagnostics:\nMATINEE 1.0.0\nPlatform: Windows');
   });
 
   it('formats suggestion subject and body correctly', () => {
@@ -33,7 +33,7 @@ describe('Worker Formatter', () => {
       message: 'Would love to filter only unwatched movies.',
       diagnostics: null,
     });
-    expect(subject).toBe('[REELHOUSE][Suggestion] Add watched filter');
+    expect(subject).toBe('[MATINEE][Suggestion] Add watched filter');
 
     const body = formatEmailBody({
       category: 'suggestion',
@@ -50,7 +50,7 @@ describe('Worker Formatter', () => {
       category: 'general',
       message: 'Love the app!',
     });
-    expect(subject).toBe('[REELHOUSE][General] Feedback');
+    expect(subject).toBe('[MATINEE][General] Feedback');
   });
 });
 
@@ -142,7 +142,7 @@ describe('Worker HTTP Handler', () => {
   const defaultEnv: Env = {
     RESEND_API_KEY: 're_test_key_123',
     FEEDBACK_TO_EMAIL: 'dev@reelhouse.app',
-    FEEDBACK_FROM_EMAIL: 'REELHOUSE <feedback@thelongwayhome.dev>',
+    FEEDBACK_FROM_EMAIL: 'MATINEE <feedback@thelongwayhome.dev>',
   };
 
   it('handles CORS OPTIONS preflight', async () => {
@@ -228,7 +228,7 @@ describe('Worker HTTP Handler', () => {
       'Idempotency-Key': 'req-idemp-12345',
       'X-Entity-Ref-ID': 'req-idemp-12345',
     });
-    expect(capturedBody.subject).toBe('[REELHOUSE][Bug] Player freeze');
+    expect(capturedBody.subject).toBe('[MATINEE][Bug] Player freeze');
     expect(capturedBody.text).toContain('Freezes on play');
     expect(capturedBody.to).toEqual(['dev@reelhouse.app']);
   });
@@ -294,7 +294,7 @@ describe('RC.5B — Legal Pages', () => {
   const defaultEnv: Env = {
     RESEND_API_KEY: 're_test_key_123',
     FEEDBACK_TO_EMAIL: 'dev@reelhouse.app',
-    FEEDBACK_FROM_EMAIL: 'REELHOUSE <feedback@thelongwayhome.dev>',
+    FEEDBACK_FROM_EMAIL: 'MATINEE <feedback@thelongwayhome.dev>',
   };
 
   it('serves Privacy Policy HTML at GET /privacy', async () => {
@@ -306,7 +306,7 @@ describe('RC.5B — Legal Pages', () => {
     expect(res.headers.get('Content-Type')).toContain('text/html');
     const html = await res.text();
     expect(html).toContain('Privacy Policy');
-    expect(html).toContain('REELHOUSE');
+    expect(html).toContain('MATINEE');
     expect(html).toContain('TMDB');
     expect(html).toContain('feedback@thelongwayhome.dev');
   });
@@ -320,7 +320,7 @@ describe('RC.5B — Legal Pages', () => {
     expect(res.headers.get('Content-Type')).toContain('text/html');
     const html = await res.text();
     expect(html).toContain('Media, Copyright');
-    expect(html).toContain('REELHOUSE');
+    expect(html).toContain('MATINEE');
     expect(html).toContain('feedback@thelongwayhome.dev');
   });
 

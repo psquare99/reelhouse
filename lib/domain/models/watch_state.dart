@@ -1,4 +1,4 @@
-/// Represents the user's consumption and playback state of a media item in REELHOUSE.
+/// Represents the user's consumption and playback state of a media item in MATINEE.
 ///
 /// Section 18:
 /// - UNWATCHED: Item has not been started.

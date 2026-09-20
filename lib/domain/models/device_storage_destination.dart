@@ -28,12 +28,12 @@ class StorageCapacity {
 /// Corresponds to Section 5 of the M5 specification:
 /// - Has a stable storage identity (e.g. 'local-device').
 /// - Has a human-readable display name (e.g. 'This Device').
-/// - Has a physical root directory path managed by REELHOUSE.
+/// - Has a physical root directory path managed by MATINEE.
 /// - Exposes total and available capacity where supported by the platform.
 /// - Exposes connectivity/accessibility state.
 /// - Is explicitly marked as application-managed ([isApplicationManaged] == true).
 class DeviceStorageDestination {
-  /// Stable unique identifier for this storage record in REELHOUSE (e.g. 'local-device').
+  /// Stable unique identifier for this storage record in MATINEE (e.g. 'local-device').
   final String id;
 
   /// Human-readable display label (e.g. 'This Device').
@@ -54,7 +54,7 @@ class DeviceStorageDestination {
   /// Whether the destination directory / hosting volume is currently accessible.
   final bool isAccessible;
 
-  /// Always true for REELHOUSE-managed device destinations, distinguishing them from user-managed external disks.
+  /// Always true for MATINEE-managed device destinations, distinguishing them from user-managed external disks.
   final bool isApplicationManaged;
 
   /// Timestamp when the storage destination was last verified or seen.
@@ -104,15 +104,15 @@ class DeviceStorageDestination {
 
 /// Status of resolving the application-managed device storage destination.
 enum DeviceStorageResolutionStatus {
-  /// The destination is registered in REELHOUSE and is currently accessible on the filesystem.
+  /// The destination is registered in MATINEE and is currently accessible on the filesystem.
   registeredAndAccessible,
 
-  /// The destination is registered in REELHOUSE but is currently inaccessible (e.g. missing directory, unmounted volume, permission failure).
+  /// The destination is registered in MATINEE but is currently inaccessible (e.g. missing directory, unmounted volume, permission failure).
   ///
   /// Important invariant: An inaccessible destination is NEVER treated as deleted.
   registeredAndInaccessible,
 
-  /// No application-managed device storage destination has been registered in REELHOUSE.
+  /// No application-managed device storage destination has been registered in MATINEE.
   notRegistered,
 }
 

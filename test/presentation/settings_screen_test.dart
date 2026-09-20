@@ -342,7 +342,7 @@ void main() {
       expect(find.text('ABOUT'), findsOneWidget);
 
       // Verify application identity
-      expect(find.text('REELHOUSE'), findsOneWidget);
+      expect(find.text('MATINEE'), findsOneWidget);
       expect(find.text('Personal Digital Cinema'), findsOneWidget);
 
       // Verify version information

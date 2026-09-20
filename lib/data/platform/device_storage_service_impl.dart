@@ -15,7 +15,7 @@ import 'windows_storage_adapter.dart';
 /// Production implementation of [DeviceStorageService].
 ///
 /// Implements M5.1 Device Storage Foundation:
-/// - Manages persistent registration and resolution of REELHOUSE application-managed device storage.
+/// - Manages persistent registration and resolution of MATINEE application-managed device storage.
 /// - Distinguishes between registered + accessible, registered + inaccessible, and not registered.
 /// - Queries platform capacity (available and total bytes).
 /// - Enforces persistent identity across application restarts.

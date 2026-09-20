@@ -1,15 +1,15 @@
-# REELHOUSE Feedback Worker
+# MATINEE Feedback Worker
 
-Minimal, privacy-preserving Cloudflare Worker endpoint for user-initiated feedback and bug report submissions in REELHOUSE.
+Minimal, privacy-preserving Cloudflare Worker endpoint for user-initiated feedback and bug report submissions in MATINEE.
 
 ## Architecture
 
 ```
-REELHOUSE Flutter App
+MATINEE Flutter App
         ↓ HTTPS POST /v1/feedback
 Cloudflare Worker (Stateless, Rate-Limited)
         ↓ Resend API (Bearer Secret)
-REELHOUSE Developer Feedback Inbox
+MATINEE Developer Feedback Inbox
 ```
 
 - **Stateless**: The worker does not store feedback messages, user data, or identifiers.
@@ -31,7 +31,7 @@ Copy `.dev.vars.example` to `.dev.vars` (gitignored):
 ```ini
 RESEND_API_KEY=re_your_resend_api_key_here
 FEEDBACK_TO_EMAIL=prateekpal99@gmail.com
-FEEDBACK_FROM_EMAIL=REELHOUSE Feedback <feedback@thelongwayhome.dev>
+FEEDBACK_FROM_EMAIL=MATINEE Feedback <feedback@thelongwayhome.dev>
 ```
 
 ### Run Locally
@@ -90,7 +90,7 @@ npx wrangler deploy
 
 After deploying, confirm in the Cloudflare dashboard that the Custom Domain `feedback.thelongwayhome.dev` is attached to this Worker and that Cloudflare is managing the DNS/certificate for it.
 
-### Step 4: Configure REELHOUSE Flutter Application
+### Step 4: Configure MATINEE Flutter Application
 
 The Flutter app defaults to the production endpoint `https://feedback.thelongwayhome.dev/v1/feedback`. This is the only endpoint used by the app, so no additional configuration is required. If you need to point a test build elsewhere, pass a `--dart-define` at build time:
 

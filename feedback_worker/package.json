@@ -1,7 +1,7 @@
 {
   "name": "reelhouse-feedback-worker",
   "version": "1.0.0",
-  "description": "Minimal, privacy-preserving feedback submission Worker for REELHOUSE",
+  "description": "Minimal, privacy-preserving feedback submission Worker for MATINEE",
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",

@@ -42,7 +42,7 @@ class LibraryRepairResult {
       'LibraryRepairResult(correctedMovies: $correctedMoviesCount, convertedExtras: $convertedExtrasCount, unresolved: $unresolvedCount)';
 }
 
-/// Metadata Pipeline orchestrator for REELHOUSE.
+/// Metadata Pipeline orchestrator for MATINEE.
 ///
 /// Implements Sections 13, 14, 15, and 44:
 /// - Fetches candidates from TMDB API with rate-limiting and backoff.
