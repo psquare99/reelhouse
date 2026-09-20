@@ -18,10 +18,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
 
       expect(find.byIcon(Icons.movie_filter_rounded), findsOneWidget);
-      expect(find.text('REELHOUSE'), findsOneWidget);
+      expect(find.text('MATINEE'), findsOneWidget);
       expect(find.text('Personal Digital Cinema'), findsOneWidget);
 
-      // Animation hasn't completed yet (total ~1600ms).
+      // Animation hasn't completed yet (total ~1800ms).
       expect(completed, isFalse);
 
       // Let the animation finish to avoid pending-timer errors on dispose.
@@ -38,7 +38,7 @@ void main() {
         MaterialApp(home: ReelhouseOpening(onComplete: () => completed = true)),
       );
 
-      // Advance past: 200ms initial delay + 1400ms animation = 1600ms.
+      // Advance past: 200ms initial delay + 1600ms animation = 1800ms.
       await tester.pump(const Duration(milliseconds: 2000));
       await tester.pumpAndSettle();
 
@@ -65,7 +65,7 @@ void main() {
         // Before the 600ms hold expires the branded content must be visible.
         expect(completed, isFalse);
         expect(find.byIcon(Icons.movie_filter_rounded), findsOneWidget);
-        expect(find.text('REELHOUSE'), findsOneWidget);
+        expect(find.text('MATINEE'), findsOneWidget);
         expect(find.text('Personal Digital Cinema'), findsOneWidget);
 
         // Now let the 600ms hold fire and complete.
