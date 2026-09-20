@@ -14,7 +14,7 @@ REELHOUSE Developer Feedback Inbox
 
 - **Stateless**: The worker does not store feedback messages, user data, or identifiers.
 - **Privacy-Guaranteed**: Only allowlisted feedback payloads (`category`, `subject`, `message`, non-sensitive `diagnostics`) are accepted. No library data, media files, TMDB credentials, or profile photos can be forwarded.
-- **Abuse Protected**: Cloudflare Workers Rate Limiting binding (10 submissions / 10 min / IP coarse abuse limiter).
+- **Abuse Protected**: Cloudflare Workers Rate Limiting binding limiting feedback submissions to 10 per 60 seconds per IP.
 
 ---
 
@@ -50,42 +50,57 @@ npm run typecheck
 ## 2. Production Deployment & Configuration
 
 ### Prerequisites
-1. A [Cloudflare](https://dash.cloudflare.com/) account with Cloudflare Workers enabled.
-2. A [Resend](https://resend.com/) account with a verified domain (or `onboarding@resend.dev` for testing).
+
+- A Cloudflare account with the Worker configured as a custom domain (see Step 3).
 
 ### Step 1: Set Worker Secrets
-Run Wrangler in the `feedback_worker` directory:
+
+Create the `RESEND_API_KEY` secret (do not commit secrets to source control):
 ```bash
 npx wrangler secret put RESEND_API_KEY
-# Enter your live Resend API key when prompted
+```
+You will be prompted to enter the value. The secret is scoped to your Cloudflare account, not stored in this repository.
+
+### Step 2: Configure Production Env Vars
+
+If the production email recipients differ from the local defaults, set them as Worker environment variables:
+```bash
+npx wrangler secret put FEEDBACK_TO_EMAIL
+npx wrangler secret put FEEDBACK_FROM_EMAIL
 ```
 
-### Step 2: Configure Production Environment Variables
-Edit `wrangler.jsonc` (or pass via Cloudflare dashboard):
-- `FEEDBACK_TO_EMAIL`: The destination developer mailbox (default: `feedback@reelhouse.app`).
-- `FEEDBACK_FROM_EMAIL`: The verified sender address in Resend (e.g., `REELHOUSE Feedback <feedback@yourdomain.com>`).
-
 ### Step 3: Deploy Worker
+
+> **Important**: The **production** endpoint is `https://feedback.thelongwayhome.dev/v1/feedback` and is wired to a Custom Domain. The `*.workers.dev` subdomain is provided by Cloudflare as a secondary convenience URL only and should not be used as the primary production URL.
+
+The `wrangler.jsonc` configuration already declares the Custom Domain route:
+
+```jsonc
+{
+  "routes": [
+    { "pattern": "feedback.thelongwayhome.dev", "custom_domain": true }
+  ]
+}
+```
+
+Deploy the Worker (this requires your Cloudflare account login):
 ```bash
 npx wrangler deploy
 ```
 
-Upon completion, Wrangler will output your live production URL:
-```
-Published reelhouse-feedback-worker (https://reelhouse-feedback-worker.<your-subdomain>.workers.dev)
-```
+After deploying, confirm in the Cloudflare dashboard that the Custom Domain `feedback.thelongwayhome.dev` is attached to this Worker and that Cloudflare is managing the DNS/certificate for it.
 
 ### Step 4: Configure REELHOUSE Flutter Application
-By default, REELHOUSE connects to `https://feedback.reelhouse.app` (or custom endpoint).
-To override the endpoint URL at build/run time:
+
+The Flutter app defaults to the production endpoint `https://feedback.thelongwayhome.dev/v1/feedback`. This is the only endpoint used by the app, so no additional configuration is required. If you need to point a test build elsewhere, pass a `--dart-define` at build time:
+
 ```bash
-flutter run --dart-define=FEEDBACK_ENDPOINT_URL=https://reelhouse-feedback-worker.<your-subdomain>.workers.dev
+flutter run --dart-define=FEEDBACK_ENDPOINT_URL=https://feedback.thelongwayhome.dev/v1/feedback
 ```
-Or pass the custom endpoint directly into `FeedbackServiceImpl(endpointUrl: '...')`.
 
 ---
 
-## 3. Implemented in Code vs. Manual Configuration Required
+## Implemented-in-Code Status
 
 | Component | Status | Description |
 |-----------|--------|-------------|
@@ -94,9 +109,9 @@ Or pass the custom endpoint directly into `FeedbackServiceImpl(endpointUrl: '...
 | **Email Body & Subject Formatting** | Implemented in Code | Formats developer-friendly clean email with diagnostic block |
 | **Idempotency Header Propagation** | Implemented in Code | Supports `Idempotency-Key` / `X-Entity-Ref-ID` to Resend |
 | **CORS Configuration** | Implemented in Code | Preflight and headers for web/desktop/mobile targets |
-| **Rate Limiter Binding** | Implemented in Code | Configured in `wrangler.jsonc` (`RATE_LIMITER`) |
+| **Rate Limiter Binding** | Implemented in Code | 10 submissions / 60 s / IP in `wrangler.jsonc` (`RATE_LIMITER`) |
 | **Flutter In-App Submission Client** | Implemented in Code | HTTP POST, timeout handling, error mapping, state management |
 | **Flutter In-App Feedback UI** | Implemented in Code | Loading indicator, success confirmation, error notifications |
 | **Cloudflare Worker Secret Provisioning** | Manual Action Required | `npx wrangler secret put RESEND_API_KEY` in user's Cloudflare account |
 | **Resend Sender Domain Verification** | Manual Action Required | Verify DNS records for your sender domain in Resend dashboard |
-| **Wrangler Production Deployment** | Manual Action Required | `npx wrangler deploy` with user Cloudflare account login |
+| **Wrangler Production Deployment** | Manual Action Required | `npx wrangler deploy` plus Custom Domain `feedback.thelongwayhome.dev` in user's Cloudflare account |

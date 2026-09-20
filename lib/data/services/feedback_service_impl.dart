@@ -26,7 +26,7 @@ class FeedbackServiceImpl implements FeedbackService {
            endpointUrl ??
            const String.fromEnvironment(
              'FEEDBACK_ENDPOINT_URL',
-             defaultValue: 'https://feedback.reelhouse.app',
+             defaultValue: 'https://feedback.thelongwayhome.dev',
            ),
        _client = client ?? http.Client(),
        _uuid = uuid ?? const Uuid();
