@@ -83,6 +83,28 @@ void main() {
       );
     });
 
+    testWidgets(
+      'offline FAQ accurately describes application-managed storage',
+      (tester) async {
+        await tester.pumpWidget(buildTestable());
+
+        // Tap the offline question to expand its answer
+        await tester.tap(find.text('Can I watch videos offline?'));
+        await tester.pumpAndSettle();
+
+        // Verify the answer describes application-managed storage
+        expect(
+          find.textContaining('application-managed offline storage directory'),
+          findsOneWidget,
+        );
+        // Must NOT contain the old inaccurate text about user-configured folder
+        expect(
+          find.textContaining('the offline storage folder you configured'),
+          findsNothing,
+        );
+      },
+    );
+
     testWidgets('answer is hidden by default', (tester) async {
       await tester.pumpWidget(buildTestable());
       expect(

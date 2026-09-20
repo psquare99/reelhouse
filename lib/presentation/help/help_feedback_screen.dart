@@ -119,8 +119,8 @@ const List<_FaqSectionData> _faqSections = [
         question: 'Can I watch videos offline?',
         answer:
             'Yes. When you click the download button on a movie or episode, '
-            'MATINEE saves a copy of the file to the offline storage folder '
-            'you configured in Settings > Offline Storage. You can then watch '
+            'MATINEE saves a copy of the file to the application-managed '
+            'offline storage directory. You can then watch '
             'it without accessing the original file. These are copies, not '
             'moves — your original files stay where they are.',
       ),

@@ -1537,17 +1537,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   OutlinedButton.icon(
                     onPressed: () async {
-                      final results = await _transferCoordinator
-                          .reconcileTransfers();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Reconciliation complete (${results.length} jobs evaluated).',
+                      try {
+                        final results = await _transferCoordinator
+                            .reconcileTransfers();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Reconciliation complete (${results.length} jobs evaluated).',
+                                style: TextStyle(color: theme.textPrimary),
+                              ),
+                              backgroundColor: theme.surface2,
                             ),
-                            backgroundColor: theme.surface2,
-                          ),
-                        );
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Reconciliation failed: $e',
+                                style: TextStyle(color: theme.textPrimary),
+                              ),
+                              backgroundColor: theme.surface2,
+                            ),
+                          );
+                        }
                       }
                     },
                     icon: const Icon(Icons.build_circle_outlined, size: 14),
@@ -1565,19 +1580,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   OutlinedButton.icon(
                     onPressed: () async {
-                      final count = await _transferCoordinator
-                          .cleanStalePartials();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              count > 0
-                                  ? 'Cleaned $count stale partial transfer file(s).'
-                                  : 'No stale partial files found.',
+                      try {
+                        final count = await _transferCoordinator
+                            .cleanStalePartials();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                count > 0
+                                    ? 'Cleaned $count stale partial transfer file(s).'
+                                    : 'No stale partial files found.',
+                                style: TextStyle(color: theme.textPrimary),
+                              ),
+                              backgroundColor: theme.surface2,
                             ),
-                            backgroundColor: theme.surface2,
-                          ),
-                        );
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Clean failed: $e',
+                                style: TextStyle(color: theme.textPrimary),
+                              ),
+                              backgroundColor: theme.surface2,
+                            ),
+                          );
+                        }
                       }
                     },
                     icon: const Icon(

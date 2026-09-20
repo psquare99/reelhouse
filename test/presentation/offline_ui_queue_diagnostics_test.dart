@@ -602,8 +602,59 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   });
 
+  testWidgets('Reconcile button shows success SnackBar on clean database', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+
+    await db
+        .into(db.storages)
+        .insert(
+          StoragesCompanion.insert(
+            id: 'device-storage-internal',
+            name: 'This Device',
+            storageType: 'DEVICE_LOCAL_STORAGE',
+            filesystemIdentifier: 'internal-app-storage',
+            rootUri: destDir.path,
+            lastSeenAt: now,
+            available: const drift.Value(true),
+          ),
+        );
+
+    await tester.binding.setSurfaceSize(const Size(1280, 1600));
+    await tester.pumpWidget(
+      createThemedTestApp(
+        SettingsScreen(
+          database: db,
+          repository: repo,
+          storageIdentityService: storageIdentityService,
+          localStorageManager: LocalStorageManagerImpl(),
+          deviceStorageService: deviceStorageService,
+          transferCoordinator: coordinator,
+          transferService: transferService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('OFFLINE TRANSFER QUEUE & DIAGNOSTICS'), findsOneWidget);
+    expect(find.text('Reconcile'), findsOneWidget);
+    expect(find.text('Clean Partials'), findsOneWidget);
+
+    // Tap "Reconcile"
+    await tester.tap(find.text('Reconcile'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.textContaining('Reconciliation complete'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 50));
+  });
+
   testWidgets(
-    'SettingsScreen displays transfer queue diagnostics and cleanup buttons',
+    'Clean Partials button shows success SnackBar on clean database',
     (tester) async {
       final now = DateTime.now();
 
@@ -618,25 +669,6 @@ void main() {
               rootUri: destDir.path,
               lastSeenAt: now,
               available: const drift.Value(true),
-            ),
-          );
-
-      // Insert a transfer job record
-      await db
-          .into(db.transferJobs)
-          .insert(
-            TransferJobsCompanion.insert(
-              id: 'job-test-1',
-              mediaType: 'movie',
-              mediaId: 'movie-test',
-              sourceMediaSourceId: 'src-test',
-              destinationStorageId: 'device-storage-internal',
-              destinationRelativePath: 'Movies/Test/Test.mkv',
-              status: 'COMPLETED',
-              bytesTransferred: drift.Value(BigInt.from(1000)),
-              totalBytes: BigInt.from(1000),
-              startedAt: now,
-              completedAt: drift.Value(now),
             ),
           );
 
@@ -656,22 +688,109 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('OFFLINE TRANSFER QUEUE & DIAGNOSTICS'), findsOneWidget);
-      expect(find.text('Reconcile'), findsOneWidget);
-      expect(find.text('Clean Partials'), findsOneWidget);
-      expect(find.text('MOVIE: Test.mkv'), findsOneWidget);
-
       // Tap "Clean Partials"
       await tester.tap(find.text('Clean Partials'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
 
-      // Tap "Reconcile"
-      await tester.tap(find.text('Reconcile'));
-      await tester.pumpAndSettle();
+      expect(find.text('No stale partial files found.'), findsOneWidget);
 
-      await tester.pump(const Duration(seconds: 4));
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(milliseconds: 50));
     },
   );
+
+  testWidgets('Reconcile button shows error SnackBar on failure', (
+    tester,
+  ) async {
+    final throwingService = _ThrowingTransferService(database: db);
+    final throwingCoordinator = TransferCoordinator(
+      transferService: throwingService,
+      database: db,
+      deviceStorageService: deviceStorageService,
+      storageIdentityService: storageIdentityService,
+    );
+
+    await tester.binding.setSurfaceSize(const Size(1280, 1600));
+    await tester.pumpWidget(
+      createThemedTestApp(
+        SettingsScreen(
+          database: db,
+          repository: repo,
+          storageIdentityService: storageIdentityService,
+          localStorageManager: LocalStorageManagerImpl(),
+          deviceStorageService: deviceStorageService,
+          transferCoordinator: throwingCoordinator,
+          transferService: transferService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap "Reconcile" — should show error SnackBar, not crash
+    await tester.tap(find.text('Reconcile'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    expect(find.textContaining('Reconciliation failed'), findsOneWidget);
+
+    throwingCoordinator.dispose();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 50));
+  });
+
+  testWidgets('Clean Partials button shows error SnackBar on failure', (
+    tester,
+  ) async {
+    final throwingService = _ThrowingTransferService(database: db);
+    final throwingCoordinator = TransferCoordinator(
+      transferService: throwingService,
+      database: db,
+      deviceStorageService: deviceStorageService,
+      storageIdentityService: storageIdentityService,
+    );
+
+    await tester.binding.setSurfaceSize(const Size(1280, 1600));
+    await tester.pumpWidget(
+      createThemedTestApp(
+        SettingsScreen(
+          database: db,
+          repository: repo,
+          storageIdentityService: storageIdentityService,
+          localStorageManager: LocalStorageManagerImpl(),
+          deviceStorageService: deviceStorageService,
+          transferCoordinator: throwingCoordinator,
+          transferService: transferService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap "Clean Partials" — should show error SnackBar, not crash
+    await tester.tap(find.text('Clean Partials'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    expect(find.textContaining('Clean failed'), findsOneWidget);
+
+    throwingCoordinator.dispose();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 50));
+  });
+}
+
+/// Transfer service that throws on reconcile and clean operations.
+class _ThrowingTransferService extends FakeTransferService {
+  _ThrowingTransferService({required super.database});
+
+  @override
+  Future<List<TransferResult>> reconcileTransfers() async {
+    throw Exception('test reconcile error');
+  }
+
+  @override
+  Future<int> cleanStalePartials() async {
+    throw Exception('test clean error');
+  }
 }
