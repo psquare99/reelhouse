@@ -12,6 +12,12 @@ enum UpdateCheckStatus {
   /// The installed version is newer than the latest published release.
   aheadOfRelease,
 
+  /// The release channel (GitHub Releases) has no published release.
+  ///
+  /// This is distinct from [checkFailed]: the repository is valid and
+  /// accessible, but no release has been published yet.
+  releaseChannelEmpty,
+
   /// The network request failed or the API returned an unexpected response.
   checkFailed,
 }
@@ -59,11 +65,21 @@ class UpdateCheckResult {
   });
 
   /// Convenience: true when status is [UpdateCheckStatus.updateAvailable].
-  bool get hasUpdate => status == UpdateCheckStatus.updateAvailable;
+  bool get hasUpdate =>
+      status == UpdateCheckStatus.updateAvailable && releaseInfo != null;
 
-  const UpdateCheckResult.updateAvailable(UpdateReleaseInfo info)
+  /// Convenience: true when the release channel has no published release.
+  bool get isReleaseChannelEmpty =>
+      status == UpdateCheckStatus.releaseChannelEmpty;
+
+  /// Convenience: true when the app is up-to-date or ahead of the release.
+  bool get isUpToDate =>
+      status == UpdateCheckStatus.upToDate ||
+      status == UpdateCheckStatus.aheadOfRelease ||
+      status == UpdateCheckStatus.releaseChannelEmpty;
+
+  const UpdateCheckResult.updateAvailable(this.releaseInfo)
     : status = UpdateCheckStatus.updateAvailable,
-      releaseInfo = info,
       errorMessage = null;
 
   const UpdateCheckResult.upToDate()
@@ -73,6 +89,11 @@ class UpdateCheckResult {
 
   const UpdateCheckResult.aheadOfRelease()
     : status = UpdateCheckStatus.aheadOfRelease,
+      releaseInfo = null,
+      errorMessage = null;
+
+  const UpdateCheckResult.releaseChannelEmpty()
+    : status = UpdateCheckStatus.releaseChannelEmpty,
       releaseInfo = null,
       errorMessage = null;
 

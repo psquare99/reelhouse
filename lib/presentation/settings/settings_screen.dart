@@ -166,6 +166,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool get _hasApiKey =>
       _settingsService?.hasTmdbApiKey ?? _metadataService.tmdbClient.hasApiKey;
 
+  /// Current app version, forwarded to the static status-row builder.
+  String get _currentVersion => _updateService.currentVersion;
+
   Future<void> _testAndSaveCandidateKey() async {
     final candidateKey = _apiKeyController.text.trim();
     if (candidateKey.isEmpty) {
@@ -2288,7 +2291,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   // Status row — only shown after a check.
                   if (_updateCheckResult != null) ...[
-                    _buildUpdateStatusRow(theme, _updateCheckResult!),
+                    _buildUpdateStatusRow(
+                      theme,
+                      _updateCheckResult!,
+                      _currentVersion,
+                    ),
                     const SizedBox(height: 10),
                   ],
 
@@ -2323,15 +2330,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                   ),
 
-                  // View Update link — only when an update is available.
+                  // RC.7 — Download & Install Update — only when an update is available.
                   if (_updateCheckResult?.hasUpdate == true &&
                       _updateCheckResult?.releaseInfo != null) ...[
-                    const SizedBox(height: 8),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () async {
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
                           final url = _updateCheckResult!.releaseInfo!.htmlUrl;
                           try {
                             await launchUrl(
@@ -2342,28 +2348,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             debugPrint('Failed to open update link: $e');
                           }
                         },
-                        child: Padding(
+                        icon: const Icon(Icons.open_in_new, size: 16),
+                        label: const Text('Download & Install Update'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.accent,
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
-                            vertical: 4,
-                            horizontal: 4,
+                            horizontal: 14,
+                            vertical: 10,
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.open_in_new,
-                                size: 14,
-                                color: theme.accent,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'View Update',
-                                style: TextStyle(
-                                  color: theme.accent,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                       ),
@@ -2383,6 +2378,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static Widget _buildUpdateStatusRow(
     CinemaThemeData theme,
     UpdateCheckResult result,
+    String currentVersion,
   ) {
     switch (result.status) {
       case UpdateCheckStatus.updateAvailable:
@@ -2403,7 +2399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Update available: ${info.version}',
+                      'Update available',
                       style: TextStyle(
                         color: theme.textPrimary,
                         fontSize: 13,
@@ -2412,7 +2408,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Published ${_formatPublishDate(info.publishedAt)}',
+                      'Current version: $currentVersion',
+                      style: TextStyle(
+                        color: theme.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                    Text(
+                      'Latest version: ${info.version}',
                       style: TextStyle(
                         color: theme.textSecondary,
                         fontSize: 11,
@@ -2443,12 +2446,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: theme.stateAvailable,
               ),
               const SizedBox(width: 10),
-              Text(
-                'You\'re up to date.',
-                style: TextStyle(
-                  color: theme.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'You\'re up to date.',
+                      style: TextStyle(
+                        color: theme.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'No newer version is currently available.',
+                      style: TextStyle(
+                        color: theme.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -2473,12 +2491,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: theme.stateAvailable,
               ),
               const SizedBox(width: 10),
-              Text(
-                'You\'re running a newer version than the latest release.',
-                style: TextStyle(
-                  color: theme.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  'You\'re running a newer version than the latest release.',
+                  style: TextStyle(
+                    color: theme.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case UpdateCheckStatus.releaseChannelEmpty:
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.stateAvailable.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: theme.stateAvailable.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.check_circle_outline,
+                size: 18,
+                color: theme.stateAvailable,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'You\'re up to date.',
+                      style: TextStyle(
+                        color: theme.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'No published release is currently available.',
+                      style: TextStyle(
+                        color: theme.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -2506,29 +2571,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         );
-    }
-  }
-
-  static String _formatPublishDate(String isoDate) {
-    try {
-      final date = DateTime.parse(isoDate).toLocal();
-      final months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ];
-      return '${months[date.month - 1]} ${date.day}, ${date.year}';
-    } catch (_) {
-      return isoDate;
     }
   }
 

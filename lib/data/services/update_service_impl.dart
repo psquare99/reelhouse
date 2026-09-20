@@ -56,6 +56,11 @@ const String _githubRepo = 'reelhouse';
 const String _latestReleaseUrl =
     'https://api.github.com/repos/$_githubOwner/$_githubRepo/releases/latest';
 
+/// Endpoint used to verify the repository exists when a 404 is returned
+/// from the releases endpoint (distinguishes "no releases" from "wrong repo").
+String get _repoValidationUrl =>
+    'https://api.github.com/repos/$_githubOwner/$_githubRepo';
+
 /// Concrete implementation of [UpdateService].
 ///
 /// Calls `GET /repos/{owner}/{repo}/releases/latest` on the public GitHub
@@ -69,6 +74,9 @@ class UpdateServiceImpl implements UpdateService {
   /// Optional override for the latest-release URL (useful in tests).
   final String latestReleaseUrl;
 
+  /// Optional override for the repo-validation URL (useful in tests).
+  final String repoValidationUrl;
+
   /// Optional request timeout.
   final Duration timeout;
 
@@ -76,8 +84,10 @@ class UpdateServiceImpl implements UpdateService {
     http.Client? client,
     String appVersion = '1.0.0',
     this.latestReleaseUrl = _latestReleaseUrl,
+    String? repoValidationUrl,
     this.timeout = const Duration(seconds: 10),
   }) : _client = client ?? http.Client(),
+       repoValidationUrl = repoValidationUrl ?? _repoValidationUrl,
        // ignore: prefer_initializing_formals
        _appVersion = appVersion;
 
@@ -122,6 +132,14 @@ class UpdateServiceImpl implements UpdateService {
 
     // Handle non-2xx responses.
     if (response.statusCode != 200) {
+      // A 404 on the latest-release endpoint can mean either:
+      //   (a) the repo exists but has no published releases, or
+      //   (b) the repo doesn't exist / is inaccessible.
+      // Distinguish by probing the repo endpoint itself.
+      if (response.statusCode == 404) {
+        return _handleReleaseNotFound();
+      }
+
       return UpdateCheckResult.failed(
         'GitHub API returned status ${response.statusCode}.',
       );
@@ -179,5 +197,46 @@ class UpdateServiceImpl implements UpdateService {
     } else {
       return const UpdateCheckResult.aheadOfRelease();
     }
+  }
+
+  /// Probes the repository endpoint to distinguish "no releases published"
+  /// from "repository not found / inaccessible".
+  Future<UpdateCheckResult> _handleReleaseNotFound() async {
+    http.Response repoResponse;
+    try {
+      repoResponse = await _client
+          .get(
+            Uri.parse(repoValidationUrl),
+            headers: {
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+            },
+          )
+          .timeout(timeout);
+    } on SocketException {
+      return const UpdateCheckResult.failed(
+        'Network error. Check your internet connection and try again.',
+      );
+    } on TimeoutException {
+      return const UpdateCheckResult.failed(
+        'Request timed out. The GitHub API may be temporarily unavailable.',
+      );
+    } on http.ClientException {
+      return const UpdateCheckResult.failed(
+        'Network error. Check your internet connection and try again.',
+      );
+    } catch (e) {
+      return UpdateCheckResult.failed('Unexpected error: $e');
+    }
+
+    if (repoResponse.statusCode == 200) {
+      // Repository is valid — it simply has no published releases.
+      return const UpdateCheckResult.releaseChannelEmpty();
+    }
+
+    // Repository doesn't exist or is inaccessible — treat as an error.
+    return UpdateCheckResult.failed(
+      'Repository not found or inaccessible (HTTP ${repoResponse.statusCode}).',
+    );
   }
 }
