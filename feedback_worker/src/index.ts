@@ -1,6 +1,7 @@
 import { Env, FeedbackRequest } from './types';
 import { validateFeedbackPayload } from './validator';
 import { formatEmailSubject, formatEmailBody } from './formatter';
+import { PRIVACY_HTML, MEDIA_RESPONSIBILITY_HTML } from './pages';
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -31,7 +32,21 @@ export async function handleFeedbackRequest(
 ): Promise<Response> {
   const url = new URL(request.url);
 
-  // Route matching: only /v1/feedback is supported
+  // RC.5B — Static legal pages (GET only, no CORS needed)
+  if (url.pathname === '/privacy' && request.method === 'GET') {
+    return new Response(PRIVACY_HTML, {
+      status: 200,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+  }
+  if (url.pathname === '/media-responsibility' && request.method === 'GET') {
+    return new Response(MEDIA_RESPONSIBILITY_HTML, {
+      status: 200,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+  }
+
+  // Route matching: only /v1/feedback is supported for API requests
   if (url.pathname !== '/v1/feedback') {
     return jsonResponse({ error: 'Not found' }, 404);
   }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/theme/cinema_theme.dart';
@@ -2219,11 +2220,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                   ),
+
+                  // RC.5B — Legal links
+                  const SizedBox(height: 16),
+                  Text(
+                    'LEGAL',
+                    style: TextStyle(
+                      color: theme.textMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 1.8,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildLegalLink(
+                    theme,
+                    Icons.shield_outlined,
+                    'Privacy Policy',
+                    'https://feedback.thelongwayhome.dev/privacy',
+                  ),
+                  const SizedBox(height: 8),
+                  _buildLegalLink(
+                    theme,
+                    Icons.article_outlined,
+                    'Media, Copyright & User Responsibility',
+                    'https://feedback.thelongwayhome.dev/media-responsibility',
+                  ),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Builds a tappable legal link row.
+  static Widget _buildLegalLink(
+    CinemaThemeData theme,
+    IconData icon,
+    String label,
+    String url,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () async {
+          final uri = Uri.parse(url);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: theme.textSecondary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(color: theme.textPrimary, fontSize: 13),
+                ),
+              ),
+              Icon(Icons.open_in_new, size: 14, color: theme.textMuted),
+            ],
+          ),
+        ),
       ),
     );
   }

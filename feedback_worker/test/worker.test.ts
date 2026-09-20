@@ -289,3 +289,55 @@ describe('Worker HTTP Handler', () => {
     expect(json.error).toBe('Feedback service temporarily unavailable');
   });
 });
+
+describe('RC.5B — Legal Pages', () => {
+  const defaultEnv: Env = {
+    RESEND_API_KEY: 're_test_key_123',
+    FEEDBACK_TO_EMAIL: 'dev@reelhouse.app',
+    FEEDBACK_FROM_EMAIL: 'REELHOUSE <feedback@thelongwayhome.dev>',
+  };
+
+  it('serves Privacy Policy HTML at GET /privacy', async () => {
+    const req = new Request('https://worker.local/privacy', {
+      method: 'GET',
+    });
+    const res = await handleFeedbackRequest(req, defaultEnv);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toContain('text/html');
+    const html = await res.text();
+    expect(html).toContain('Privacy Policy');
+    expect(html).toContain('REELHOUSE');
+    expect(html).toContain('TMDB');
+    expect(html).toContain('feedback@thelongwayhome.dev');
+  });
+
+  it('serves Media Responsibility HTML at GET /media-responsibility', async () => {
+    const req = new Request('https://worker.local/media-responsibility', {
+      method: 'GET',
+    });
+    const res = await handleFeedbackRequest(req, defaultEnv);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toContain('text/html');
+    const html = await res.text();
+    expect(html).toContain('Media, Copyright');
+    expect(html).toContain('REELHOUSE');
+    expect(html).toContain('feedback@thelongwayhome.dev');
+  });
+
+  it('returns 404 for unknown GET routes', async () => {
+    const req = new Request('https://worker.local/unknown-page', {
+      method: 'GET',
+    });
+    const res = await handleFeedbackRequest(req, defaultEnv);
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 for POST to legal page routes (GET only)', async () => {
+    const req = new Request('https://worker.local/privacy', {
+      method: 'POST',
+      body: '{}',
+    });
+    const res = await handleFeedbackRequest(req, defaultEnv);
+    expect(res.status).toBe(404);
+  });
+});

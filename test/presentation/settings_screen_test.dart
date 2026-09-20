@@ -388,6 +388,14 @@ void main() {
         findsAtLeastNWidgets(1),
       );
 
+      // RC.5B — Verify legal links
+      expect(find.text('LEGAL'), findsOneWidget);
+      expect(find.text('Privacy Policy'), findsOneWidget);
+      expect(
+        find.text('Media, Copyright & User Responsibility'),
+        findsOneWidget,
+      );
+
       // Unmount and flush
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(milliseconds: 50));
