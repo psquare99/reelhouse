@@ -30,7 +30,7 @@ npm install
 Copy `.dev.vars.example` to `.dev.vars` (gitignored):
 ```ini
 RESEND_API_KEY=re_your_resend_api_key_here
-FEEDBACK_TO_EMAIL=feedback@reelhouse.app
+FEEDBACK_TO_EMAIL=prateekpal99@gmail.com
 FEEDBACK_FROM_EMAIL=REELHOUSE Feedback <feedback@thelongwayhome.dev>
 ```
 
