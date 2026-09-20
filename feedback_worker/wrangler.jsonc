@@ -4,7 +4,7 @@
   "compatibility_date": "2025-02-01",
   "vars": {
     "FEEDBACK_TO_EMAIL": "feedback@reelhouse.app",
-    "FEEDBACK_FROM_EMAIL": "REELHOUSE Feedback <feedback@reelhouse.app>"
+    "FEEDBACK_FROM_EMAIL": "REELHOUSE Feedback <feedback@thelongwayhome.dev>"
   },
   "ratelimits": [
     {

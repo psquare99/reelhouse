@@ -100,7 +100,7 @@ export async function handleFeedbackRequest(
 
   const toEmail = env.FEEDBACK_TO_EMAIL || 'feedback@reelhouse.app';
   const fromEmail =
-    env.FEEDBACK_FROM_EMAIL || 'REELHOUSE Feedback <feedback@reelhouse.app>';
+    env.FEEDBACK_FROM_EMAIL || 'REELHOUSE Feedback <feedback@thelongwayhome.dev>';
 
   const subject = formatEmailSubject(feedbackData);
   const bodyText = formatEmailBody(feedbackData);

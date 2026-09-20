@@ -142,7 +142,7 @@ describe('Worker HTTP Handler', () => {
   const defaultEnv: Env = {
     RESEND_API_KEY: 're_test_key_123',
     FEEDBACK_TO_EMAIL: 'dev@reelhouse.app',
-    FEEDBACK_FROM_EMAIL: 'REELHOUSE <feedback@reelhouse.app>',
+    FEEDBACK_FROM_EMAIL: 'REELHOUSE <feedback@thelongwayhome.dev>',
   };
 
   it('handles CORS OPTIONS preflight', async () => {
