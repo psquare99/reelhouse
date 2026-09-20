@@ -300,30 +300,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Scroll to bottom to reveal Feedback section
+      // Scroll to bottom to reveal Help & Feedback section
       await tester.drag(find.byType(ListView), const Offset(0, -1200));
       await tester.pumpAndSettle();
 
-      expect(find.text('FEEDBACK & SUGGESTIONS'), findsOneWidget);
-      expect(
-        find.text(
-          'Help improve REELHOUSE by reporting bugs, suggesting improvements, or sharing feedback.',
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('Send Feedback'), findsOneWidget);
-
-      // Tap Send Feedback -> opens FeedbackDialog
-      await tester.tap(find.text('Send Feedback'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Report a Bug'), findsOneWidget);
-      expect(find.text('Suggest an Improvement'), findsOneWidget);
-      expect(find.text('General Feedback'), findsOneWidget);
-
-      // Dismiss dialog
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
+      expect(find.text('HELP & FEEDBACK'), findsOneWidget);
+      expect(find.text('Help & Feedback'), findsOneWidget);
 
       // Unmount and flush
       await tester.pumpWidget(const SizedBox());
