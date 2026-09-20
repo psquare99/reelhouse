@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelhouse/data/database/database.dart';
 import 'package:reelhouse/data/network/tmdb_api_client.dart';
@@ -394,6 +395,71 @@ void main() {
       expect(
         find.text('Media, Copyright & User Responsibility'),
         findsOneWidget,
+      );
+
+      // Unmount and flush
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
+    },
+  );
+
+  testWidgets(
+    'RC.5B — tapping legal link calls launchUrl with externalApplication',
+    (tester) async {
+      // Mock the url_launcher platform channel
+      final log = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('plugins.flutter.io/url_launcher'),
+            (MethodCall methodCall) async {
+              log.add(methodCall);
+              if (methodCall.method == 'canLaunch') {
+                return true;
+              }
+              if (methodCall.method == 'launch') {
+                return true;
+              }
+              return null;
+            },
+          );
+
+      tester.view.physicalSize = const Size(1280, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsScreen(
+            database: db,
+            storageIdentityService: FakeStorageIdentityService(),
+            localStorageManager: FakeLocalStorageManager(),
+            metadataService: metadataService,
+            settingsService: settingsService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Scroll the ListView down to reveal the legal section
+      await tester.drag(find.byType(ListView), const Offset(0, -1500));
+      await tester.pumpAndSettle();
+
+      // Tap the Privacy Policy link
+      final privacyLink = find.text('Privacy Policy');
+      expect(privacyLink, findsOneWidget);
+      await tester.tap(privacyLink, warnIfMissed: false);
+      await tester.pump();
+
+      // Verify launch was called with the privacy URL
+      expect(log, isNotEmpty);
+      final launchCall = log.firstWhere(
+        (c) => c.method == 'launch',
+        orElse: () => const MethodCall('none'),
+      );
+      expect(
+        launchCall.arguments['url'],
+        'https://feedback.thelongwayhome.dev/privacy',
       );
 
       // Unmount and flush

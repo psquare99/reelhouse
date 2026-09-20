@@ -2268,8 +2268,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(8),
         onTap: () async {
           final uri = Uri.parse(url);
-          if (await canLaunchUrl(uri)) {
+          try {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
+          } catch (e) {
+            debugPrint('Failed to open legal link: $e');
           }
         },
         child: Padding(
