@@ -12,8 +12,8 @@ const Color _titleColor = Color(0xFFF5F1EA);
 /// Cinematic opening experience for REELHOUSE.
 ///
 /// Plays a restrained brand reveal (clapperboard icon + MATINEE + subtitle)
-/// on a dark canvas with a spotlight gradient and floor reflection.
-/// Total sequence ~1.8 s (200 ms dark frame + 1600 ms animation).
+/// on a dark canvas with soft ambient glow and a barely-visible floor light.
+/// Total sequence ~1.65 s.
 ///
 /// Uses only built-in Flutter animations — no external dependencies.
 class ReelhouseOpening extends StatefulWidget {
@@ -30,7 +30,7 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
-  // Global fade-out (1350–1600 ms = Interval 0.84375–1.0)
+  // Global fade-out (1400–1650 ms = Interval 0.8485–1.0)
   late final Animation<double> _fadeOut;
 
   bool _animationStarted = false;
@@ -43,13 +43,13 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1650),
     );
 
     _fadeOut = Tween<double>(begin: 1, end: 0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.84375, 1.0, curve: Curves.easeIn),
+        curve: const Interval(0.8485, 1.0, curve: Curves.easeIn),
       ),
     );
 
@@ -64,12 +64,7 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
   void _startAnimation() {
     if (_animationStarted || _completed) return;
     _animationStarted = true;
-    // Brief async pause before starting (200 ms) for a clean dark frame.
-    Future<void>.delayed(const Duration(milliseconds: 200)).then((_) {
-      if (mounted && !_completed) {
-        _controller.forward();
-      }
-    });
+    _controller.forward();
   }
 
   @override
@@ -85,12 +80,13 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
   // ------------------------------------------------------------------
 
   Widget _buildContent({
-    required double spotlightOpacity,
+    required double glowOpacity,
     required double iconOpacity,
     required double iconScale,
     required double titleOpacity,
     required double titleSlideY,
     required double subtitleOpacity,
+    required double floorGlowOpacity,
   }) {
     return Stack(
       fit: StackFit.expand,
@@ -98,20 +94,20 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
         // --- Dark background ---
         const ColoredBox(color: CinemaColors.darkBackground),
 
-        // --- Spotlight gradient (fades in 0–300 ms) ---
+        // --- Ambient warm glow (soft, wide, centred on composition) ---
         Opacity(
-          opacity: spotlightOpacity,
+          opacity: glowOpacity,
           child: DecoratedBox(
             decoration: const BoxDecoration(
               gradient: RadialGradient(
-                center: Alignment(0, -0.35),
-                radius: 0.75,
+                center: Alignment(0, -0.05),
+                radius: 0.65,
                 colors: [
-                  Color(0x18C75A28),
-                  Color(0x08C75A28),
+                  Color(0x10C75A28),
+                  Color(0x06C75A28),
                   Colors.transparent,
                 ],
-                stops: [0.0, 0.45, 1.0],
+                stops: [0.0, 0.5, 1.0],
               ),
             ),
           ),
@@ -128,28 +124,28 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
                 child: Transform.scale(
                   scale: iconScale,
                   child: Container(
-                    width: 80,
-                    height: 80,
+                    width: 72,
+                    height: 72,
                     decoration: BoxDecoration(
                       color: _accent.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: _accent.withValues(alpha: 0.25),
-                        width: 1.5,
+                        color: _accent.withValues(alpha: 0.22),
+                        width: 1.2,
                       ),
                     ),
                     child: Center(
                       child: Icon(
                         Icons.movie_filter_rounded,
                         color: _accentHighlight,
-                        size: 40,
+                        size: 36,
                       ),
                     ),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
 
               // --- Title: MATINEE ---
               Opacity(
@@ -160,7 +156,7 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
                     'MATINEE',
                     style: TextStyle(
                       color: _titleColor,
-                      fontSize: 26,
+                      fontSize: 24,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 6.0,
                     ),
@@ -168,7 +164,7 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
                 ),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
 
               // --- Subtitle ---
               Opacity(
@@ -177,7 +173,7 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
                   'Personal Digital Cinema',
                   style: TextStyle(
                     color: _accent,
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.6,
                   ),
@@ -187,18 +183,21 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
           ),
         ),
 
-        // --- Subtle floor reflection (gradient mask near bottom) ---
+        // --- Floor glow (extremely subtle warm light near bottom) ---
         Positioned(
           left: 0,
           right: 0,
           bottom: 0,
-          height: 90,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [_accent.withValues(alpha: 0.04), Colors.transparent],
+          height: 80,
+          child: Opacity(
+            opacity: floorGlowOpacity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [_accent.withValues(alpha: 0.03), Colors.transparent],
+                ),
               ),
             ),
           ),
@@ -214,17 +213,27 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
 
   Widget _buildStaticOpening() {
     return _buildContent(
-      spotlightOpacity: 1.0,
+      glowOpacity: 1.0,
       iconOpacity: 1.0,
       iconScale: 1.0,
       titleOpacity: 1.0,
       titleSlideY: 0,
       subtitleOpacity: 1.0,
+      floorGlowOpacity: 1.0,
     );
   }
 
   // ------------------------------------------------------------------
   // Animated opening — normal motion path.
+  //
+  // Timeline (1650 ms total, no initial dark-frame delay):
+  //   0–250 ms    ambient glow emerges
+  //   200–550 ms  icon fades + scales
+  //   450–800 ms  title fades + slides up
+  //   650–950 ms  subtitle fades
+  //   800–1200 ms floor glow appears
+  //   1200–1400 ms quiet hold
+  //   1400–1650 ms crossfade out
   // ------------------------------------------------------------------
 
   @override
@@ -250,34 +259,41 @@ class _ReelhouseOpeningState extends State<ReelhouseOpening>
       builder: (context, _) {
         final double t = _controller.value;
 
-        // Spotlight fade-in: 0–300 ms (Interval 0.0–0.1875)
-        final double spotlightOpacity = Curves.easeOut.transform(
-          t.clamp(0.0, 0.1875),
+        // Ambient glow: 0–250 ms → Interval(0.0, 0.1515)
+        final double glowOpacity = Curves.easeOut.transform(
+          t.clamp(0.0, 0.1515),
         );
 
-        // Icon: opacity 0→1, scale 0.92→1.0 (Interval 0.0–0.25)
-        final double iconT = Curves.easeOutCubic.transform(t.clamp(0.0, 0.25));
+        // Icon: 200–550 ms → Interval(0.1212, 0.3333)
+        final double iconRaw = t.clamp(0.1212, 0.3333);
+        final double iconNorm = (iconRaw - 0.1212) / (0.3333 - 0.1212);
+        final double iconEased = Curves.easeOutCubic.transform(iconNorm);
 
-        // Title: fade + slide up 6 px (Interval 0.156–0.375)
-        // Clamp to interval, normalise to 0–1, then ease.
-        final double titleRaw = t.clamp(0.156, 0.375);
-        final double titleNorm = (titleRaw - 0.156) / (0.375 - 0.156);
+        // Title: 450–800 ms → Interval(0.2727, 0.4848)
+        final double titleRaw = t.clamp(0.2727, 0.4848);
+        final double titleNorm = (titleRaw - 0.2727) / (0.4848 - 0.2727);
         final double titleEased = Curves.easeOut.transform(titleNorm);
 
-        // Subtitle: soft fade (Interval 0.3125–0.5)
-        final double subtitleRaw = t.clamp(0.3125, 0.5);
-        final double subtitleNorm = (subtitleRaw - 0.3125) / (0.5 - 0.3125);
+        // Subtitle: 650–950 ms → Interval(0.3939, 0.5758)
+        final double subtitleRaw = t.clamp(0.3939, 0.5758);
+        final double subtitleNorm = (subtitleRaw - 0.3939) / (0.5758 - 0.3939);
         final double subtitleEased = Curves.easeOut.transform(subtitleNorm);
 
+        // Floor glow: 800–1200 ms → Interval(0.4848, 0.7273)
+        final double floorRaw = t.clamp(0.4848, 0.7273);
+        final double floorNorm = (floorRaw - 0.4848) / (0.7273 - 0.4848);
+        final double floorEased = Curves.easeInOut.transform(floorNorm);
+
         return Opacity(
-          opacity: _fadeOut.value,
+          opacity: _fadeOut.value.clamp(0.0, 1.0),
           child: _buildContent(
-            spotlightOpacity: spotlightOpacity,
-            iconOpacity: iconT,
-            iconScale: 0.92 + 0.08 * iconT,
+            glowOpacity: glowOpacity,
+            iconOpacity: iconEased,
+            iconScale: 0.96 + 0.04 * iconEased,
             titleOpacity: titleEased,
-            titleSlideY: 6 * (1 - titleEased),
+            titleSlideY: 5 * (1 - titleEased),
             subtitleOpacity: subtitleEased,
+            floorGlowOpacity: floorEased,
           ),
         );
       },

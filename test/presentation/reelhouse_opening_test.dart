@@ -13,15 +13,15 @@ void main() {
         MaterialApp(home: ReelhouseOpening(onComplete: () => completed = true)),
       );
 
-      // Advance past the 200ms initial delay — the animation should now be
-      // running but not yet complete.
+      // Advance past the early glow phase — the animation should now be
+      // running but not yet complete (total 1650ms, no initial delay).
       await tester.pump(const Duration(milliseconds: 600));
 
       expect(find.byIcon(Icons.movie_filter_rounded), findsOneWidget);
       expect(find.text('MATINEE'), findsOneWidget);
       expect(find.text('Personal Digital Cinema'), findsOneWidget);
 
-      // Animation hasn't completed yet (total ~1800ms).
+      // Animation hasn't completed yet (total ~1650ms).
       expect(completed, isFalse);
 
       // Let the animation finish to avoid pending-timer errors on dispose.
@@ -38,7 +38,7 @@ void main() {
         MaterialApp(home: ReelhouseOpening(onComplete: () => completed = true)),
       );
 
-      // Advance past: 200ms initial delay + 1600ms animation = 1800ms.
+      // Advance past the full 1650ms animation (no initial delay).
       await tester.pump(const Duration(milliseconds: 2000));
       await tester.pumpAndSettle();
 
@@ -111,7 +111,7 @@ void main() {
         ),
       );
 
-      // Complete the animation.
+      // Complete the animation (1650ms + margin).
       await tester.pump(const Duration(milliseconds: 2000));
       await tester.pumpAndSettle();
 
@@ -149,6 +149,27 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(completionCount, equals(1));
+    });
+
+    testWidgets('no decorative line or divider beneath MATINEE title', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(home: ReelhouseOpening(onComplete: () {})),
+      );
+
+      // Advance so all content is visible.
+      await tester.pump(const Duration(milliseconds: 900));
+
+      // The title "MATINEE" should exist.
+      expect(find.text('MATINEE'), findsOneWidget);
+
+      // No Divider widget should appear anywhere in the tree.
+      expect(find.byType(Divider), findsNothing);
+
+      // Let animation finish to avoid timer errors.
+      await tester.pump(const Duration(milliseconds: 1500));
+      await tester.pumpAndSettle();
     });
   });
 }
