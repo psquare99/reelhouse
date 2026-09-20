@@ -70,6 +70,9 @@ void main() {
       ),
     );
 
+    // The cinematic opening plays first: 200ms initial delay + 1400ms animation.
+    // Advance past it so the app transitions to CinemaShell.
+    await tester.pump(const Duration(milliseconds: 2000));
     await tester.pumpAndSettle();
 
     // Verify cinematic header

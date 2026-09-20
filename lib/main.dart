@@ -22,6 +22,7 @@ import 'domain/services/transfer_coordinator.dart';
 import 'domain/services/transfer_service.dart';
 import 'presentation/onboarding/onboarding_screen.dart';
 import 'presentation/shell/cinema_shell.dart';
+import 'presentation/splash/reelhouse_opening.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -97,7 +98,7 @@ void main() async {
   );
 }
 
-class ReelhouseApp extends StatelessWidget {
+class ReelhouseApp extends StatefulWidget {
   final AppDatabase database;
   final LibraryRepository libraryRepository;
   final StorageIdentityService storageIdentityService;
@@ -127,47 +128,67 @@ class ReelhouseApp extends StatelessWidget {
            libraryRepository ?? DriftLibraryRepository(database);
 
   @override
+  State<ReelhouseApp> createState() => _ReelhouseAppState();
+}
+
+class _ReelhouseAppState extends State<ReelhouseApp> {
+  bool _showOpening = true;
+
+  void _onOpeningComplete() {
+    if (mounted) {
+      setState(() {
+        _showOpening = false;
+      });
+    }
+  }
+
+  Widget _buildHome() {
+    final s = widget.settingsService;
+    return (s != null && !s.isOnboardingCompleted)
+        ? OnboardingScreen(
+            database: widget.database,
+            repository: widget.libraryRepository,
+            storageIdentityService: widget.storageIdentityService,
+            localStorageManager: widget.localStorageManager,
+            libraryScannerService: widget.libraryScannerService,
+            storageMonitorService: widget.storageMonitorService,
+            metadataService: widget.metadataService,
+            settingsService: s,
+            deviceStorageService: widget.deviceStorageService,
+            transferService: widget.transferService,
+            transferCoordinator: widget.transferCoordinator,
+          )
+        : CinemaShell(
+            database: widget.database,
+            repository: widget.libraryRepository,
+            storageIdentityService: widget.storageIdentityService,
+            localStorageManager: widget.localStorageManager,
+            libraryScannerService: widget.libraryScannerService,
+            storageMonitorService: widget.storageMonitorService,
+            metadataService: widget.metadataService,
+            settingsService: s,
+            deviceStorageService: widget.deviceStorageService,
+            transferService: widget.transferService,
+            transferCoordinator: widget.transferCoordinator,
+          );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final themeNotifier = settingsService ?? ChangeNotifier();
+    final themeNotifier = widget.settingsService ?? ChangeNotifier();
     return ListenableBuilder(
       listenable: themeNotifier,
       builder: (context, _) {
-        final currentMode = settingsService?.themeMode ?? ThemeMode.dark;
+        final currentMode = widget.settingsService?.themeMode ?? ThemeMode.dark;
         return MaterialApp(
           title: 'REELHOUSE',
           debugShowCheckedModeBanner: false,
           theme: CinemaTheme.lightTheme,
           darkTheme: CinemaTheme.darkTheme,
           themeMode: currentMode,
-          home:
-              (settingsService != null &&
-                  !settingsService!.isOnboardingCompleted)
-              ? OnboardingScreen(
-                  database: database,
-                  repository: libraryRepository,
-                  storageIdentityService: storageIdentityService,
-                  localStorageManager: localStorageManager,
-                  libraryScannerService: libraryScannerService,
-                  storageMonitorService: storageMonitorService,
-                  metadataService: metadataService,
-                  settingsService: settingsService!,
-                  deviceStorageService: deviceStorageService,
-                  transferService: transferService,
-                  transferCoordinator: transferCoordinator,
-                )
-              : CinemaShell(
-                  database: database,
-                  repository: libraryRepository,
-                  storageIdentityService: storageIdentityService,
-                  localStorageManager: localStorageManager,
-                  libraryScannerService: libraryScannerService,
-                  storageMonitorService: storageMonitorService,
-                  metadataService: metadataService,
-                  settingsService: settingsService,
-                  deviceStorageService: deviceStorageService,
-                  transferService: transferService,
-                  transferCoordinator: transferCoordinator,
-                ),
+          home: _showOpening
+              ? ReelhouseOpening(onComplete: _onOpeningComplete)
+              : _buildHome(),
         );
       },
     );
