@@ -11,10 +11,14 @@ enum AvailabilityFilter {
   available,
 
   /// Item has zero currently connected and available physical file copies.
-  unavailable;
+  unavailable,
+
+  /// Item has a completed device-managed (localDevice) offline copy.
+  offlineOnly;
 
   bool get isAvailable => this == AvailabilityFilter.available;
   bool get isUnavailable => this == AvailabilityFilter.unavailable;
+  bool get isOfflineOnly => this == AvailabilityFilter.offlineOnly;
 }
 
 /// Bounded range for release or air years.

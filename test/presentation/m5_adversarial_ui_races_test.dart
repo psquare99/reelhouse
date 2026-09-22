@@ -242,6 +242,9 @@ class FakeTransferService implements TransferService {
 
   @override
   Future<int> cleanStalePartials() async => 0;
+
+  @override
+  Future<int> countStalePartials() async => 0;
 }
 
 void main() {

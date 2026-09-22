@@ -359,6 +359,27 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
 
   void _handleSaveEpisodeOffline(EpisodeLibraryItem episode) async {
     final tokens = CinemaTheme.of(context);
+
+    // Guard: skip if a completed device-managed copy already exists.
+    if (widget.database != null) {
+      final sources = await widget.database!.getSourcesForEpisode(episode.id);
+      final hasLocal = sources.any(
+        (s) => s.sourceType == 'localDevice' && s.available,
+      );
+      if (hasLocal) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('"${episode.displayName}" is already saved offline.'),
+            backgroundColor: tokens.surface1,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+    }
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Saving "${episode.displayName}" offline...'),
@@ -426,14 +447,16 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
               } catch (_) {
                 // Transfer may not exist; proceed with deletion.
               }
-              final db = AppDatabase();
-              final sources = await db.getSourcesForEpisode(episode.id);
-              final localSource = sources.cast<MediaSource?>().firstWhere(
-                (s) => s?.sourceType == 'localDevice',
-                orElse: () => null,
-              );
-              if (localSource != null) {
-                await _transferCoordinator.deleteOfflineCopy(localSource.id);
+              final db = widget.database;
+              if (db != null) {
+                final sources = await db.getSourcesForEpisode(episode.id);
+                final localSource = sources.cast<MediaSource?>().firstWhere(
+                  (s) => s?.sourceType == 'localDevice' && s!.available,
+                  orElse: () => null,
+                );
+                if (localSource != null) {
+                  await _transferCoordinator.deleteOfflineCopy(localSource.id);
+                }
               }
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -750,29 +773,61 @@ class _TvShowDetailScreenState extends State<TvShowDetailScreen> {
                                                     selectedSeason.id,
                                                   );
 
+                                          String label = 'SAVE SEASON OFFLINE';
+                                          if (isSeasonTransferring) {
+                                            label = 'SAVING SEASON...';
+                                          } else if (selectedSeason
+                                              .isFullyOffline) {
+                                            label =
+                                                '${selectedSeason.offlineEpisodeCount} OF ${selectedSeason.episodeCount} OFFLINE';
+                                          } else if (selectedSeason
+                                                  .offlineEpisodeCount >
+                                              0) {
+                                            final remaining = selectedSeason
+                                                .remainingOfflineEpisodeCount;
+                                            label = remaining == 1
+                                                ? 'SAVE REMAINING EPISODE'
+                                                : 'SAVE $remaining REMAINING EPISODES';
+                                          }
+
+                                          final canSave =
+                                              !isSeasonTransferring &&
+                                              !selectedSeason.isFullyOffline &&
+                                              selectedSeason.episodeCount > 0;
+
                                           return OutlinedButton.icon(
-                                            onPressed: isSeasonTransferring
-                                                ? null
-                                                : () =>
+                                            onPressed: canSave
+                                                ? () =>
                                                       _handleSaveSeasonOffline(
                                                         selectedSeason,
-                                                      ),
-                                            icon: const Icon(
-                                              Icons.offline_pin_outlined,
+                                                      )
+                                                : null,
+                                            icon: Icon(
+                                              selectedSeason.isFullyOffline &&
+                                                      !isSeasonTransferring
+                                                  ? Icons.offline_pin
+                                                  : Icons.offline_pin_outlined,
                                               size: 14,
                                             ),
                                             label: Text(
-                                              isSeasonTransferring
-                                                  ? 'SAVING SEASON...'
-                                                  : 'SAVE SEASON OFFLINE',
+                                              label,
                                               style: const TextStyle(
                                                 fontSize: 11,
                                               ),
                                             ),
                                             style: OutlinedButton.styleFrom(
-                                              foregroundColor: tokens.accent,
+                                              foregroundColor:
+                                                  selectedSeason
+                                                          .isFullyOffline &&
+                                                      !isSeasonTransferring
+                                                  ? tokens.stateOffline
+                                                  : tokens.accent,
                                               disabledForegroundColor:
-                                                  tokens.textMuted,
+                                                  selectedSeason
+                                                          .isFullyOffline &&
+                                                      !isSeasonTransferring
+                                                  ? tokens.stateOffline
+                                                  : tokens.textMuted,
                                               side: BorderSide(
                                                 color: tokens.borderStrong,
                                               ),
@@ -1094,6 +1149,9 @@ class _EpisodeCard extends StatelessWidget {
   });
 
   PlaybackResolution get _resolution {
+    if (episode.isOffline) {
+      return const PlaybackResolution(action: PlaybackAction.playOffline);
+    }
     switch (episode.availability) {
       case AvailabilityStatus.availableLocally:
         return const PlaybackResolution(action: PlaybackAction.playOffline);
@@ -1109,7 +1167,7 @@ class _EpisodeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = CinemaTheme.of(context);
     final resolution = _resolution;
-    final isLocal = episode.availability == AvailabilityStatus.availableLocally;
+    final isLocal = episode.isOffline;
     final isExternal =
         episode.availability ==
             AvailabilityStatus.availableOnRemovableStorage ||
@@ -1286,9 +1344,7 @@ class _EpisodeCard extends StatelessWidget {
 
                     if (isTransferring) {
                       final pct = progress?.percentage;
-                      final pctText = pct != null
-                          ? '${(pct * 100).toInt()}%'
-                          : 'SAVING...';
+                      final pctText = pct != null ? '$pct%' : 'SAVING...';
 
                       return Row(
                         mainAxisSize: MainAxisSize.min,

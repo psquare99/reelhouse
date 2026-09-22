@@ -293,6 +293,27 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
   void _handleSaveOffline(String title) async {
     final tokens = CinemaTheme.of(context);
+
+    // Guard: skip if a completed device-managed copy already exists.
+    if (widget.database != null) {
+      final sources = await widget.database!.getSourcesForMovie(widget.movieId);
+      final hasLocal = sources.any(
+        (s) => s.sourceType == 'localDevice' && s.available,
+      );
+      if (hasLocal) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('"$title" is already saved offline.'),
+            backgroundColor: tokens.surface1,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+    }
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Saving "$title" offline...'),
@@ -477,7 +498,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
                       final resolution = _resolver.resolve(checkSources);
                       final hasLocalCopy = sources.any(
-                        (s) => s.sourceType == 'localDevice',
+                        (s) => s.sourceType == 'localDevice' && s.available,
                       );
                       final primaryRemovable = sources
                           .cast<MediaSource?>()

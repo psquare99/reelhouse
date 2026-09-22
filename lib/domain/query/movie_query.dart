@@ -101,7 +101,7 @@ class MovieQuery {
   /// Factory for Offline Library Smart View.
   factory MovieQuery.offline() => const MovieQuery(
     scope: QueryScope.offline,
-    filter: MovieFilter(availability: AvailabilityFilter.available),
+    filter: MovieFilter(availability: AvailabilityFilter.offlineOnly),
   );
 
   /// Factory for Collection-scoped Movie Query.

@@ -69,6 +69,9 @@ abstract class TransferService {
   /// Only deletes partial files that are confirmed not to belong to any active transfer.
   Future<int> cleanStalePartials();
 
+  /// Returns the number of stale partial files without deleting them.
+  Future<int> countStalePartials();
+
   /// Registers a finalized and verified [TransferJob] as an active, playable [MediaSource]
   /// for the corresponding canonical logical Movie or Episode.
   ///

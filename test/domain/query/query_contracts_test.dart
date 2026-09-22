@@ -98,6 +98,8 @@ void main() {
       expect(AvailabilityFilter.available.isAvailable, isTrue);
       expect(AvailabilityFilter.available.isUnavailable, isFalse);
       expect(AvailabilityFilter.unavailable.isUnavailable, isTrue);
+      expect(AvailabilityFilter.offlineOnly.isOfflineOnly, isTrue);
+      expect(AvailabilityFilter.offlineOnly.isAvailable, isFalse);
     });
 
     test('YearRange bounds and contains logic', () {
@@ -424,7 +426,10 @@ void main() {
 
       final offline = MovieQuery.offline();
       expect(offline.scope.type, equals(QueryScopeType.offline));
-      expect(offline.filter.availability, equals(AvailabilityFilter.available));
+      expect(
+        offline.filter.availability,
+        equals(AvailabilityFilter.offlineOnly),
+      );
 
       final col = MovieQuery.forCollection('col-1', label: 'Sci-Fi');
       expect(col.scope.type, equals(QueryScopeType.collection));
@@ -469,6 +474,13 @@ void main() {
 
       final col = TvShowQuery.forCollection('col-tv');
       expect(col.filter.collectionId, equals('col-tv'));
+
+      final offline = TvShowQuery.offline();
+      expect(offline.scope.type, equals(QueryScopeType.offline));
+      expect(
+        offline.filter.availability,
+        equals(AvailabilityFilter.offlineOnly),
+      );
 
       final search = TvShowQuery.search('Severance');
       expect(search.search?.query, equals('Severance'));

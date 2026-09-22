@@ -153,12 +153,22 @@ class TransferServiceImpl implements TransferService {
         );
       }
 
-      // 3. Resolve sources and calculate required aggregate size upfront
+      // 3. Resolve sources and calculate required aggregate size upfront.
+      // Episodes that already have a completed device-managed offline copy are
+      // skipped so re-running a season batch never duplicates offline copies.
       final resolvedItems = <_ResolvedSource>[];
       final episodeList = <Episode>[];
       var totalSeasonBytes = 0;
 
       for (final episode in allEpisodes) {
+        final existingSources = await database.getSourcesForEpisode(episode.id);
+        final alreadyOffline = existingSources.any(
+          (s) => s.sourceType == 'localDevice' && s.available,
+        );
+        if (alreadyOffline) {
+          continue;
+        }
+
         final resolvedSource = await _resolveAvailableSource(
           mediaId: episode.id,
           isMovie: false,
@@ -166,6 +176,10 @@ class TransferServiceImpl implements TransferService {
         resolvedItems.add(resolvedSource);
         episodeList.add(episode);
         totalSeasonBytes += resolvedSource.fileSize;
+      }
+
+      if (episodeList.isEmpty) {
+        return const <TransferResult>[];
       }
 
       // 4. Pre-check destination capacity for entire season upfront
@@ -1030,6 +1044,56 @@ class TransferServiceImpl implements TransferService {
     } catch (_) {}
 
     return cleanedCount;
+  }
+
+  @override
+  Future<int> countStalePartials() async {
+    final destinationResolution = await deviceStorageService
+        .resolveDestination();
+    if (!destinationResolution.isAccessible ||
+        destinationResolution.destination == null) {
+      return 0;
+    }
+
+    final rootDir = Directory(destinationResolution.destination!.rootPath);
+    if (!rootDir.existsSync()) {
+      return 0;
+    }
+
+    final activeJobs = await database.getInterruptedTransferJobs();
+    final activeRelativePaths = activeJobs
+        .map((j) => p.normalize(j.destinationRelativePath).toLowerCase())
+        .toSet();
+
+    var staleCount = 0;
+
+    try {
+      final entities = rootDir.listSync(recursive: true, followLinks: false);
+      for (final entity in entities) {
+        if (entity is File && entity.path.endsWith('.reelhouse-partial')) {
+          final relPath = p.normalize(
+            p.relative(entity.path, from: rootDir.path),
+          );
+          final baseRelPath = relPath.substring(
+            0,
+            relPath.length - '.reelhouse-partial'.length,
+          );
+
+          final isActiveInDb = activeRelativePaths.contains(
+            baseRelPath.toLowerCase(),
+          );
+          final isActiveInMemory = _activeTokens.values.any(
+            (t) => !t.isCancelled,
+          );
+
+          if (!isActiveInDb && !isActiveInMemory) {
+            staleCount++;
+          }
+        }
+      }
+    } catch (_) {}
+
+    return staleCount;
   }
 
   /// Verifies a partial transfer artifact and atomically finalizes it to [targetFullPath].

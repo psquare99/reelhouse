@@ -213,7 +213,12 @@ class MovieQueryEngine {
 
     // 10. Availability filter
     if (filter.availability != null) {
-      if (filter.availability == AvailabilityFilter.available) {
+      if (filter.availability == AvailabilityFilter.offlineOnly) {
+        // Offline library: only device-managed (localDevice) copies count.
+        whereClauses.add(
+          'EXISTS (SELECT 1 FROM media_sources ms WHERE ms.movie_id = m.id AND ms.available = 1 AND ms.source_type = \'localDevice\')',
+        );
+      } else if (filter.availability == AvailabilityFilter.available) {
         whereClauses.add(
           'EXISTS (SELECT 1 FROM media_sources ms LEFT JOIN storages st ON st.id = ms.storage_id WHERE ms.movie_id = m.id AND ms.available = 1 AND (ms.source_type = \'localDevice\' OR st.available = 1))',
         );

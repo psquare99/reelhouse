@@ -594,7 +594,8 @@ void main() {
       final seasonRes = await coordinator.requestSeasonTransfer(
         'season_succ_1',
       );
-      expect(seasonRes.length, 2);
+      // Episode 1 was already offline and skipped; only episode 2 is transferred.
+      expect(seasonRes.length, 1);
       expect(seasonRes.every((r) => r.state == TransferState.completed), true);
 
       // Ep 1 should only have 1 device copy (no duplicate)

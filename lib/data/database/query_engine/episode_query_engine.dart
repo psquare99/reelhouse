@@ -310,6 +310,7 @@ $paginationSql
       playbackPositionSeconds: row.read<int>('playback_position_seconds'),
       lastPlayedAt: row.readNullable<DateTime>('last_played_at'),
       availability: availability,
+      isOffline: hasLocal,
     );
   }
 }

@@ -244,6 +244,9 @@ class FakeTransferService implements TransferService {
 
   @override
   Future<int> cleanStalePartials() async => 0;
+
+  @override
+  Future<int> countStalePartials() async => 0;
 }
 
 void main() {
@@ -500,7 +503,7 @@ void main() {
           ),
         );
 
-    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    await tester.binding.setSurfaceSize(const Size(1280, 1600));
     await tester.pumpWidget(
       createThemedTestApp(
         TvShowDetailScreen(
@@ -531,6 +534,36 @@ void main() {
       sources.any((s) => s.storageId == 'device-storage-internal'),
       isTrue,
     );
+
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Completed season: SAVE SEASON OFFLINE is gone, "1 OF 1 OFFLINE" badge.
+    expect(find.text('SAVE SEASON OFFLINE'), findsNothing);
+    expect(find.text('1 OF 1 OFFLINE'), findsOneWidget);
+
+    // The tall surface shows the episode list; the episode card shows OFFLINE
+    // and no longer offers SAVE OFFLINE.
+    expect(find.text('OFFLINE'), findsOneWidget);
+    expect(find.text('SAVE OFFLINE'), findsNothing);
+
+    // Removing the offline copy restores the save affordances.
+    await tester.tap(find.text('OFFLINE'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Delete Offline Copy?'), findsOneWidget);
+    await tester.tap(find.text('Delete Copy'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final remainingSources = await db.getSourcesForEpisode('ep-chernobyl-101');
+    expect(remainingSources.any((s) => s.sourceType == 'localDevice'), isFalse);
+    expect(find.textContaining('removed.'), findsOneWidget);
+    expect(find.text('Delete Offline Copy?'), findsNothing);
+    // The episode card is back to SAVE OFFLINE and the OFFLINE badge is gone.
+    expect(find.text('SAVE OFFLINE'), findsOneWidget);
+    expect(find.text('OFFLINE'), findsNothing);
 
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpWidget(const SizedBox());
@@ -653,53 +686,60 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   });
 
-  testWidgets(
-    'Clean Partials button shows success SnackBar on clean database',
-    (tester) async {
-      final now = DateTime.now();
+  testWidgets('Clean Partials is disabled when no stale partial files exist', (
+    tester,
+  ) async {
+    final now = DateTime.now();
 
-      await db
-          .into(db.storages)
-          .insert(
-            StoragesCompanion.insert(
-              id: 'device-storage-internal',
-              name: 'This Device',
-              storageType: 'DEVICE_LOCAL_STORAGE',
-              filesystemIdentifier: 'internal-app-storage',
-              rootUri: destDir.path,
-              lastSeenAt: now,
-              available: const drift.Value(true),
-            ),
-          );
-
-      await tester.binding.setSurfaceSize(const Size(1280, 1600));
-      await tester.pumpWidget(
-        createThemedTestApp(
-          SettingsScreen(
-            database: db,
-            repository: repo,
-            storageIdentityService: storageIdentityService,
-            localStorageManager: LocalStorageManagerImpl(),
-            deviceStorageService: deviceStorageService,
-            transferCoordinator: coordinator,
-            transferService: transferService,
+    await db
+        .into(db.storages)
+        .insert(
+          StoragesCompanion.insert(
+            id: 'device-storage-internal',
+            name: 'This Device',
+            storageType: 'DEVICE_LOCAL_STORAGE',
+            filesystemIdentifier: 'internal-app-storage',
+            rootUri: destDir.path,
+            lastSeenAt: now,
+            available: const drift.Value(true),
           ),
+        );
+
+    await tester.binding.setSurfaceSize(const Size(1280, 1600));
+    await tester.pumpWidget(
+      createThemedTestApp(
+        SettingsScreen(
+          database: db,
+          repository: repo,
+          storageIdentityService: storageIdentityService,
+          localStorageManager: LocalStorageManagerImpl(),
+          deviceStorageService: deviceStorageService,
+          transferCoordinator: coordinator,
+          transferService: transferService,
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      // Tap "Clean Partials"
-      await tester.tap(find.text('Clean Partials'));
-      await tester.pump();
-      await tester.pump();
-      await tester.pump();
+    // No stale partial files -> button must be disabled.
+    final button = tester.widget<OutlinedButton>(
+      find.ancestor(
+        of: find.text('Clean Partials'),
+        matching: find.byType(OutlinedButton),
+      ),
+    );
+    expect(button.onPressed, isNull);
 
-      expect(find.text('No stale partial files found.'), findsOneWidget);
+    // Tapping the disabled button must not surface a SnackBar.
+    await tester.tap(find.text('Clean Partials'), warnIfMissed: false);
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(SnackBar), findsNothing);
 
-      await tester.pumpWidget(const SizedBox());
-      await tester.pump(const Duration(milliseconds: 50));
-    },
-  );
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 50));
+  });
 
   testWidgets('Reconcile button shows error SnackBar on failure', (
     tester,
@@ -788,6 +828,9 @@ class _ThrowingTransferService extends FakeTransferService {
   Future<List<TransferResult>> reconcileTransfers() async {
     throw Exception('test reconcile error');
   }
+
+  @override
+  Future<int> countStalePartials() async => 1;
 
   @override
   Future<int> cleanStalePartials() async {

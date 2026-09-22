@@ -92,6 +92,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   int _usedBytes = 0;
   int _availableBytes = 0;
+  int _stalePartialCount = 0;
   late TransferCoordinator _transferCoordinator;
 
   late MetadataService _metadataService;
@@ -155,6 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       text: _settingsService?.tmdbApiKey ?? '',
     );
     _refreshStorageStats();
+    _refreshStalePartialCount();
   }
 
   @override
@@ -866,6 +868,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _usedBytes = used;
         _availableBytes = avail;
+      });
+    }
+  }
+
+  Future<void> _refreshStalePartialCount() async {
+    final count = await _transferCoordinator.countStalePartials();
+    if (mounted) {
+      setState(() {
+        _stalePartialCount = count;
       });
     }
   }
@@ -1611,6 +1622,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       try {
                         final results = await _transferCoordinator
                             .reconcileTransfers();
+                        await _refreshStalePartialCount();
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -1650,37 +1662,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   OutlinedButton.icon(
-                    onPressed: () async {
-                      try {
-                        final count = await _transferCoordinator
-                            .cleanStalePartials();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                count > 0
-                                    ? 'Cleaned $count stale partial transfer file(s).'
-                                    : 'No stale partial files found.',
-                                style: TextStyle(color: theme.textPrimary),
-                              ),
-                              backgroundColor: theme.surface2,
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Clean failed: $e',
-                                style: TextStyle(color: theme.textPrimary),
-                              ),
-                              backgroundColor: theme.surface2,
-                            ),
-                          );
-                        }
-                      }
-                    },
+                    onPressed: _stalePartialCount == 0
+                        ? null
+                        : () async {
+                            try {
+                              final count = await _transferCoordinator
+                                  .cleanStalePartials();
+                              await _refreshStalePartialCount();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      count > 0
+                                          ? 'Cleaned $count stale partial transfer file(s).'
+                                          : 'No stale partial files found.',
+                                      style: TextStyle(
+                                        color: theme.textPrimary,
+                                      ),
+                                    ),
+                                    backgroundColor: theme.surface2,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Clean failed: $e',
+                                      style: TextStyle(
+                                        color: theme.textPrimary,
+                                      ),
+                                    ),
+                                    backgroundColor: theme.surface2,
+                                  ),
+                                );
+                              }
+                            }
+                          },
                     icon: const Icon(
                       Icons.cleaning_services_outlined,
                       size: 14,

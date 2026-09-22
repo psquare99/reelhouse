@@ -242,7 +242,12 @@ class TvShowQueryEngine {
 
     // 10. Availability filter
     if (filter.availability != null) {
-      if (filter.availability == AvailabilityFilter.available) {
+      if (filter.availability == AvailabilityFilter.offlineOnly) {
+        // Offline library: only device-managed (localDevice) copies count.
+        whereClauses.add(
+          'EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id JOIN media_sources ms2 ON ms2.episode_id = e2.id WHERE s2.show_id = t.id AND ms2.available = 1 AND ms2.source_type = \'localDevice\')',
+        );
+      } else if (filter.availability == AvailabilityFilter.available) {
         whereClauses.add(
           'EXISTS (SELECT 1 FROM seasons s2 JOIN episodes e2 ON e2.season_id = s2.id JOIN media_sources ms2 ON ms2.episode_id = e2.id LEFT JOIN storages st2 ON st2.id = ms2.storage_id WHERE s2.show_id = t.id AND ms2.available = 1 AND (ms2.source_type = \'localDevice\' OR st2.available = 1))',
         );

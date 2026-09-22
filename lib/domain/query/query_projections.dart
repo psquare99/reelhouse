@@ -309,6 +309,13 @@ class EpisodeLibraryItem {
   final DateTime? lastPlayedAt;
   final AvailabilityStatus availability;
 
+  /// Whether a completed device-managed (localDevice) offline copy exists.
+  ///
+  /// This is deliberately independent of [availability]: when both an external
+  /// source and the device copy are available the availability reports
+  /// multi-source, but the item is still genuinely offline.
+  final bool isOffline;
+
   const EpisodeLibraryItem({
     required this.id,
     required this.seasonId,
@@ -327,6 +334,7 @@ class EpisodeLibraryItem {
     this.playbackPositionSeconds = 0,
     this.lastPlayedAt,
     this.availability = AvailabilityStatus.unavailable,
+    this.isOffline = false,
   });
 
   /// Formatted episode designation (e.g. "S01E05").
@@ -363,7 +371,8 @@ class EpisodeLibraryItem {
           watchState == other.watchState &&
           playbackPositionSeconds == other.playbackPositionSeconds &&
           lastPlayedAt == other.lastPlayedAt &&
-          availability == other.availability;
+          availability == other.availability &&
+          isOffline == other.isOffline;
 
   @override
   int get hashCode => Object.hashAll([
@@ -384,11 +393,12 @@ class EpisodeLibraryItem {
     playbackPositionSeconds,
     lastPlayedAt,
     availability,
+    isOffline,
   ]);
 
   @override
   String toString() =>
-      'EpisodeLibraryItem($episodeCode - "$displayName", avail: $availability)';
+      'EpisodeLibraryItem($episodeCode - "$displayName", avail: $availability, offline: $isOffline)';
 }
 
 /// Lightweight read projection of a Season for show detail season tabs and lists.
@@ -400,6 +410,7 @@ class SeasonLibraryItem {
   final String? overview;
   final String? posterPath;
   final int episodeCount;
+  final int offlineEpisodeCount;
   final DateTime? airDate;
 
   const SeasonLibraryItem({
@@ -410,10 +421,20 @@ class SeasonLibraryItem {
     this.overview,
     this.posterPath,
     this.episodeCount = 0,
+    this.offlineEpisodeCount = 0,
     this.airDate,
   });
 
   bool get isExtra => seasonNumber < 0;
+
+  /// Whether every canonical episode in this season has a completed
+  /// device-managed offline copy.
+  bool get isFullyOffline =>
+      episodeCount > 0 && offlineEpisodeCount >= episodeCount;
+
+  /// Number of canonical episodes still waiting for an offline copy.
+  int get remainingOfflineEpisodeCount =>
+      (episodeCount - offlineEpisodeCount).clamp(0, episodeCount);
 
   /// Display name: fallback to "Extras", "Specials", or "Season X".
   String get displayName {
@@ -435,6 +456,7 @@ class SeasonLibraryItem {
           overview == other.overview &&
           posterPath == other.posterPath &&
           episodeCount == other.episodeCount &&
+          offlineEpisodeCount == other.offlineEpisodeCount &&
           airDate == other.airDate;
 
   @override
@@ -446,12 +468,13 @@ class SeasonLibraryItem {
     overview,
     posterPath,
     episodeCount,
+    offlineEpisodeCount,
     airDate,
   );
 
   @override
   String toString() =>
-      'SeasonLibraryItem($id, S$seasonNumber "$displayName", eps: $episodeCount)';
+      'SeasonLibraryItem($id, S$seasonNumber "$displayName", eps: $episodeCount, offline: $offlineEpisodeCount)';
 }
 
 /// Lightweight read projection of a Collection with precomputed item counts.

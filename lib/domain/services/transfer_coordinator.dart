@@ -265,6 +265,11 @@ class TransferCoordinator extends ChangeNotifier {
     return count;
   }
 
+  /// Returns the number of stale partial files without deleting them.
+  Future<int> countStalePartials() async {
+    return transferService.countStalePartials();
+  }
+
   /// Reconcile interrupted transfers.
   Future<List<TransferResult>> reconcileTransfers() async {
     final results = await transferService.reconcileTransfers();
@@ -401,7 +406,15 @@ class TransferCoordinator extends ChangeNotifier {
             item.mediaId,
             cancellationToken: item.cancellationToken,
           );
-          await transferService.registerCompletedSeasonTransfers(item.mediaId);
+          // Register only the episodes that were actually transferred this run
+          // (already-offline episodes are skipped and must not be re-registered).
+          for (final result in results) {
+            if (result.state == TransferState.completed) {
+              await transferService.registerCompletedTransfer(
+                result.transferId,
+              );
+            }
+          }
           if (!item.completer.isCompleted) {
             item.completer.complete(results);
           }

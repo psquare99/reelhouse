@@ -21,7 +21,7 @@ class SeasonQueryEngine {
         .customSelect(
           queryPlan.dataSql,
           variables: queryPlan.dataVariables,
-          readsFrom: {db.seasons, db.episodes},
+          readsFrom: {db.seasons, db.episodes, db.mediaSources},
         )
         .get();
 
@@ -51,7 +51,7 @@ class SeasonQueryEngine {
         .customSelect(
           queryPlan.dataSql,
           variables: queryPlan.dataVariables,
-          readsFrom: {db.seasons, db.episodes},
+          readsFrom: {db.seasons, db.episodes, db.mediaSources},
         )
         .watch()
         .asyncMap((dataRows) async {
@@ -141,9 +141,11 @@ SELECT
   s.overview,
   s.poster_path,
   s.air_date,
-  COUNT(e.id) AS episode_count
+  COUNT(DISTINCT e.id) AS episode_count,
+  COUNT(DISTINCT CASE WHEN ms.source_type = 'localDevice' AND ms.available = 1 THEN e.id END) AS offline_episode_count
 FROM seasons s
 LEFT JOIN episodes e ON e.season_id = s.id
+LEFT JOIN media_sources ms ON ms.episode_id = e.id
 $whereSql
 GROUP BY s.id
 $orderSql
@@ -173,6 +175,7 @@ $orderSql
       overview: row.readNullable<String>('overview'),
       posterPath: row.readNullable<String>('poster_path'),
       episodeCount: row.read<int?>('episode_count') ?? 0,
+      offlineEpisodeCount: row.read<int?>('offline_episode_count') ?? 0,
       airDate: row.readNullable<DateTime>('air_date'),
     );
   }

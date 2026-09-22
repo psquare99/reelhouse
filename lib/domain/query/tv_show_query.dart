@@ -83,7 +83,7 @@ class TvShowQuery {
   /// Factory for Offline Library Smart View.
   factory TvShowQuery.offline() => const TvShowQuery(
     scope: QueryScope.offline,
-    filter: TvShowFilter(availability: AvailabilityFilter.available),
+    filter: TvShowFilter(availability: AvailabilityFilter.offlineOnly),
   );
 
   /// Factory for Collection-scoped TV Show Query.
