@@ -253,6 +253,31 @@ void main() {
         final result = await client.validateAuthentication();
         expect(result.status, TmdbAuthStatus.connected);
       });
+
+      test('retries on network handshake error before succeeding', () async {
+        var callCount = 0;
+        final mockClient = MockClient((request) async {
+          callCount++;
+          if (callCount == 1) {
+            throw http.ClientException('Connection terminated during handshake');
+          }
+          return http.Response(
+            jsonEncode({'success': true, 'status_code': 1}),
+            200,
+          );
+        });
+
+        final client = TmdbApiClient(
+          apiKey: 'valid-key',
+          httpClient: mockClient,
+          minRequestInterval: Duration.zero,
+        );
+
+        final result = await client.validateAuthentication();
+        expect(result.status, TmdbAuthStatus.connected);
+        expect(result.isSuccess, isTrue);
+        expect(callCount, 2);
+      });
     });
   });
 }

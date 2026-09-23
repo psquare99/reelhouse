@@ -116,8 +116,6 @@ class TmdbApiClient {
       );
     }
 
-    await _throttle();
-
     final isBearer = keyToTest.length > 40;
     final queryParams = <String, String>{};
     if (!isBearer) {
@@ -131,8 +129,30 @@ class TmdbApiClient {
       headers['Authorization'] = 'Bearer $keyToTest';
     }
 
-    try {
-      final response = await _httpClient.get(uri, headers: headers);
+    var attempt = 0;
+    while (true) {
+      attempt++;
+      await _throttle();
+
+      http.Response response;
+      try {
+        response = await _httpClient.get(uri, headers: headers);
+      } catch (e) {
+        if (attempt >= maxRetries) {
+          return TmdbAuthValidationResult(
+            status: TmdbAuthStatus.networkFailure,
+            message: 'Unable to connect to TMDB: $e',
+          );
+        }
+        final delay = minRequestInterval == Duration.zero
+            ? Duration.zero
+            : Duration(milliseconds: 500 * pow(2, attempt).toInt());
+        if (delay > Duration.zero) {
+          await Future<void>.delayed(delay);
+        }
+        continue;
+      }
+
       if (response.statusCode == 200) {
         return const TmdbAuthValidationResult(
           status: TmdbAuthStatus.connected,
@@ -145,6 +165,25 @@ class TmdbApiClient {
           message: 'Invalid or unauthorized TMDB API key.',
           statusCode: response.statusCode,
         );
+      } else if (response.statusCode == 429 && attempt < maxRetries) {
+        final retryAfterSeconds =
+            int.tryParse(response.headers['retry-after'] ?? '') ??
+            pow(2, attempt).toInt();
+        final delay = minRequestInterval == Duration.zero
+            ? Duration.zero
+            : Duration(seconds: retryAfterSeconds);
+        if (delay > Duration.zero) {
+          await Future<void>.delayed(delay);
+        }
+        continue;
+      } else if (response.statusCode >= 500 && attempt < maxRetries) {
+        final delay = minRequestInterval == Duration.zero
+            ? Duration.zero
+            : Duration(milliseconds: 500 * pow(2, attempt).toInt());
+        if (delay > Duration.zero) {
+          await Future<void>.delayed(delay);
+        }
+        continue;
       } else {
         return TmdbAuthValidationResult(
           status: TmdbAuthStatus.networkFailure,
@@ -153,11 +192,6 @@ class TmdbApiClient {
           statusCode: response.statusCode,
         );
       }
-    } catch (e) {
-      return TmdbAuthValidationResult(
-        status: TmdbAuthStatus.networkFailure,
-        message: 'Unable to connect to TMDB: $e',
-      );
     }
   }
 
